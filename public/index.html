@@ -70,6 +70,8 @@ button{cursor:pointer}
 
 .strip-head{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;gap:12px;flex-wrap:wrap}
 .strip-head h2{font-size:15px;margin:0;font-weight:600}
+.add-sel{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:500;cursor:pointer}
+.add-sel[hidden]{display:none}
 .strip-head .note{color:var(--muted);font-size:12.5px;margin-left:auto}
 .strip{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity}
 .card{flex:0 0 172px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px;text-align:left;scroll-snap-align:start}
@@ -205,6 +207,7 @@ body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
     </div>
     <div class="strip-head">
       <h2>장면</h2>
+      <select id="addScene" class="add-sel" aria-label="선택한 장면 뒤에 장면 추가"></select>
       <span class="note" id="scaleNote"></span>
       <button class="btn small" id="autoFit" hidden title="장면 길이 비율은 그대로 두고, 전체가 음원 길이와 같아지도록 나눠요">음원 길이에 맞춰 자동 분배</button>
     </div>
@@ -1357,11 +1360,10 @@ function buildStrip() {
     b.onclick = () => { select(i); seek(timeline[i].start + Math.min(timeline[i].dur * 0.6, 3)); };
     el.appendChild(b); queueThumb(s.id);
   });
-  if (CUSTOMER) return;
-  const add = document.createElement('div'); add.className = 'add-card';
-  add.innerHTML = `<span>선택한 장면 뒤에 추가</span><select aria-label="장면 추가"><option value="">장면 추가</option>${Object.entries(LAYOUTS).map(([k, L]) => `<option value="${k}">${esc(L.name)}</option>`).join('')}</select>`;
-  add.querySelector('select').onchange = e => { const k = e.target.value; if (!k) return; project.scenes.splice(sel + 1, 0, makeScene(k)); changed(true); select(sel + 1); toast('장면을 추가했어요'); };
-  el.appendChild(add);
+  const as = $('addScene'); if (!as) return;
+  as.hidden = CUSTOMER;
+  as.innerHTML = `<option value="">＋ 장면 추가 (선택한 장면 ${sel + 1} 뒤에)</option>${Object.entries(LAYOUTS).map(([k, L]) => `<option value="${k}">${esc(L.name)}</option>`).join('')}`;
+  as.onchange = e => { const k = e.target.value; if (!k) return; project.scenes.splice(sel + 1, 0, makeScene(k)); changed(true); select(sel + 1); toast('장면을 추가했어요'); };
 }
 function buildTimeline() {
   const el = $('timeline'); el.querySelectorAll('.seg,.lyr').forEach(n => n.remove());
@@ -1413,6 +1415,7 @@ function select(i, keepEdit) {
   if (!keepEdit) editSel = null;
   document.querySelectorAll('.card').forEach((c, k) => c.classList.toggle('on', k === sel));
   markSeg(sel); buildScenePane();
+  const as = $('addScene'); if (as && as.options[0]) as.options[0].textContent = `＋ 장면 추가 (선택한 장면 ${sel + 1} 뒤에)`;
   const card = document.querySelectorAll('.card')[sel];
   if (card) card.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
 }
