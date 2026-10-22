@@ -70,7 +70,7 @@ button{cursor:pointer}
 
 .strip-head{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;gap:12px;flex-wrap:wrap}
 .strip-head h2{font-size:15px;margin:0;font-weight:600}
-.strip-head .note{color:var(--muted);font-size:12.5px}
+.strip-head .note{color:var(--muted);font-size:12.5px;margin-left:auto}
 .strip{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity}
 .card{flex:0 0 172px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px;text-align:left;scroll-snap-align:start}
 .card canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:#000}
@@ -142,6 +142,12 @@ button{cursor:pointer}
 .toast.show{opacity:1}
 .btn[hidden],.sync[hidden]{display:none}
 .hist{display:inline-flex;gap:4px}
+.btn.small.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.bgrow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:10px}
+.bgrow input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-radius:6px;padding:0;background:none}
+.vt{font-variant-numeric:tabular-nums;color:var(--text)}
+#vidHost{position:fixed;left:0;top:0;width:4px;height:4px;opacity:.01;overflow:hidden;pointer-events:none;z-index:-1}
+#vidHost video{width:4px;height:4px}
 body.dragging .stage{outline:2px dashed var(--accent);outline-offset:4px}
 body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
 .drop-hot{outline:3px solid var(--accent)!important;outline-offset:2px}
@@ -200,6 +206,7 @@ body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
     <div class="strip-head">
       <h2>장면</h2>
       <span class="note" id="scaleNote"></span>
+      <button class="btn small" id="autoFit" hidden title="장면 길이 비율은 그대로 두고, 전체가 음원 길이와 같아지도록 나눠요">음원 길이에 맞춰 자동 분배</button>
     </div>
     <div class="strip" id="strip"></div>
   </section>
@@ -228,6 +235,7 @@ body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
+<div id="vidHost" aria-hidden="true"></div>
 <div class="drop-hint" id="dropHint" hidden>여기에 놓으면 빈 사진 칸에 순서대로 들어가요. 사진 칸이나 미리보기 위에 놓으면 그 자리에 들어가요.</div>
 
 <input type="file" id="slotInput" accept="image/*,video/*" class="sr">
@@ -318,7 +326,9 @@ function loadVid(url) {
   return new Promise((res, rej) => {
     const v = document.createElement('video');
     v.muted = true; v.playsInline = true; v.preload = 'auto'; v.loop = true; v.crossOrigin = 'anonymous';
-    v.onloadeddata = () => res(v); v.onerror = () => rej(new Error('video'));
+    v.onloadeddata = () => res(v); v.onerror = () => { v.remove(); rej(new Error('video')); };
+    v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+    const host = document.getElementById('vidHost'); if (host) host.appendChild(v);
     v.src = url; v.load();
   });
 }
@@ -390,14 +400,28 @@ function rr(c, x, y, w, h, r) {
   c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
   c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
 }
-function bg(c, col) { c.fillStyle = col; c.fillRect(0, 0, W, H); }
+let curBgLum = null;
+function colorLum(c) {
+  let r, g, b, m = /^#([0-9a-f]{6})$/i.exec(c || '');
+  if (m) { const n = parseInt(m[1], 16); r = n >> 16 & 255; g = n >> 8 & 255; b = n & 255; }
+  else if ((m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c || ''))) { r = +m[1]; g = +m[2]; b = +m[3]; }
+  else return null;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+function autoCol(col) {
+  if (curBgLum == null) return col;
+  const l = colorLum(col);
+  if (l == null || Math.abs(l - curBgLum) >= 0.35) return col;
+  return curBgLum > 0.5 ? '#2A2725' : '#F2F0EE';
+}
+function bg(c, col) { c.fillStyle = (curScene && curScene.bgc && !LAYOUTS[curScene.layout].bgHidden) ? curScene.bgc : col; c.fillRect(0, 0, W, H); }
 function setSpacing(c, px) { if ('letterSpacing' in c) c.letterSpacing = px + 'px'; }
 function txt(c, s, x, y, font, color, a, o = {}) {
   if (!s || a <= 0.001) return;
   const st = o.k ? getStyle(o.k) : DEF;
   const ax = x + st.x, ay = y + st.y + (o.rise || 0) * (1 - a);
   c.save(); c.globalAlpha *= a; c.translate(ax, ay); c.scale(st.s, st.s);
-  font = withFont(font, st.f); c.font = font; c.fillStyle = st.c || color; c.textAlign = o.align || 'center'; c.textBaseline = 'middle';
+  font = withFont(font, st.f); c.font = font; c.fillStyle = st.c || autoCol(color); c.textAlign = o.align || 'center'; c.textBaseline = 'middle';
   setSpacing(c, o.sp || 0);
   if (o.shadow) { c.shadowColor = o.shadow; c.shadowBlur = (o.blur || 10) * R.S * st.s; }
   c.fillText(s, 0, 0);
@@ -422,7 +446,7 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
     c.restore(); return;
   }
   if (m.type === 'video') {
-    if (collectVideos) usedVideos.set(slot.id, t);
+    if (collectVideos) usedVideos.set(slot.id, { t, slot });
     if (m.el.readyState < 2) { c.fillStyle = '#000'; c.fillRect(x, y, w, h); c.restore(); return; }
   }
   const sw = m.type === 'video' ? (m.el.videoWidth || m.w) : m.w;
@@ -484,7 +508,7 @@ function block(c, s, cx, cy, font, lh, color, t, start, maxDur, typing, key, alp
   const dur = typing ? Math.min(maxDur, Math.max(0.6, total * 0.11)) : 1.2;
   const a = typing ? alpha : fade(t, start, 1.2) * alpha;
   c.save(); c.translate(cx + st.x, cy + st.y + (typing ? 0 : 10 * (1 - a))); c.scale(st.s, st.s);
-  font = withFont(font, st.f); c.globalAlpha *= a; c.font = font; c.fillStyle = st.c || color; c.textAlign = 'left'; c.textBaseline = 'middle'; setSpacing(c, 0);
+  font = withFont(font, st.f); c.globalAlpha *= a; c.font = font; c.fillStyle = st.c || autoCol(color); c.textAlign = 'left'; c.textBaseline = 'middle'; setSpacing(c, 0);
   const y0 = -(ls.length - 1) * lh / 2;
   let n = typing ? Math.floor(clamp((t - start) / dur) * total) : total;
   let cur = null, mw = 0;
@@ -512,7 +536,7 @@ function caption(c, s, x, y, style, a, key, px = 40) {
   c.save(); c.translate(x + st.x, y + st.y); c.scale(st.s, st.s);
   c.globalAlpha *= a * (style === 'dark' ? 0.92 : 1);
   c.font = withFont(F.kr(px), st.f); c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
-  c.fillStyle = st.c || (style === 'light' ? '#4A4643' : '#FFFFFF');
+  c.fillStyle = st.c || (style !== 'photo' && curBgLum != null ? (curBgLum > 0.5 ? '#3A3634' : '#F2F0EE') : (style === 'light' ? '#4A4643' : '#FFFFFF'));
   if (style === 'photo') { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14 * R.S * st.s; }
   let mw = 0;
   ls.forEach((l, i) => { c.fillText(l, 0, -(ls.length - 1 - i) * lh); mw = Math.max(mw, c.measureText(l).width); });
@@ -604,7 +628,7 @@ const LAYOUTS = {
       txt(c, fill(s.texts.eyebrow), tx, 320, F.script(76), WINE, fade(t, 0.6, 1.1), { align: 'left', k: 'eyebrow' });
       txt(c, fill(s.texts.title), tx, 428, F.kr(62, 700), INK, fade(t, 1.0, 1.0), { align: 'left', rise: 10, k: 'title' });
       const ra = fade(t, 1.4, 1.0), ts = getStyle('title');
-      if (ra > 0) { c.save(); c.globalAlpha = ra * 0.5; c.fillStyle = INK; c.fillRect(tx + ts.x, 498 + ts.y + 38 * (ts.s - 1), 70 * ra * ts.s, 2); c.restore(); }
+      if (ra > 0) { c.save(); c.globalAlpha = ra * 0.5; c.fillStyle = autoCol(INK); c.fillRect(tx + ts.x, 498 + ts.y + 38 * (ts.s - 1), 70 * ra * ts.s, 2); c.restore(); }
       let n = 0;
       ['line1', 'line2', 'line3'].forEach(k => {
         const l = fill(s.texts[k]); if (!l) return;
@@ -767,13 +791,13 @@ Object.assign(LAYOUTS, {
       if (a > 0) {
         c.save(); c.globalAlpha = a; c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
         const cw = 92, x0 = cx - cw * 3, y0 = 390;
-        c.font = F.serif(26, 500, false); c.fillStyle = '#8A8580';
+        c.font = F.serif(26, 500, false); c.fillStyle = autoCol('#8A8580');
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach((w, i) => c.fillText(w, x0 + i * cw, y0));
         const first = new Date(dt.y, dt.mo - 1, 1).getDay(), days = new Date(dt.y, dt.mo, 0).getDate();
         for (let n = 1; n <= days; n++) {
           const k = first + n - 1, col = k % 7, row = Math.floor(k / 7), x = x0 + col * cw, y = y0 + 70 + row * 70;
-          if (n === dt.d) { const pr = ease(clamp((t - 1.8) / 0.8)); c.fillStyle = WINE; c.beginPath(); c.arc(x, y, 30 * pr, 0, Math.PI * 2); c.fill(); c.fillStyle = pr > 0.5 ? '#FFFFFF' : '#3A3634'; }
-          else c.fillStyle = col === 0 ? '#A0574F' : '#3A3634';
+          if (n === dt.d) { const pr = ease(clamp((t - 1.8) / 0.8)); c.fillStyle = WINE; c.beginPath(); c.arc(x, y, 30 * pr, 0, Math.PI * 2); c.fill(); c.fillStyle = pr > 0.5 ? '#FFFFFF' : autoCol('#3A3634'); }
+          else c.fillStyle = autoCol(col === 0 ? '#A0574F' : '#3A3634');
           c.font = F.serif(32, n === dt.d ? 500 : 400, false); c.fillText(String(n), x, y);
         }
         c.restore();
@@ -794,7 +818,9 @@ Object.assign(LAYOUTS, {
         c.save(); c.globalAlpha = a; c.translate(x, 490 + (1 - a) * 30); c.rotate(rot * Math.PI / 180);
         c.save(); c.shadowColor = 'rgba(0,0,0,.22)'; c.shadowBlur = 30 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(-220, -280, 440, 540); c.restore();
         cover(c, s, i, -200, -260, 400, 400, t, { zoom: 1.02 });
+        const cbl = curBgLum; curBgLum = null;
         txt(c, fill(s.texts['cap' + (i + 1)]), 0, 200, '400 48px "Nanum Pen Script", "Nanum Myeongjo", serif', '#3A3634', 1, { k: 'cap' + (i + 1) });
+        curBgLum = cbl;
         c.restore();
         hitOn = ho;
         addHit({ type: 'media', si: i, x: x - 200, y: 230, w: 400, h: 400, oy: 0 });
@@ -860,6 +886,7 @@ Object.assign(LAYOUTS, {
   }
 });
 
+['full', 'quote', 'framed'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 function makeScene(layout, over = {}) {
   const L = LAYOUTS[layout];
   const s = { id: uid(), layout, weight: L.weight, caption: '', texts: {}, opts: {}, media: [], tstyle: {} };
@@ -870,6 +897,7 @@ function makeScene(layout, over = {}) {
   if (over.opts) Object.assign(s.opts, over.opts);
   if (over.weight) s.weight = over.weight;
   if (over.caption) s.caption = over.caption;
+  if (over.bgc) s.bgc = over.bgc;
   if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
   return s;
 }
@@ -915,7 +943,7 @@ function defaultProject() {
 }
 function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
-  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy })); });
+  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold })); });
   p.title = p.title || ''; p.audio = p.audio || null;
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
   return p;
@@ -960,13 +988,13 @@ function startSource() {
 function stopSource() { if (srcNode) { try { srcNode.onended = null; srcNode.stop(); } catch (e) {} try { srcNode.disconnect(); } catch (e) {} srcNode = null; } }
 
 /* ---------------- timeline ---------------- */
-let timeline = [], total = 0, scale = 1;
+let timeline = [], total = 0, scale = 1, span = 1;
 function computeTimeline() {
   const sum = project.scenes.reduce((n, s) => n + Math.max(0.5, +s.weight || 1), 0);
-  total = abuf ? abuf.duration : sum;
-  scale = total / Math.max(sum, 0.001);
+  total = sum; scale = 1;
+  span = Math.max(total, abuf ? abuf.duration : 0, 0.001);
   let t = 0;
-  timeline = project.scenes.map(s => { const d = Math.max(0.5, +s.weight || 1) * scale; const r = { start: t, dur: d }; t += d; return r; });
+  timeline = project.scenes.map(s => { const d = Math.max(0.5, +s.weight || 1); const r = { start: t, dur: d }; t += d; return r; });
 }
 function sceneAt(T) {
   for (let i = timeline.length - 1; i >= 0; i--) if (T >= timeline[i].start) return i;
@@ -987,6 +1015,7 @@ function drawScene(c, i, t, hit) {
   const s = project.scenes[i]; if (!s) return;
   const L = LAYOUTS[s.layout], d = timeline[i].dur;
   curScene = s; curIdx = i; hitOn = !!hit;
+  curBgLum = (s.bgc && !L.bgHidden) ? colorLum(s.bgc) : null;
   c.save(); L.draw(c, s, t, d); c.restore();
   if (s.caption) {
     const [x, y, st] = L.cap(s);
@@ -994,7 +1023,7 @@ function drawScene(c, i, t, hit) {
     if (activeLyric) yo = -((activeLyric.text.split('\n').length) * 52 + 18) * (project.lstyle.s || 1);
     caption(c, fill(s.caption), x, y + yo, st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption');
   }
-  hitOn = false; curScene = null;
+  hitOn = false; curScene = null; curBgLum = null;
 }
 function render(r, T, preview) {
   R = r; const c = r.ctx;
@@ -1017,7 +1046,10 @@ function render(r, T, preview) {
     const s = project.scenes[i], [x, y, st] = LAYOUTS[s.layout].cap(s), ly = activeLyric;
     const a = Math.min(fade(T, ly.start, 0.35), 1 - clamp((T - (ly.end - 0.35)) / 0.35));
     curIdx = i; hitOn = preview;
-    caption(c, fill(ly.text), x, y, st === 'dark' ? 'photo' : st, a, 'lyrics', 40);
+    curBgLum = (s.bgc && !LAYOUTS[s.layout].bgHidden) ? colorLum(s.bgc) : null;
+    const lst = curBgLum != null ? (curBgLum > 0.5 ? 'light' : 'photo') : (st === 'dark' ? 'photo' : st);
+    caption(c, fill(ly.text), x, y, lst, a, 'lyrics', 40);
+    curBgLum = null;
     hitOn = false;
   }
   let black = 0;
@@ -1030,18 +1062,29 @@ function render(r, T, preview) {
   }
   if (collectVideos) syncVideos();
 }
+function vidSeg(slot, v) {
+  const D = isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+  const a = clamp(slot.vs || 0, 0, Math.max(0, D - 0.1));
+  const b = slot.ve ? clamp(slot.ve, a + 0.1, D || slot.ve) : (D || a + 1);
+  return { a, b, len: Math.max(0.1, b - a) };
+}
+function vidTime(slot, v, t) {
+  const g = vidSeg(slot, v);
+  return g.a + (slot.hold ? Math.min(Math.max(t, 0), g.len - 0.05) : (((t % g.len) + g.len) % g.len));
+}
 function syncVideos() {
   for (const id in media) {
     const m = media[id]; if (m.type !== 'video') continue;
     const v = m.el;
     if (usedVideos.has(id)) {
-      const dur = v.duration || 1, want = usedVideos.get(id) % dur;
-      if (playing) {
+      const u = usedVideos.get(id), g = vidSeg(u.slot, v), want = vidTime(u.slot, v, u.t);
+      const held = u.slot.hold && u.t >= g.len - 0.05;
+      if (playing && !held) {
         if (v.paused) v.play().catch(() => {});
-        if (Math.abs(v.currentTime - want) > 0.35) v.currentTime = want;
+        if (!v.seeking && (Math.abs(v.currentTime - want) > 0.8 || v.currentTime >= g.b - 0.03 || v.currentTime < g.a - 0.1)) v.currentTime = want;
       } else {
         if (!v.paused) v.pause();
-        if (Math.abs(v.currentTime - want) > 0.04) v.currentTime = want;
+        if (!v.seeking && Math.abs(v.currentTime - want) > 0.04) v.currentTime = want;
       }
     } else if (!v.paused) v.pause();
   }
@@ -1053,7 +1096,7 @@ let exporting = false, exportRT = false;
 function play() {
   if (curT >= total - 0.05) curT = 0;
   playing = true; editSel = null;
-  if (abuf) startSource();
+  if (abuf && curT < abuf.duration - 0.05) startSource();
   perf0 = performance.now(); t0 = curT; updatePlayIcon();
 }
 function pause() {
@@ -1062,7 +1105,7 @@ function pause() {
 }
 function seek(T) {
   curT = clamp(T, 0, total);
-  if (playing && abuf) startSource();
+  if (playing && abuf) { if (curT < abuf.duration - 0.05) startSource(); else stopSource(); }
   perf0 = performance.now(); t0 = curT; dirty = true;
 }
 function clock() {
@@ -1095,7 +1138,7 @@ function loop() {
   } else if (dirty && !exporting) {
     render(PR, curT, true); dirty = false;
     $('timeLabel').textContent = fmt(curT) + ' / ' + fmt(total);
-    $('playhead').style.left = (total ? curT / total * 100 : 0) + '%';
+    $('playhead').style.left = (curT / span * 100) + '%';
     const si = sceneAt(curT);
     if (playing && si !== lastSceneIdx) { lastSceneIdx = si; markSeg(si); }
     if (playing) markLyric();
@@ -1243,13 +1286,13 @@ function buildTimeline() {
   const el = $('timeline'); el.querySelectorAll('.seg,.lyr').forEach(n => n.remove());
   project.scenes.forEach((s, i) => {
     const d = document.createElement('div'); d.className = 'seg' + (i === sel ? ' on' : '');
-    d.style.width = (timeline[i].dur / total * 100) + '%'; d.textContent = i + 1;
+    d.style.width = (timeline[i].dur / span * 100) + '%'; d.textContent = i + 1;
     el.insertBefore(d, $('playhead'));
   });
   if (project.lyricsOn) project.lyrics.forEach(l => {
     if (!(l.end > l.start)) return;
     const d = document.createElement('div'); d.className = 'lyr';
-    d.style.left = (l.start / total * 100) + '%'; d.style.width = Math.max(0.4, (Math.min(l.end, total) - l.start) / total * 100) + '%';
+    d.style.left = (l.start / span * 100) + '%'; d.style.width = Math.max(0.4, (Math.min(l.end, span) - l.start) / span * 100) + '%';
     el.insertBefore(d, $('playhead'));
   });
   drawWave();
@@ -1261,7 +1304,7 @@ function drawWave() {
   if (!peaks) return;
   c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#888';
   c.globalAlpha = 0.28;
-  const n = cv.width, mid = cv.height * 0.5;
+  const n = Math.round(cv.width * (abuf ? abuf.duration / span : 1)), mid = cv.height * 0.5;
   for (let x = 0; x < n; x++) {
     const p = peaks[Math.floor(x / n * peaks.length)] || 0, hh = Math.max(1, p * cv.height * 0.8);
     c.fillRect(x, mid - hh / 2, 1, hh);
@@ -1276,9 +1319,13 @@ function markLyric() {
 }
 function updateScaleNote() {
   const sum = project.scenes.reduce((n, s) => n + Math.max(0.5, +s.weight || 1), 0);
-  $('scaleNote').textContent = abuf
-    ? `장면 ${project.scenes.length}개, 음원 ${fmt(total)}에 맞춰 장면 길이를 ${scale.toFixed(2)}배로 맞췄어요`
-    : `장면 ${project.scenes.length}개, 기본 길이 합계 ${fmt(sum)}. 음원을 넣으면 그 길이에 맞춰져요`;
+  let note = `장면 ${project.scenes.length}개, 영상 길이 ${fmt1(sum)}`;
+  if (abuf) {
+    const diff = abuf.duration - sum;
+    note += Math.abs(diff) < 0.15 ? ', 음원 길이와 같아요' : diff > 0 ? `, 음원(${fmt1(abuf.duration)})보다 ${diff.toFixed(1)}초 짧아요` : `, 음원(${fmt1(abuf.duration)})보다 ${(-diff).toFixed(1)}초 길어요`;
+  }
+  $('scaleNote').textContent = note;
+  const ab = $('autoFit'); if (ab) ab.hidden = CUSTOMER || !abuf;
 }
 function select(i, keepEdit) {
   sel = clamp(i, 0, project.scenes.length - 1);
@@ -1315,6 +1362,7 @@ function wireStyle(root, getSt, onChange, onReset) {
     d.querySelector('[data-sreset]').onclick = () => onReset(key);
   });
 }
+const BG_SW = ['#F3E2E6', '#EDE6DC', '#DDE2DA', '#D6DCE4', '#2B2F3A', '#3A2B2F'];
 function buildScenePane() {
   const p = $('pane-scene'); const s = project.scenes[sel];
   if (!s) { p.innerHTML = '<p class="hint">장면이 없어요. 장면 목록 끝에서 장면을 추가하세요.</p>'; return; }
@@ -1329,23 +1377,63 @@ function buildScenePane() {
     ${CUSTOMER ? '' : `<label class="field"><span>장면 구성</span><select id="fLayout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.layout ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>`}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
+    ${L.bgHidden ? '' : `<div class="group"><h3>배경</h3><div class="bgrow">
+      <button class="btn small${!s.bgc ? ' on' : ''}" data-bg="">기본</button>
+      <button class="btn small${s.bgc === '#000000' ? ' on' : ''}" data-bg="#000000">블랙</button>
+      <button class="btn small${s.bgc === '#FFFFFF' ? ' on' : ''}" data-bg="#FFFFFF">화이트</button>
+      ${BG_SW.map(c => `<button type="button" class="swb${s.bgc === c ? ' on' : ''}" style="background:${c}" data-bg="${c}" aria-label="배경 ${c}"></button>`).join('')}
+      <input type="color" id="fBg" value="${s.bgc || '#ffffff'}" aria-label="배경 색 직접 고르기"></div>
+      <p class="hint">배경이 바뀌면 글씨 색도 잘 보이게 자동으로 바뀌어요. 원하는 색은 ‘글씨 꾸미기’에서 고를 수 있어요.</p></div>`}
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
       <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label>${styleCtl('caption', ts('caption'))}</div></div>
     ${CUSTOMER ? '' : `<div class="group"><h3>길이</h3>
-      <div class="field len"><input type="number" id="fWeight" min="1" max="60" step="0.5" value="${s.weight}" aria-label="기본 길이(초)"><span>기본 길이(초)</span></div>
+      <div class="field len"><input type="number" id="fWeight" min="0.5" max="120" step="0.1" value="${s.weight}" aria-label="장면 길이(초)"><span>초</span></div>
       <p class="hint" id="realLen"></p></div>`}`;
   if (!CUSTOMER) {
-    p.querySelector('#realLen').textContent = `실제 영상에서는 ${timeline[sel].dur.toFixed(1)}초 (${fmt(timeline[sel].start)}부터)`;
+    p.querySelector('#realLen').textContent = `영상에서 ${fmt1(timeline[sel].start)}부터 ${fmt1(timeline[sel].start + timeline[sel].dur)}까지 나와요`;
     p.querySelectorAll('[data-act]').forEach(b => b.onclick = () => sceneAction(b.dataset.act));
     p.querySelector('#fLayout').onchange = e => changeLayout(s, e.target.value);
-    p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = clamp(+e.target.value || 1, 1, 60); changed(true); select(sel); };
+    p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = Math.round(clamp(+e.target.value || 1, 0.5, 120) * 10) / 10; changed(true); select(sel); };
   }
+  const setBg = (v, rebuild) => {
+    if (v) s.bgc = v.toUpperCase(); else delete s.bgc;
+    if (v && L.opts.some(o => o[0] === 'dark')) s.opts.dark = colorLum(v) < 0.5;
+    sceneChanged(s); if (rebuild) buildScenePane();
+  };
+  p.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => setBg(b.dataset.bg, true));
+  const fb = p.querySelector('#fBg'); if (fb) { fb.oninput = e => setBg(e.target.value, false); fb.onchange = e => setBg(e.target.value, true); }
   p.querySelectorAll('[data-opt]').forEach(c => c.onchange = () => { s.opts[c.dataset.opt] = c.checked; sceneChanged(s); });
   p.querySelectorAll('[data-text]').forEach(inp => inp.oninput = () => { s.texts[inp.dataset.text] = inp.value; loadFontsFor(inp.value); sceneChanged(s); });
   p.querySelector('#fCaption').oninput = e => { s.caption = e.target.value; loadFontsFor(e.target.value); sceneChanged(s); };
   wireStyle(p, k => ensureStyle(sel, k), k => { editSel = { type: 'text', key: k, idx: sel }; sceneChanged(s); }, k => { if (s.tstyle) delete s.tstyle[k]; sceneChanged(s); buildScenePane(); });
   if (L.slots) buildSlots(s);
+}
+function vidCtl(slot, m) {
+  const g = vidSeg(slot, m.el), D = Math.max(0.1, m.el.duration || g.b);
+  return `<div class="hint" style="margin:6px 0 0">영상 구간 (원본 ${D.toFixed(1)}초)</div>
+    <label class="ctl"><span>시작</span><input type="range" min="0" max="${Math.round(D * 10)}" value="${Math.round(g.a * 10)}" data-v="vs" aria-label="영상 시작 지점"></label>
+    <label class="ctl"><span>끝</span><input type="range" min="0" max="${Math.round(D * 10)}" value="${Math.round(g.b * 10)}" data-v="ve" aria-label="영상 끝 지점"></label>
+    <div class="hint" style="margin:0"><span class="vt" data-vt>${g.a.toFixed(1)}초 ~ ${g.b.toFixed(1)}초 (${g.len.toFixed(1)}초)</span></div>
+    <label class="ctl-row" style="margin-top:2px"><input type="checkbox" data-hold ${slot.hold ? 'checked' : ''}>끝나면 마지막 화면에서 멈춤 (끄면 반복)</label>
+    <button class="x" data-fitlen style="text-align:left;padding-left:0">장면 길이를 이 구간에 맞추기</button>`;
+}
+function wireVid(d, s, slot, m) {
+  const idx = () => project.scenes.indexOf(s);
+  const upd = () => { const g = vidSeg(slot, m.el); d.querySelector('[data-vt]').textContent = `${g.a.toFixed(1)}초 ~ ${g.b.toFixed(1)}초 (${g.len.toFixed(1)}초)`; };
+  d.querySelectorAll('[data-v]').forEach(r => r.oninput = () => {
+    const v = r.value / 10, D = m.el.duration || 0;
+    if (r.dataset.v === 'vs') { slot.vs = v; if ((slot.ve || D) < v + 0.2) slot.ve = Math.min(D, v + 0.2); }
+    else { slot.ve = Math.max(v, (slot.vs || 0) + 0.2); if (D && slot.ve >= D - 0.05) delete slot.ve; }
+    upd(); sceneChanged(s);
+    const i = idx(), g = vidSeg(slot, m.el);
+    if (i >= 0) seek(timeline[i].start + (r.dataset.v === 'vs' ? Math.min(0.95, timeline[i].dur * 0.3) : Math.min(timeline[i].dur - 0.05, g.len - 0.05)));
+  });
+  d.querySelector('[data-hold]').onchange = e => { slot.hold = e.target.checked; sceneChanged(s); };
+  d.querySelector('[data-fitlen]').onclick = () => {
+    const g = vidSeg(slot, m.el); touch(s.id); s.weight = Math.max(0.5, Math.round(g.len * 10) / 10);
+    changed(true); select(sel); toast(`장면 길이를 ${s.weight}초로 맞췄어요`);
+  };
 }
 function buildSlots(s) {
   const box = $('slots'); box.innerHTML = '';
@@ -1357,6 +1445,7 @@ function buildSlots(s) {
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
+        ${m.type === 'video' ? vidCtl(slot, m) : ''}
         <div class="row"><button class="x" data-r>되돌리기</button><button class="x" data-x>빼기</button></div></div>` : '<p class="hint" style="margin:0">눌러서 사진이나 영상을 넣어요.</p>'}`;
     d.querySelector('.slot-btn').onclick = () => pickSlot(s, i);
     d.querySelector('.slot-btn').dataset.si = i;
@@ -1366,6 +1455,7 @@ function buildSlots(s) {
         editSel = { type: 'media', si: i, idx: project.scenes.indexOf(s) }; sceneChanged(s);
       });
       d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; sceneChanged(s); buildSlots(s); };
+      if (m.type === 'video') wireVid(d, s, slot, m);
       d.querySelector('[data-x]').onclick = () => { s.media[i] = { id: null }; sceneChanged(s); buildSlots(s); };
     }
     box.appendChild(d);
@@ -1591,7 +1681,7 @@ async function saveFile(blob, filename) {
 function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
-    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {} })),
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc })),
     lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text })), lyricsOn: project.lyricsOn, lstyle: project.lstyle
   };
 }
@@ -1794,20 +1884,23 @@ async function pickAudioCfg() {
 }
 async function resample48(buf) {
   const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-  const len = Math.ceil(buf.duration * 48000);
+  const end = Math.min(buf.duration, total);
+  const len = Math.max(1, Math.ceil(end * 48000));
   const oc = new OAC(2, len, 48000);
-  const s = oc.createBufferSource(); s.buffer = buf; s.connect(oc.destination); s.start(0);
+  const s = oc.createBufferSource(); s.buffer = buf;
+  const g = oc.createGain(); s.connect(g); g.connect(oc.destination);
+  if (total < buf.duration - 0.05) { const f0 = Math.max(0, end - 2); g.gain.setValueAtTime(1, f0); g.gain.linearRampToValueAtTime(0, end); }
+  s.start(0);
   return await new Promise((res, rej) => { const p = oc.startRendering(); if (p && p.then) p.then(res, rej); else oc.oncomplete = e => res(e.renderedBuffer); });
 }
 function videosAt(T) {
   const out = [], i = sceneAt(T);
-  const add = (k, t) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (md && md.type === 'video') out.push([md.el, t]); });
+  const add = (k, t) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (md && md.type === 'video') out.push([md.el, vidTime(m, md.el, t)]); });
   const t = T - timeline[i].start; add(i, t);
   if (i > 0 && t < xfOf(i)) add(i - 1, timeline[i - 1].dur + t);
   return out;
 }
-function seekVideo(v, t) {
-  const want = t % (v.duration || 1);
+function seekVideo(v, want) {
   if (Math.abs(v.currentTime - want) < 0.004) return Promise.resolve();
   return new Promise(res => {
     const to = setTimeout(res, 1500);
@@ -2442,11 +2535,28 @@ document.addEventListener('keydown', e => {
   if ((isZ && e.shiftKey) || isY) redo(); else undo();
 });
 
+/* ---------------- auto-fit scene lengths to the music ---------------- */
+function autoFit() {
+  if (!abuf) { toast('음원을 먼저 넣어주세요'); return; }
+  const sc = project.scenes; if (!sc.length) return;
+  const target = Math.round(abuf.duration * 10) / 10;
+  const sum = sc.reduce((n, s) => n + Math.max(0.5, +s.weight || 1), 0);
+  let acc = 0;
+  sc.forEach((s, i) => {
+    if (i === sc.length - 1) s.weight = Math.max(0.5, Math.round((target - acc) * 10) / 10);
+    else { s.weight = Math.max(0.5, Math.round(Math.max(0.5, +s.weight || 1) * target / sum * 10) / 10); acc += s.weight; }
+    touch(s.id);
+  });
+  changed(true); select(sel);
+  toast(`장면 ${sc.length}개를 음원 길이 ${fmt1(abuf.duration)}에 맞춰 나눴어요`);
+}
+$('autoFit').onclick = autoFit;
+
 /* ---------------- wiring ---------------- */
 $('playBtn').onclick = () => { if (exporting) return; if (abuf) getCtx(); playing ? pause() : play(); };
 const tl = $('timeline');
 function tlSeek(e) {
-  const r = tl.getBoundingClientRect(); const T = clamp((e.clientX - r.left) / r.width) * total;
+  const r = tl.getBoundingClientRect(); const T = Math.min(total, clamp((e.clientX - r.left) / r.width) * span);
   seek(T); const i = sceneAt(T); if (i !== sel) select(i);
 }
 tl.addEventListener('pointerdown', e => { if (exporting) return; tl.setPointerCapture(e.pointerId); tlSeek(e); tl.onpointermove = tlSeek; });
