@@ -349,7 +349,8 @@ async function makeMedia(id, blob, type) {
 }
 async function importFile(file) {
   const type = (file.type || '').startsWith('video') || /\.(mp4|mov|m4v|webm)$/i.test(file.name || '') ? 'video' : 'image';
-  const blob = type === 'image' ? await shrinkImage(file) : file;
+  const src = type === 'image' ? await shrinkImage(file) : file;
+  const blob = new Blob([await src.arrayBuffer()], { type: src.type || (type === 'video' ? 'video/mp4' : 'image/jpeg') });
   const id = TEAM ? await uploadMedia(blob, type) : uid();
   await makeMedia(id, blob, type);
   if (!TEAM) idbSet('media:' + id, { blob, type });
@@ -686,6 +687,178 @@ const LAYOUTS = {
     }
   }
 };
+
+const softCache = new Map();
+function softBg(c, s, si, bw) {
+  const slot = s.media[si] || {}, m = slot.id && media[slot.id];
+  if (!m || (m.type === 'video' && m.el.readyState < 2)) return;
+  let k = softCache.get(slot.id);
+  if (!k || m.type === 'video') {
+    k = k || document.createElement('canvas'); k.width = 64; k.height = 36;
+    const x = k.getContext('2d'), sw = m.type === 'video' ? m.el.videoWidth : m.w, sh = m.type === 'video' ? m.el.videoHeight : m.h;
+    const sc = Math.max(64 / sw, 36 / sh); x.drawImage(m.el, (64 - sw * sc) / 2, (36 - sh * sc) / 2, sw * sc, sh * sc);
+    softCache.set(slot.id, k);
+  }
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(k, -60, -60, W + 120, H + 120);
+  if (bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H); }
+  c.restore();
+}
+Object.assign(LAYOUTS, {
+  chapter: {
+    name: '챕터 제목', slots: 0, weight: 6,
+    fields: [['num', '작은 머리말', 'Chapter 01'], ['title', '제목', '우리가 처음 만난 날'], ['sub', '부제목', '2019, 봄']],
+    opts: [['dark', '검은 배경', true]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark, col = dk ? '#F2F0EE' : INK, mut = dk ? 'rgba(255,255,255,.62)' : '#77716C';
+      bg(c, dk ? '#000' : PAPER);
+      txt(c, fill(s.texts.num), 960, 400, F.serif(40, 400, true), mut, fade(t, 0.3, 1), { sp: 8, k: 'num' });
+      const la = fade(t, 0.8, 1);
+      if (la > 0) { c.save(); c.globalAlpha = la * 0.5; c.fillStyle = col; c.fillRect(960 - 40 * la, 458, 80 * la, 2); c.restore(); }
+      txt(c, fill(s.texts.title), 960, 545, F.kr(74, 700), col, fade(t, 1.1, 1.1), { rise: 12, k: 'title' });
+      txt(c, fill(s.texts.sub), 960, 650, F.serif(40, 300, true), mut, fade(t, 1.7, 1), { k: 'sub' });
+    }
+  },
+  cinema: {
+    name: '시네마 와이드', slots: 1, weight: 10,
+    fields: [['label', '위 왼쪽 문구', 'Chapter 1'], ['right', '위 오른쪽 문구', '{DATE}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1010, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      c.save(); c.globalAlpha = fade(t, 0, 1.2);
+      cover(c, s, 0, 0, 140, W, 800, t, { bw: s.opts.bw, dark: true, zoom: kb(t, d, 0.05) });
+      c.restore();
+      txt(c, fill(s.texts.label), 120, 72, F.serif(34, 400, true), 'rgba(255,255,255,.82)', fade(t, 0.8, 1), { align: 'left', sp: 4, k: 'label' });
+      txt(c, fill(s.texts.right), 1800, 72, F.serif(34, 400, true), 'rgba(255,255,255,.82)', fade(t, 1.0, 1), { align: 'right', sp: 4, k: 'right' });
+    }
+  },
+  quote: {
+    name: '문구 + 풀화면 사진', slots: 1, weight: 10,
+    fields: [['text', '큰 문구', '사랑은 서로를 바라보는 것이 아니라\n함께 같은 방향을 바라보는 것', true], ['sub', '작은 문구', '생텍쥐페리']],
+    opts: [['bw', '흑백', true]],
+    cap: () => [960, 1005, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1 + 0.07 * clamp(t / d) });
+      const g = c.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, 'rgba(0,0,0,.66)'); g.addColorStop(0.6, 'rgba(0,0,0,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
+      block(c, fill(s.texts.text), 620, 500, F.kr(54), 94, '#F4F2EF', t, 0.8, d * 0.5, false, 'text');
+      txt(c, fill(s.texts.sub), 620, 700, F.serif(36, 400, true), 'rgba(255,255,255,.75)', fade(t, 1.8, 1), { k: 'sub' });
+    }
+  },
+  calendar: {
+    name: '예식 달력', slots: 1, weight: 10,
+    fields: [['top', '머리말 (필기체)', 'Save the date'], ['bottom', '아래 문구', '{날짜}']],
+    opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 480 : 1440, 1012, 'light'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      const flip = s.opts.flip;
+      c.save(); c.globalAlpha = fade(t, 0, 1.1);
+      cover(c, s, 0, flip ? 960 : 0, 0, 960, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
+      c.restore();
+      const cx = flip ? 480 : 1440, now = new Date();
+      const dt = parseKoDate(project.info.dateKo) || { y: now.getFullYear(), mo: now.getMonth() + 1, d: 0 };
+      txt(c, fill(s.texts.top), cx, 200, F.script(80), WINE, fade(t, 0.5, 1.1), { k: 'top' });
+      txt(c, `${MONTHS[dt.mo - 1]} ${dt.y}`, cx, 300, F.serif(44, 400, true), '#3A3634', fade(t, 0.8, 1), { sp: 3 });
+      const a = fade(t, 1.1, 1.2);
+      if (a > 0) {
+        c.save(); c.globalAlpha = a; c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
+        const cw = 92, x0 = cx - cw * 3, y0 = 390;
+        c.font = F.serif(26, 500, false); c.fillStyle = '#8A8580';
+        ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach((w, i) => c.fillText(w, x0 + i * cw, y0));
+        const first = new Date(dt.y, dt.mo - 1, 1).getDay(), days = new Date(dt.y, dt.mo, 0).getDate();
+        for (let n = 1; n <= days; n++) {
+          const k = first + n - 1, col = k % 7, row = Math.floor(k / 7), x = x0 + col * cw, y = y0 + 70 + row * 70;
+          if (n === dt.d) { const pr = ease(clamp((t - 1.8) / 0.8)); c.fillStyle = WINE; c.beginPath(); c.arc(x, y, 30 * pr, 0, Math.PI * 2); c.fill(); c.fillStyle = pr > 0.5 ? '#FFFFFF' : '#3A3634'; }
+          else c.fillStyle = col === 0 ? '#A0574F' : '#3A3634';
+          c.font = F.serif(32, n === dt.d ? 500 : 400, false); c.fillText(String(n), x, y);
+        }
+        c.restore();
+      }
+      txt(c, fill(s.texts.bottom), cx, 905, F.kr(36), '#4A4643', fade(t, 2.0, 1), { k: 'bottom' });
+    }
+  },
+  polaroid3: {
+    name: '폴라로이드 3장', slots: 3, weight: 10,
+    fields: [['cap1', '첫째 메모', 'our first trip'], ['cap2', '둘째 메모', ''], ['cap3', '셋째 메모', '']],
+    opts: [['dark', '어두운 배경', false]],
+    cap: s => [960, 1025, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      bg(c, s.opts.dark ? '#141312' : PAPER);
+      [[480, -4], [960, 2.5], [1440, -2]].forEach(([x, rot], i) => {
+        const a = fade(t, 0.2 + i * 0.45, 1); if (a <= 0.001) return;
+        const ho = hitOn; hitOn = false;
+        c.save(); c.globalAlpha = a; c.translate(x, 490 + (1 - a) * 30); c.rotate(rot * Math.PI / 180);
+        c.save(); c.shadowColor = 'rgba(0,0,0,.22)'; c.shadowBlur = 30 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(-220, -280, 440, 540); c.restore();
+        cover(c, s, i, -200, -260, 400, 400, t, { zoom: 1.02 });
+        txt(c, fill(s.texts['cap' + (i + 1)]), 0, 200, '400 48px "Nanum Pen Script", "Nanum Myeongjo", serif', '#3A3634', 1, { k: 'cap' + (i + 1) });
+        c.restore();
+        hitOn = ho;
+        addHit({ type: 'media', si: i, x: x - 200, y: 230, w: 400, h: 400, oy: 0 });
+        if (s.texts['cap' + (i + 1)]) addHit({ type: 'text', key: 'cap' + (i + 1), x: x - 200, y: 660, w: 400, h: 60 });
+      });
+    }
+  },
+  grid4: {
+    name: '네 컷 (2×2)', slots: 4, weight: 10, fields: [],
+    opts: [['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: () => [960, 1000, 'photo'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : PAPER);
+      const m = 60, g = 20, cw = (W - m * 2 - g) / 2, ch = (H - m * 2 - g) / 2;
+      for (let i = 0; i < 4; i++) {
+        c.save(); c.globalAlpha = fade(t, i * 0.3, 1);
+        cover(c, s, i, m + (i % 2) * (cw + g), m + Math.floor(i / 2) * (ch + g), cw, ch, t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.03) });
+        c.restore();
+      }
+    }
+  },
+  mosaic5: {
+    name: '모자이크 5장', slots: 5, weight: 11, fields: [],
+    opts: [['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: () => [470, 1000, 'photo'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : PAPER);
+      [[60, 60, 820, 960], [900, 60, 470, 470], [1390, 60, 470, 470], [900, 550, 470, 470], [1390, 550, 470, 470]].forEach((r, i) => {
+        c.save(); c.globalAlpha = fade(t, i * 0.25, 1);
+        cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.03) });
+        c.restore();
+      });
+    }
+  },
+  split: {
+    name: '큰 글씨 + 사진', slots: 1, weight: 10,
+    fields: [['big', '큰 영문', 'Our Story'], ['sub', '한글 문구', '서로의 계절이 되어준 시간들'], ['small', '작은 문구', '{GROOM} & {BRIDE}']],
+    opts: [['flip', '사진 왼쪽', false], ['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 1440 : 480, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark, flip = s.opts.flip, col = dk ? '#F2F0EE' : INK;
+      bg(c, dk ? '#000' : PAPER);
+      c.save(); c.globalAlpha = fade(t, 0, 1.1);
+      cover(c, s, 0, flip ? 0 : 960, 0, 960, H, t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.05) });
+      c.restore();
+      const cx = flip ? 1440 : 480;
+      txt(c, fill(s.texts.big), cx, 470, F.serif(128, 300, true), col, fade(t, 0.6, 1.4), { rise: 14, k: 'big' });
+      txt(c, fill(s.texts.sub), cx, 600, F.kr(40), dk ? 'rgba(255,255,255,.8)' : '#4A4643', fade(t, 1.3, 1), { k: 'sub' });
+      txt(c, fill(s.texts.small), cx, 700, F.serif(30, 400, false), dk ? 'rgba(255,255,255,.55)' : '#8A8580', fade(t, 1.8, 1), { sp: 8, k: 'small' });
+    }
+  },
+  framed: {
+    name: '액자 (배경 흐림)', slots: 1, weight: 10, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000'); softBg(c, s, 0, s.opts.bw);
+      c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H);
+      const a = fade(t, 0.2, 1.2), fw = 1240, fh = 760, x = (W - fw) / 2, y = (H - fh) / 2 - 30;
+      c.save(); c.globalAlpha = a; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(x - 16, y - 16, fw + 32, fh + 32); c.restore();
+      c.save(); c.globalAlpha = a; cover(c, s, 0, x, y, fw, fh, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+    }
+  }
+});
 
 function makeScene(layout, over = {}) {
   const L = LAYOUTS[layout];
@@ -1233,14 +1406,15 @@ function changed(structure) {
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-function koDateToEn(v) {
-  const m = String(v).match(/(\d{2,4})\s*(?:년|[.\-\/])\s*(\d{1,2})\s*(?:월|[.\-\/])\s*(\d{1,2})/);
+function parseKoDate(v) {
+  const m = String(v || '').match(/(\d{2,4})\s*(?:년|[.\-\/])\s*(\d{1,2})\s*(?:월|[.\-\/])\s*(\d{1,2})/);
   if (!m) return null;
   let y = +m[1]; if (y < 100) y += 2000;
   const mo = +m[2], d = +m[3];
   if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-  return `${MONTHS[mo - 1]} ${d}, ${y}`;
+  return { y, mo, d };
 }
+function koDateToEn(v) { const p = parseKoDate(v); return p ? `${MONTHS[p.mo - 1]} ${p.d}, ${p.y}` : null; }
 function buildInfoPane() {
   const i = project.info;
   const fields = [['groomKo', '신랑 이름', '{신랑}'], ['brideKo', '신부 이름', '{신부}'], ['groomEn', '신랑 영문 이름', '{GROOM}'], ['brideEn', '신부 영문 이름', '{BRIDE}'], ['dateKo', '예식 날짜', '{날짜}'], ['dateEn', '예식 날짜 (영문, 자동 입력)', '{DATE}']];
@@ -1374,16 +1548,17 @@ async function loadAudioFile(f, persist = true) {
   pause();
   try {
     const ab = await f.arrayBuffer();
+    var memAudio = new Blob([ab], { type: f.type || 'audio/mpeg' });
     abuf = await decode(ab.slice(0));
   } catch (e) {
     toast('이 음원은 열 수 없어요. MP3, M4A, WAV 파일로 넣어주세요.'); return;
   }
-  audioName = f.name || '음원'; audioBlob = f; computePeaks();
+  audioName = f.name || '음원'; audioBlob = memAudio; computePeaks();
   if (persist) {
     if (TEAM) {
       try { const id = await uploadMedia(f, 'audio'); project.audio = { id, name: audioName }; loadedAudioId = id; touch('audio'); save(); }
       catch (e) { toast('음원을 서버에 올리지 못했어요. 다시 넣어주세요.'); }
-    } else idbSet('audio', { blob: f, name: audioName });
+    } else idbSet('audio', { blob: memAudio, name: audioName });
     toast(`음원 길이 ${fmt(abuf.duration)}에 맞췄어요`);
   }
   curT = 0; onAudioReady();
@@ -1994,10 +2169,19 @@ function initTeam() {
 /* ---------------- work file (.zip with photos, videos, music and text) ---------------- */
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(u) { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC_T[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-async function makeZip(files) {
-  const parts = [], central = [], enc = new TextEncoder(); let off = 0;
+async function readSafe(f) {
+  try { return new Uint8Array(await f.blob.arrayBuffer()); } catch (e) {}
+  if (f.alt) { try { const b = await f.alt(); if (b) { const d = new Uint8Array(await b.arrayBuffer()); f.blob = b; return d; } } catch (e) {} }
+  return null;
+}
+async function makeZip(files, skipped) {
+  const parts = [], central = [], enc = new TextEncoder(); let off = 0, count = 0;
   for (const f of files) {
-    const data = new Uint8Array(await f.blob.arrayBuffer()), crc = crc32(data), nm = enc.encode(f.name), len = data.length;
+    const data = await readSafe(f);
+    if (!data) { if (skipped) skipped.push(f.name); continue; }
+    count++;
+    const crc = crc32(data), nm = enc.encode(f.name), len = data.length;
+    f.blob = new Blob([data]);
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
     h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, len, true); h.setUint32(22, len, true);
@@ -2013,7 +2197,7 @@ async function makeZip(files) {
   }
   const cdSize = central.reduce((n, a) => n + a.length, 0);
   const e = new DataView(new ArrayBuffer(22));
-  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, count, true); e.setUint16(10, count, true);
   e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
   return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
 }
@@ -2050,18 +2234,21 @@ async function saveWork() {
     commitNow();
     const ids = new Set(); project.scenes.forEach(s => s.media.forEach(m => m.id && ids.add(m.id)));
     const files = [], mediaIndex = {};
-    for (const id of ids) { const m = media[id]; if (!m || !m.blob) continue; mediaIndex[id] = { type: m.type, mime: m.blob.type || '' }; files.push({ name: 'media/' + id, blob: m.blob }); }
+    const fromIDB = id => async () => { const r = await idbGet('media:' + id); return r && r.blob; };
+    for (const id of ids) { const m = media[id]; if (!m) continue; mediaIndex[id] = { type: m.type, mime: (m.blob && m.blob.type) || '' }; files.push({ name: 'media/' + id, blob: m.blob || new Blob([]), alt: fromIDB(id) }); }
     let audio = null;
-    if (abuf && audioBlob) { audio = { name: audioName, mime: audioBlob.type || '', file: 'audio/track' }; files.push({ name: 'audio/track', blob: audioBlob }); }
+    if (abuf && audioBlob) { audio = { name: audioName, mime: audioBlob.type || '', file: 'audio/track' }; files.push({ name: 'audio/track', blob: audioBlob, alt: async () => { const r = await idbGet('audio'); return r && r.blob; } }); }
     const meta = { kind: 'prelude-project', v: 3, saved: Date.now(), project: clone(project), media: mediaIndex, audio };
     files.unshift({ name: 'project.json', blob: new Blob([JSON.stringify(meta)], { type: 'application/json' }) });
     toast('작업 파일을 만드는 중이에요');
-    const zip = await makeZip(files);
+    const skipped = [];
+    const zip = await makeZip(files, skipped);
     const d = new Date(), pad = n => String(n).padStart(2, '0');
     const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
     const name = `식전영상_작업파일_${project.info.groomKo || ''}_${project.info.brideKo || ''}_${stamp}.zip`.replace(/[\\/:*?"<>|]/g, '').replace(/__+/g, '_');
-    await saveFile(zip, name);
-  } catch (e) { toast('작업 파일을 만들지 못했어요. 다시 눌러주세요.'); }
+    const ok = await saveFile(zip, name);
+    if (ok && skipped.length) setTimeout(() => toast(`저장했어요. 다시 읽을 수 없는 파일 ${skipped.length}개는 빠졌어요. 그 칸만 다시 넣어주세요.`), 300);
+  } catch (e) { console.error(e); toast('작업 파일을 만들지 못했어요 (' + ((e && (e.name || e.message)) || '알 수 없는 오류') + '). 새로고침 후 다시 눌러주세요.'); }
   finally { workBusy = false; }
 }
 async function loadWork(file) {
