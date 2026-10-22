@@ -1,0 +1,2202 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>식전영상 에디터 – 클래식 모던</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&family=Pinyon+Script&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600&family=Nanum+Pen+Script&family=Great+Vibes&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#E9E8E5; --surface:#FFFFFF; --sunk:#F3F2F0; --text:#1E1D1C; --muted:#6F6A65;
+  --line:#D6D3CE; --accent:#7B2C3A; --accent-ink:#FFFFFF; --accent-soft:rgba(123,44,58,.09);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121212; --surface:#1C1C1C; --sunk:#252525; --text:#ECEAE7; --muted:#A39D97;
+    --line:#343231; --accent:#D59AA6; --accent-ink:#1B1214; --accent-soft:rgba(213,154,166,.12);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121212; --surface:#1C1C1C; --sunk:#252525; --text:#ECEAE7; --muted:#A39D97;
+  --line:#343231; --accent:#D59AA6; --accent-ink:#1B1214; --accent-soft:rgba(213,154,166,.12);
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:400 14px/1.55 "IBM Plex Sans KR",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;max-width:1520px;margin:0 auto;padding:18px 20px 6px}
+.brand{display:flex;align-items:baseline;gap:12px;margin-right:auto}
+.brand b{font:italic 400 34px/1 "Cormorant Garamond",Georgia,serif;letter-spacing:.01em}
+.brand span{color:var(--muted);font-size:13px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px;font-weight:500;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{padding:5px 12px;font-size:13px}
+.btn.ghost{background:transparent}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.audio-chip{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);max-width:340px}
+.audio-chip strong{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.app{max-width:1520px;margin:0 auto;padding:10px 20px 40px;display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:20px;align-items:start}
+@media (max-width:980px){.app{grid-template-columns:minmax(0,1fr)}}
+
+.stage{background:#000;border-radius:8px;overflow:hidden;position:relative}
+.stage canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;touch-action:none;cursor:grab}
+.stage-hint{font-size:12px;color:var(--muted);margin:8px 2px 0}
+#wave{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.lyr{position:absolute;bottom:3px;height:6px;border-radius:3px;background:var(--accent);opacity:.75;z-index:2;pointer-events:none}
+.transport{display:flex;align-items:center;gap:12px;margin:12px 0 4px}
+.play{width:42px;height:42px;border-radius:50%;border:none;background:var(--text);color:var(--bg);display:grid;place-items:center;flex:none}
+.play svg{width:16px;height:16px}
+.time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:92px}
+.timeline{position:relative;flex:1;height:46px;display:flex;border-radius:6px;overflow:hidden;background:var(--sunk);border:1px solid var(--line);touch-action:none;cursor:pointer}
+.seg{position:relative;z-index:1;height:100%;border-right:1px solid var(--line);font-size:11px;color:var(--muted);padding:3px 5px;overflow:hidden;white-space:nowrap;min-width:0}
+.seg:last-child{border-right:none}
+@media (max-width:600px){.seg{font-size:0;padding:0}}
+.seg.on{background:var(--accent-soft);color:var(--accent)}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);pointer-events:none;left:0}
+
+.strip-head{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;gap:12px;flex-wrap:wrap}
+.strip-head h2{font-size:15px;margin:0;font-weight:600}
+.strip-head .note{color:var(--muted);font-size:12.5px}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity}
+.card{flex:0 0 172px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px;text-align:left;scroll-snap-align:start}
+.card canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:#000}
+.card .cap{display:flex;justify-content:space-between;gap:6px;margin-top:6px;font-size:12px}
+.card .cap span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .cap span:last-child{color:var(--muted);font-variant-numeric:tabular-nums}
+.card.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.add-card{flex:0 0 150px;border:1px dashed var(--line);border-radius:8px;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:12px;color:var(--muted);font-size:12.5px}
+.add-card select{width:100%;padding:7px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+@media (min-width:981px){.panel{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);display:flex;flex-direction:column}}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:none;background:none;padding:12px 4px;font-size:13.5px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+.pane{padding:16px 18px 22px;overflow-y:auto}
+.pane[hidden]{display:none}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.scene-title{font:italic 400 26px/1.1 "Cormorant Garamond",Georgia,serif;margin:0 auto 0 0}
+.field{display:block;margin-top:14px}
+.field>span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+.field input[type=text],.field input[type=number],.field textarea,.field select{width:100%;border:1px solid var(--line);background:var(--sunk);border-radius:7px;padding:9px 10px}
+.field textarea{resize:vertical;min-height:70px;line-height:1.6}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+.group{border-top:1px solid var(--line);margin-top:18px;padding-top:6px}
+.group>h3{font-size:13px;margin:12px 0 0;font-weight:600}
+.slots{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+.slot{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:start}
+.mini{display:grid;gap:4px}
+.ctl{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.ctl input[type=range]{width:100%;accent-color:var(--accent)}
+.ctl-row{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
+.ctl-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.ly-item{border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px;background:var(--sunk)}
+.ly-item.on{border-color:var(--accent)}
+.ly-item textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px;background:var(--surface);min-height:44px;resize:vertical}
+.ly-times{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted)}
+.tin{width:68px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--surface);font-variant-numeric:tabular-nums}
+.res{display:grid;gap:8px;margin-top:14px}
+.res label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer}
+.res label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.res input{accent-color:var(--accent);margin-top:3px}
+.res small{display:block;color:var(--muted)}
+.slot-btn{position:relative;border:1px dashed var(--line);border-radius:7px;background:var(--sunk);aspect-ratio:1;display:grid;place-items:center;overflow:hidden;padding:0;color:var(--muted);font-size:12px}
+.slot-btn img,.slot-btn video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slot-btn .badge{position:absolute;left:5px;top:5px;background:rgba(0,0,0,.6);color:#fff;border-radius:4px;padding:0 5px;font-size:11px}
+.slot-row{display:flex;align-items:center;gap:6px}
+.slot-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.x{border:none;background:none;color:var(--muted);padding:2px 4px;font-size:12px}
+.checks{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px}
+.checks label{display:flex;align-items:center;gap:6px;font-size:13.5px}
+.checks input{accent-color:var(--accent);width:16px;height:16px}
+.len{display:flex;align-items:center;gap:10px}
+.len input{max-width:90px}
+.tokens{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tokens code{font:12px/1 "IBM Plex Sans KR",sans-serif;background:var(--sunk);border:1px solid var(--line);border-radius:5px;padding:4px 6px}
+.status{font-size:12px;color:var(--muted);margin-top:14px}
+.drop{border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;color:var(--muted);margin-top:12px}
+
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:50;padding:20px}
+.modal[hidden]{display:none}
+.sheet{background:var(--surface);color:var(--text);border-radius:14px;max-width:440px;width:100%;padding:24px}
+.sheet h3{font:italic 400 28px/1.15 "Cormorant Garamond",Georgia,serif;margin:0 0 8px}
+.sheet p{margin:6px 0;color:var(--muted)}
+.bar{height:6px;background:var(--sunk);border-radius:6px;overflow:hidden;margin:16px 0 8px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s linear}
+.sheet .row{margin-top:16px;justify-content:flex-end}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.btn[hidden],.sync[hidden]{display:none}
+.hist{display:inline-flex;gap:4px}
+.sty{margin-top:6px}
+.sty summary{cursor:pointer;font-size:12.5px;color:var(--accent);padding:4px 0;width:max-content}
+.sty[open] summary{margin-bottom:4px}
+.sty .ctl-row span:first-child{min-width:30px}
+.sty select{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:5px 6px;background:var(--surface)}
+.sw{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.swb{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);padding:0}
+.swb.on{outline:2px solid var(--accent);outline-offset:2px}
+.sw input[type=color]{width:32px;height:26px;border:1px solid var(--line);border-radius:6px;padding:0;background:none}
+.hist .btn{padding:7px 10px}
+.hist svg{width:16px;height:16px}
+.sync{font-size:12.5px;color:var(--muted)}
+.lobby{position:fixed;inset:0;background:var(--bg);z-index:40;overflow:auto;padding:calc(env(safe-area-inset-top,0px) + 28px) 20px calc(env(safe-area-inset-bottom,0px) + 28px)}
+.lobby[hidden]{display:none}
+.lobby-in{max-width:760px;margin:0 auto}
+.plist{display:grid;gap:10px;margin-top:16px}
+.pitem{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.pitem .grow{flex:1;min-width:0}
+.pitem .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pitem .m{font-size:12.5px;color:var(--muted)}
+.login{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px;max-width:420px;margin-top:22px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion: reduce){.bar i,.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="btn small ghost" id="backBtn" hidden>목록</button>
+  <div class="brand"><b>Prelude</b><span id="brandSub">식전영상 클래식 모던 템플릿</span></div>
+  <span class="sync" id="sync" hidden></span>
+  <div class="hist">
+    <button class="btn ghost" id="undoBtn" title="실행 취소 (Ctrl+Z, 맥은 ⌘+Z)" aria-label="실행 취소" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3 2.5 6l3 3"/><path d="M2.5 6h7a4 4 0 0 1 0 8H6"/></svg></button>
+    <button class="btn ghost" id="redoBtn" title="다시 실행 (Ctrl+Shift+Z, 맥은 ⌘+Shift+Z)" aria-label="다시 실행" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3l3 3-3 3"/><path d="M13.5 6h-7a4 4 0 0 0 0 8H10"/></svg></button>
+  </div>
+  <div class="audio-chip" id="audioChip"><span>음원이 없어요</span></div>
+  <label class="btn"><input type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" id="audioInput" class="sr">음원 넣기</label>
+  <button class="btn" id="saveWorkBtn">작업 저장</button>
+  <button class="btn primary" id="exportBtn">영상 만들기</button>
+</header>
+
+<main class="app">
+  <section>
+    <div class="stage"><canvas id="view" width="1920" height="1080" aria-label="영상 미리보기. 사진이나 글씨를 끌어서 옮길 수 있어요"></canvas></div>
+    <p class="stage-hint">미리보기에서 사진이나 글씨를 끌어 옮기세요. 마우스 휠이나 두 손가락으로 크기를 바꿀 수 있어요.</p>
+    <div class="transport">
+      <button class="play" id="playBtn" aria-label="재생"><svg viewBox="0 0 16 16" id="playIcon"><path d="M3 1.5v13l11-6.5z" fill="currentColor"/></svg></button>
+      <span class="time" id="timeLabel">0:00 / 0:00</span>
+      <div class="timeline" id="timeline" role="slider" aria-label="재생 위치" tabindex="0"><canvas id="wave"></canvas><div class="playhead" id="playhead"></div></div>
+    </div>
+    <div class="strip-head">
+      <h2>장면</h2>
+      <span class="note" id="scaleNote"></span>
+    </div>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="pane" id="pane-scene"></div>
+    <div class="pane" id="pane-info" hidden></div>
+    <div class="pane" id="pane-lyrics" hidden></div>
+    <div class="pane" id="pane-file" hidden></div>
+  </aside>
+</main>
+
+<div class="lobby" id="lobby" hidden>
+  <div class="lobby-in">
+    <div class="brand"><b>Prelude</b><span>함께 편집하는 식전영상 작업실</span></div>
+    <div id="lobbyBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h3 id="mTitle"></h3>
+    <div id="mBody"></div>
+    <div class="row" id="mActions"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<input type="file" id="slotInput" accept="image/*,video/*" class="sr">
+<input type="file" id="bulkInput" accept="image/*,video/*" multiple class="sr">
+<input type="file" id="tplInput" accept=".json,application/json" class="sr">
+<input type="file" id="workInput" accept=".zip,application/zip,application/x-zip-compressed" class="sr">
+
+<script>
+(() => {
+"use strict";
+const EDITION = 'studio'; // 'studio' = 사장님용, 'customer' = 고객용
+const CUSTOMER = EDITION === 'customer';
+const TEAM = EDITION === 'team'; // 'team' = 함께 편집 (Cloudflare 서버 필요)
+const W = 1920, H = 1080;
+const PAPER = '#FBFAF8', INK = '#222020', ROSE = '#F3E2E6', WINE = '#7B2C3A';
+const F = {
+  script: px => `${px}px "Pinyon Script", "Nanum Myeongjo", cursive`,
+  serif: (px, w = 300, it = true) => `${it ? 'italic ' : ''}${w} ${px}px "Cormorant Garamond", "Nanum Myeongjo", Georgia, serif`,
+  kr: (px, w = 400) => `${w} ${px}px "Nanum Myeongjo", "AppleMyungjo", "Batang", serif`,
+  ui: (px, w = 500) => `${w} ${px}px "IBM Plex Sans KR", system-ui, sans-serif`
+};
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const fade = (t, s, len = 0.9) => ease(clamp((t - s) / len));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const $ = id => document.getElementById(id);
+const FONTS = [['', '기본'], ['Nanum Myeongjo', '나눔명조'], ['Gowun Batang', '고운바탕'], ['Hahmlet', '함렛'], ['Gowun Dodum', '고운돋움'], ['Noto Sans KR', '노토 산스'], ['Nanum Pen Script', '나눔펜 손글씨'], ['Cormorant Garamond', 'Cormorant (영문)'], ['Pinyon Script', 'Pinyon Script (영문 필기체)'], ['Great Vibes', 'Great Vibes (영문 필기체)']];
+function withFont(font, fam) {
+  if (!fam) return font;
+  const px = +(/(\d+(?:\.\d+)?)px/.exec(font) || [0, 40])[1];
+  const w = (/(?:^|\s)(\d{3})\s/.exec(font) || [0, '400'])[1];
+  const it = /italic/.test(font) && fam === 'Cormorant Garamond';
+  return `${it ? 'italic ' : ''}${w} ${px}px "${fam}", "Nanum Myeongjo", serif`;
+}
+const fontPx = f => +(/(\d+(?:\.\d+)?)px/.exec(f) || [0, 40])[1];
+const yieldUI = () => new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); });
+
+/* ---------------- storage (IndexedDB, per-viewer) ---------------- */
+let idb = null, storageOK = true;
+function openDB() {
+  return new Promise(res => {
+    try {
+      const r = indexedDB.open(CUSTOMER ? 'prelude-customer' : 'prelude-editor', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+function idbOp(mode, fn) {
+  return new Promise(res => {
+    if (!idb) return res(null);
+    try {
+      const tx = idb.transaction('kv', mode); const st = tx.objectStore('kv');
+      const req = fn(st); tx.oncomplete = () => res(req ? req.result : null); tx.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+const idbGet = k => idbOp('readonly', s => s.get(k));
+const idbSet = (k, v) => idbOp('readwrite', s => s.put(v, k));
+const idbDel = k => idbOp('readwrite', s => s.delete(k));
+const idbKeys = () => idbOp('readonly', s => s.getAllKeys());
+
+/* ---------------- text tokens ---------------- */
+let project;
+function fill(s) {
+  if (!s) return '';
+  const i = project.info;
+  return s.replace(/\{신랑\}/g, i.groomKo).replace(/\{신부\}/g, i.brideKo)
+    .replace(/\{GROOM\}/g, i.groomEn).replace(/\{BRIDE\}/g, i.brideEn)
+    .replace(/\{날짜\}/g, i.dateKo).replace(/\{DATE\}/g, i.dateEn);
+}
+
+/* ---------------- media ---------------- */
+const media = {}; // id -> {type, el, w, h, url}
+function fileToDataURL(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+}
+function loadImg(url) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => { img.decode ? img.decode().then(() => res(img), () => res(img)) : res(img); };
+    img.onerror = () => rej(new Error('decode'));
+    img.src = url;
+  });
+}
+function loadVid(url) {
+  return new Promise((res, rej) => {
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto'; v.loop = true; v.crossOrigin = 'anonymous';
+    v.onloadeddata = () => res(v); v.onerror = () => rej(new Error('video'));
+    v.src = url; v.load();
+  });
+}
+async function urlFor(blob, loader) {
+  const u = URL.createObjectURL(blob);
+  try { return [await loader(u), u]; }
+  catch (e) { URL.revokeObjectURL(u); const d = await fileToDataURL(blob); return [await loader(d), d]; }
+}
+async function shrinkImage(file) {
+  const [img, url] = await urlFor(file, loadImg);
+  const max = 3200, w = img.naturalWidth, h = img.naturalHeight;
+  if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+  if (Math.max(w, h) <= max) return file;
+  const k = max / Math.max(w, h), c = document.createElement('canvas');
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return await new Promise(r => c.toBlob(b => r(b), 'image/jpeg', 0.92));
+}
+async function makeMedia(id, blob, type) {
+  if (type === 'video') {
+    const [v, url] = await urlFor(blob, loadVid);
+    media[id] = { type, el: v, w: v.videoWidth, h: v.videoHeight, url, blob };
+  } else {
+    const [img, url] = await urlFor(blob, loadImg);
+    media[id] = { type: 'image', el: img, w: img.naturalWidth, h: img.naturalHeight, url, blob };
+  }
+  return media[id];
+}
+async function importFile(file) {
+  const type = (file.type || '').startsWith('video') || /\.(mp4|mov|m4v|webm)$/i.test(file.name || '') ? 'video' : 'image';
+  const blob = type === 'image' ? await shrinkImage(file) : file;
+  const id = TEAM ? await uploadMedia(blob, type) : uid();
+  await makeMedia(id, blob, type);
+  if (!TEAM) idbSet('media:' + id, { blob, type });
+  return { id, t: type };
+}
+
+/* ---------------- renderers ---------------- */
+function makeR(S, canvas) {
+  const cw = Math.round(W * S), ch = Math.round(H * S);
+  canvas = canvas || document.createElement('canvas');
+  canvas.width = cw; canvas.height = ch;
+  const mk = () => { const k = document.createElement('canvas'); k.width = cw; k.height = ch; return k; };
+  const la = mk(), lb = mk();
+  return { S, canvas, ctx: canvas.getContext('2d'), la, lb, LA: la.getContext('2d'), LB: lb.getContext('2d') };
+}
+let R = null;               // renderer being drawn
+let curScene = null, curIdx = -1;
+let hits = null, hitOn = false;
+let collectVideos = false;
+const usedVideos = new Map();
+let activeLyric = null;
+const DEF = { s: 1, x: 0, y: 0 };
+function getStyle(k) {
+  if (k === 'lyrics') return project.lstyle || DEF;
+  return (curScene && curScene.tstyle && curScene.tstyle[k]) || DEF;
+}
+function ensureStyle(idx, k) {
+  if (k === 'lyrics') return project.lstyle || (project.lstyle = { s: 1, x: 0, y: 0 });
+  const s = project.scenes[idx]; s.tstyle = s.tstyle || {};
+  return s.tstyle[k] || (s.tstyle[k] = { s: 1, x: 0, y: 0 });
+}
+function addHit(h) { if (hitOn && hits) { h.idx = curIdx; hits.push(h); } }
+
+/* ---------------- drawing helpers ---------------- */
+function rr(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function bg(c, col) { c.fillStyle = col; c.fillRect(0, 0, W, H); }
+function setSpacing(c, px) { if ('letterSpacing' in c) c.letterSpacing = px + 'px'; }
+function txt(c, s, x, y, font, color, a, o = {}) {
+  if (!s || a <= 0.001) return;
+  const st = o.k ? getStyle(o.k) : DEF;
+  const ax = x + st.x, ay = y + st.y + (o.rise || 0) * (1 - a);
+  c.save(); c.globalAlpha *= a; c.translate(ax, ay); c.scale(st.s, st.s);
+  font = withFont(font, st.f); c.font = font; c.fillStyle = st.c || color; c.textAlign = o.align || 'center'; c.textBaseline = 'middle';
+  setSpacing(c, o.sp || 0);
+  if (o.shadow) { c.shadowColor = o.shadow; c.shadowBlur = (o.blur || 10) * R.S * st.s; }
+  c.fillText(s, 0, 0);
+  if (o.k && hitOn) {
+    const w = c.measureText(s).width, px = fontPx(font), al = o.align || 'center';
+    const l = al === 'left' ? 0 : al === 'right' ? -w : -w / 2;
+    addHit({ type: 'text', key: o.k, x: ax + (l - 8) * st.s, y: ay - px * 0.7 * st.s, w: (w + 16) * st.s, h: px * 1.4 * st.s });
+  }
+  c.restore();
+}
+// cover-crop a media slot into a rect, with per-slot zoom/offset
+function cover(c, scene, si, x, y, w, h, t, o = {}) {
+  const slot = scene.media[si] || {};
+  const m = slot.id && media[slot.id];
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+  if (!m) {
+    addHit({ type: 'media', si, x, y, w, h, oy: 0 });
+    c.fillStyle = o.dark ? '#1E1D1C' : '#E4E1DD'; c.fillRect(x, y, w, h);
+    c.font = F.ui(Math.max(18, Math.min(34, w / 12))); c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = o.dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.32)';
+    c.fillText(slot.id ? '불러오는 중' : '사진 ' + (si + 1), x + w / 2, y + h / 2);
+    c.restore(); return;
+  }
+  if (m.type === 'video') {
+    if (collectVideos) usedVideos.set(slot.id, t);
+    if (m.el.readyState < 2) { c.fillStyle = '#000'; c.fillRect(x, y, w, h); c.restore(); return; }
+  }
+  const sw = m.type === 'video' ? (m.el.videoWidth || m.w) : m.w;
+  const sh = m.type === 'video' ? (m.el.videoHeight || m.h) : m.h;
+  const z = (o.zoom || 1) * (slot.z || 1);
+  const k = Math.max(w / sw, h / sh) * z;
+  const dw = sw * k, dh = sh * k;
+  const vertical = dh / h > dw / w;
+  const oy = slot.oy == null ? (vertical ? (dh - h) / h * 0.12 : 0) : slot.oy;
+  const ox = slot.ox || 0;
+  addHit({ type: 'media', si, x, y, w, h, oy });
+  if (z < 1 || ox || slot.oy != null) { c.fillStyle = o.dark ? '#000' : PAPER; c.fillRect(x, y, w, h); }
+  c.drawImage(m.el, x + w / 2 + ox * w - dw / 2, y + h / 2 + oy * h - dh / 2, dw, dh);
+  if (o.bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(x, y, w, h); }
+  c.restore();
+}
+const kb = (t, d, amt = 0.06) => 1.02 + amt * clamp(t / Math.max(d, 0.1));
+
+// soft-edged "projector" frame
+const maskCache = new Map();
+function featherMask(w, h, r, f) {
+  const key = [w, h, r, f].join('x');
+  if (maskCache.has(key)) return maskCache.get(key);
+  const pad = Math.ceil(f * 1.6), m = document.createElement('canvas');
+  m.width = w + pad * 2; m.height = h + pad * 2;
+  const c = m.getContext('2d'), off = 30000, ins = f * 0.45;
+  c.shadowColor = '#fff'; c.shadowBlur = f; c.shadowOffsetX = off; c.fillStyle = '#fff';
+  rr(c, pad + ins - off, pad + ins, w - ins * 2, h - ins * 2, r); c.fill();
+  const v = { m, pad }; maskCache.set(key, v); return v;
+}
+function frame(c, scene, si, x, y, w, h, t, d, o = {}) {
+  const a = o.alpha == null ? 1 : o.alpha;
+  if (a <= 0.001) return;
+  const r = R, LB = r.LB, S = r.S, pad = 70;
+  const rx = Math.max(0, x - pad), ry = Math.max(0, y - pad);
+  const rw = Math.min(W, x + w + pad) - rx, rh = Math.min(H, y + h + pad) - ry;
+  LB.save();
+  LB.setTransform(1, 0, 0, 1, 0, 0); LB.globalCompositeOperation = 'source-over'; LB.globalAlpha = 1;
+  LB.clearRect(rx * S, ry * S, rw * S, rh * S);
+  LB.setTransform(S, 0, 0, S, 0, 0);
+  cover(LB, scene, si, x, y, w, h, t, { zoom: kb(t, d, 0.05), bw: o.bw, dark: true });
+  const cx = x + w / 2, cy = y + h / 2;
+  const g = LB.createRadialGradient(cx, cy, Math.min(w, h) * 0.28, cx, cy, Math.max(w, h) * 0.62);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(70,24,36,0.42)');
+  LB.fillStyle = g; LB.fillRect(x, y, w, h);
+  const mk = featherMask(w, h, 46, 38);
+  LB.globalCompositeOperation = 'destination-in';
+  LB.drawImage(mk.m, x - mk.pad, y - mk.pad);
+  LB.restore();
+  c.save(); c.globalAlpha *= a;
+  c.drawImage(r.lb, rx * S, ry * S, rw * S, rh * S, rx, ry, rw, rh);
+  c.restore();
+}
+// multi-line text, optionally typed out, positioned as one block
+function block(c, s, cx, cy, font, lh, color, t, start, maxDur, typing, key, alpha = 1) {
+  const ls = s.split('\n');
+  const st = key ? getStyle(key) : DEF;
+  const total = ls.reduce((n, l) => n + Array.from(l).length, 0);
+  const dur = typing ? Math.min(maxDur, Math.max(0.6, total * 0.11)) : 1.2;
+  const a = typing ? alpha : fade(t, start, 1.2) * alpha;
+  c.save(); c.translate(cx + st.x, cy + st.y + (typing ? 0 : 10 * (1 - a))); c.scale(st.s, st.s);
+  font = withFont(font, st.f); c.globalAlpha *= a; c.font = font; c.fillStyle = st.c || color; c.textAlign = 'left'; c.textBaseline = 'middle'; setSpacing(c, 0);
+  const y0 = -(ls.length - 1) * lh / 2;
+  let n = typing ? Math.floor(clamp((t - start) / dur) * total) : total;
+  let cur = null, mw = 0;
+  ls.forEach((l, i) => {
+    const ch = Array.from(l), k = Math.min(n, ch.length); n -= k;
+    const fw = c.measureText(l).width; mw = Math.max(mw, fw);
+    const x0 = -fw / 2, part = ch.slice(0, k).join('');
+    if (part && a > 0.001) c.fillText(part, x0, y0 + i * lh);
+    if (!cur && (k < ch.length || i === ls.length - 1)) cur = [x0 + c.measureText(part).width + 6, y0 + i * lh];
+  });
+  if (typing && a > 0.001) {
+    const on = t >= start && t < start + dur;
+    if (t >= start - 0.4 && cur && (on || (t % 1) < 0.55)) c.fillText('_', cur[0], cur[1]);
+  }
+  c.restore();
+  if (key && hitOn && s.trim()) {
+    const px = fontPx(font), hh = (ls.length - 1) * lh + px * 1.4;
+    addHit({ type: 'text', key, x: cx + st.x - (mw / 2 + 10) * st.s, y: cy + st.y - hh / 2 * st.s, w: (mw + 20) * st.s, h: hh * st.s });
+  }
+  return start + dur;
+}
+function caption(c, s, x, y, style, a, key, px = 40) {
+  if (!s || a <= 0.001) return;
+  const ls = s.split('\n'), lh = px * 1.45, st = getStyle(key);
+  c.save(); c.translate(x + st.x, y + st.y); c.scale(st.s, st.s);
+  c.globalAlpha *= a * (style === 'dark' ? 0.92 : 1);
+  c.font = withFont(F.kr(px), st.f); c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
+  c.fillStyle = st.c || (style === 'light' ? '#4A4643' : '#FFFFFF');
+  if (style === 'photo') { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14 * R.S * st.s; }
+  let mw = 0;
+  ls.forEach((l, i) => { c.fillText(l, 0, -(ls.length - 1 - i) * lh); mw = Math.max(mw, c.measureText(l).width); });
+  c.restore();
+  const hh = (ls.length - 1) * lh + px * 1.4;
+  addHit({ type: 'text', key, x: x + st.x - (mw / 2 + 10) * st.s, y: y + st.y - (hh - px * 0.7) * st.s, w: (mw + 20) * st.s, h: hh * st.s });
+}
+
+/* ---------------- layouts ---------------- */
+const LAYOUTS = {
+  title: {
+    name: '오프닝 타이틀', slots: 1, weight: 10,
+    fields: [['top', '위 문구', '{BRIDE}        {GROOM}'], ['title', '타이틀 (필기체)', 'Wedding day'], ['bottom', '아래 문구', '{DATE}']],
+    opts: [['bw', '흑백', true]],
+    cap: () => [960, 1012, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      frame(c, s, 0, 370, 170, 1180, 720, t, d, { bw: s.opts.bw, alpha: fade(t, 0, 1.6) });
+      txt(c, fill(s.texts.top), 960, 290, F.serif(44, 400, true), 'rgba(255,255,255,.9)', fade(t, 1.0, 1.2), { sp: 6, k: 'top' });
+      txt(c, fill(s.texts.title), 960, 520, F.script(200), ROSE, fade(t, 1.7, 1.6), { shadow: 'rgba(110,30,50,.6)', blur: 22, rise: 16, k: 'title' });
+      txt(c, fill(s.texts.bottom), 960, 778, F.serif(42, 300, true), 'rgba(255,255,255,.88)', fade(t, 2.6, 1.2), { sp: 3, k: 'bottom' });
+    }
+  },
+  typing: {
+    name: '문구 (타이핑)', slots: 0, weight: 8,
+    fields: [['text', '문구', '저희 두 사람의 결혼식에\n와주셔서 감사합니다', true], ['footer', '바닥 장식 문구 (필기체)', '']],
+    opts: [['dark', '검은 배경', false], ['typewriter', '타자 효과', true]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark;
+      bg(c, dk ? '#000' : PAPER);
+      block(c, fill(s.texts.text), 960, 500, F.kr(62), 112, dk ? '#F2F0EE' : INK, t, 0.7, d * 0.55, s.opts.typewriter, 'text');
+      txt(c, fill(s.texts.footer), 960, 880, F.script(72), dk ? '#FFFFFF' : INK, fade(t, 0.3, 1.6) * 0.26, { k: 'footer' });
+    }
+  },
+  vignette1: {
+    name: '필름 프레임 1장', slots: 1, weight: 9, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1012, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      frame(c, s, 0, 330, 100, 1260, 780, t, d, { bw: s.opts.bw, alpha: fade(t, 0, 1.2) });
+    }
+  },
+  vignette2: {
+    name: '필름 프레임 2장', slots: 2, weight: 10,
+    fields: [['label1', '왼쪽 이름표', '신랑 {신랑}'], ['label2', '오른쪽 이름표', '신부 {신부}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1020, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      frame(c, s, 0, 290, 100, 630, 760, t, d, { bw: s.opts.bw, alpha: fade(t, 0, 1.2) });
+      frame(c, s, 1, 1000, 100, 630, 760, t, d, { bw: s.opts.bw, alpha: fade(t, 0.6, 1.2) });
+      txt(c, fill(s.texts.label1), 605, 918, F.kr(36), 'rgba(255,255,255,.86)', fade(t, 1.2), { rise: 8, k: 'label1' });
+      txt(c, fill(s.texts.label2), 1315, 918, F.kr(36), 'rgba(255,255,255,.86)', fade(t, 1.7), { rise: 8, k: 'label2' });
+    }
+  },
+  filmstrip: {
+    name: '필름 스트립 3장', slots: 3, weight: 11, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1000, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      const p = clamp(t / d), shift = 40 - 150 * p;
+      c.fillStyle = '#1B1A19'; c.fillRect(0, 250, W, 580);
+      c.fillStyle = '#000';
+      const off = ((shift % 64) + 64) % 64;
+      for (let x = off - 64; x < W + 64; x += 64) { rr(c, x, 266, 34, 22, 5); c.fill(); rr(c, x, 792, 34, 22, 5); c.fill(); }
+      const fw = 600, fh = 430, gap = 36, total = fw * 3 + gap * 2, x0 = (W - total) / 2 + shift;
+      for (let i = 0; i < 3; i++) {
+        c.save(); c.globalAlpha = fade(t, 0.2 + i * 0.35, 1);
+        cover(c, s, i, x0 + i * (fw + gap), 325, fw, fh, t, { bw: s.opts.bw, dark: true, zoom: 1.02 });
+        c.restore();
+      }
+    }
+  },
+  profile: {
+    name: '소개 카드', slots: 1, weight: 12,
+    fields: [['eyebrow', '필기체 머리말', 'Groom'], ['title', '제목', '신랑 {신랑}'], ['line1', '소개 1', '다정하고 듬직한 사람'], ['line2', '소개 2', '말보다 행동으로 보여주는 사람'], ['line3', '소개 3', '']],
+    opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 520 : 1400, 1010, 'light'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      const flip = s.opts.flip;
+      c.save(); c.globalAlpha = fade(t, 0, 1.1);
+      cover(c, s, 0, flip ? 1040 : 0, 0, 880, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
+      c.restore();
+      const tx = flip ? 150 : 1010;
+      txt(c, fill(s.texts.eyebrow), tx, 320, F.script(76), WINE, fade(t, 0.6, 1.1), { align: 'left', k: 'eyebrow' });
+      txt(c, fill(s.texts.title), tx, 428, F.kr(62, 700), INK, fade(t, 1.0, 1.0), { align: 'left', rise: 10, k: 'title' });
+      const ra = fade(t, 1.4, 1.0), ts = getStyle('title');
+      if (ra > 0) { c.save(); c.globalAlpha = ra * 0.5; c.fillStyle = INK; c.fillRect(tx + ts.x, 498 + ts.y + 38 * (ts.s - 1), 70 * ra * ts.s, 2); c.restore(); }
+      let n = 0;
+      ['line1', 'line2', 'line3'].forEach(k => {
+        const l = fill(s.texts[k]); if (!l) return;
+        txt(c, l, tx, 588 + n * 84, F.kr(40), '#45413E', fade(t, 1.9 + n * 0.8, 1.0), { align: 'left', rise: 10, k }); n++;
+      });
+    }
+  },
+  triptych: {
+    name: '세 컷 나란히', slots: 3, weight: 10, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 985, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      const m = 56, g = 22, pw = (W - m * 2 - g * 2) / 3, ph = H - m * 2;
+      for (let i = 0; i < 3; i++) {
+        c.save(); c.globalAlpha = fade(t, i * 0.4, 1.1);
+        cover(c, s, i, m + i * (pw + g), m, pw, ph, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
+        c.restore();
+      }
+    }
+  },
+  duo: {
+    name: '두 컷 나란히', slots: 2, weight: 10,
+    fields: [['top', '위 문구', 'our little moments']],
+    opts: [['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: s => [960, 1028, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark;
+      bg(c, dk ? '#000' : PAPER);
+      txt(c, fill(s.texts.top), 960, 62, F.serif(36, 400, true), dk ? 'rgba(255,255,255,.85)' : '#3E3A37', fade(t, 0.3, 1), { k: 'top' });
+      for (let i = 0; i < 2; i++) {
+        c.save(); c.globalAlpha = fade(t, 0.2 + i * 0.5, 1.1);
+        cover(c, s, i, 250 + i * 740, 110, 680, 860, t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.04) });
+        c.restore();
+      }
+    }
+  },
+  polaroid: {
+    name: '웨딩 카드', slots: 2, weight: 11,
+    fields: [['top', '위 문구', 'we’re getting married!'], ['bottom', '아래 문구', '{DATE}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [520, 1000, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF');
+      c.save(); c.globalAlpha = fade(t, 0, 1);
+      cover(c, s, 0, 0, 0, 1040, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
+      c.restore();
+      txt(c, fill(s.texts.top), 1480, 150, F.serif(40, 400, true), '#3A3634', fade(t, 0.9, 1), { k: 'top' });
+      c.save(); c.globalAlpha = fade(t, 0.6, 1.2);
+      cover(c, s, 1, 1180, 200, 600, 760, t, { bw: s.opts.bw, zoom: 1.02 });
+      c.restore();
+      txt(c, fill(s.texts.bottom), 1480, 1012, F.serif(36, 400, true), '#5A5552', fade(t, 1.4, 1), { k: 'bottom' });
+    }
+  },
+  full: {
+    name: '풀화면', slots: 1, weight: 11,
+    fields: [['text', '가운데 문구', '{GROOM}          {BRIDE}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1005, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1 + 0.09 * clamp(t / d) });
+      c.fillStyle = 'rgba(0,0,0,.16)'; c.fillRect(0, 0, W, H);
+      txt(c, fill(s.texts.text), 960, 540, F.serif(62, 300, false), 'rgba(255,255,255,.92)', fade(t, 1.3, 1.6), { sp: 16, k: 'text' });
+    }
+  },
+  ending: {
+    name: '엔딩 인사', slots: 1, weight: 14,
+    fields: [['eyebrow', '필기체 머리말', 'Thank you'], ['text', '인사 문구', '저희의 새로운 시작을\n함께해 주셔서 감사합니다', true], ['sign', '서명', '{신랑} 그리고 {신부} 드림']],
+    opts: [['typewriter', '타자 효과', true], ['bw', '흑백', false]],
+    cap: () => [1440, 1010, 'light'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      c.save(); c.globalAlpha = fade(t, 0, 1.1);
+      cover(c, s, 0, 0, 0, 960, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) });
+      c.restore();
+      txt(c, fill(s.texts.eyebrow), 1440, 320, F.script(84), WINE, fade(t, 0.6, 1.2), { k: 'eyebrow' });
+      const done = block(c, fill(s.texts.text), 1440, 520, F.kr(46), 86, INK, t, 1.4, d * 0.45, s.opts.typewriter, 'text');
+      txt(c, fill(s.texts.sign), 1440, 740, F.kr(32), '#6A6461', fade(t, done + 0.4, 1.2), { k: 'sign' });
+    }
+  }
+};
+
+function makeScene(layout, over = {}) {
+  const L = LAYOUTS[layout];
+  const s = { id: uid(), layout, weight: L.weight, caption: '', texts: {}, opts: {}, media: [], tstyle: {} };
+  L.fields.forEach(f => s.texts[f[0]] = f[2]);
+  L.opts.forEach(o => s.opts[o[0]] = o[2]);
+  for (let i = 0; i < L.slots; i++) s.media.push({ id: null });
+  if (over.texts) Object.assign(s.texts, over.texts);
+  if (over.opts) Object.assign(s.opts, over.opts);
+  if (over.weight) s.weight = over.weight;
+  if (over.caption) s.caption = over.caption;
+  if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
+  return s;
+}
+let BASE_TPL = null; // customer page: template.json from the same folder
+function projectFromTemplate(tpl) {
+  return {
+    v: 2,
+    info: Object.assign({ groomKo: '', brideKo: '', groomEn: '', brideEn: '', dateKo: '', dateEn: '' }, tpl.info || {}),
+    scenes: tpl.scenes.filter(s => LAYOUTS[s.layout]).map(s => makeScene(s.layout, s)),
+    lyrics: (tpl.lyrics || []).map(l => ({ id: uid(), start: +l.start || 0, end: +l.end || 0, text: l.text || '' })),
+    lyricsOn: tpl.lyricsOn !== false,
+    lstyle: tpl.lstyle || { s: 1, x: 0, y: 0 }
+  };
+}
+function defaultProject() {
+  if (BASE_TPL) return projectFromTemplate(BASE_TPL);
+  return {
+    v: 2,
+    info: { groomKo: '이도윤', brideKo: '한서연', groomEn: 'DOYUN', brideEn: 'SEOYEON', dateKo: '2026년 5월 23일', dateEn: 'May 23, 2026' },
+    lyrics: [], lyricsOn: true, lstyle: { s: 1, x: 0, y: 0 },
+    scenes: [
+      makeScene('title'),
+      makeScene('typing', { texts: { footer: 'with love' } }),
+      makeScene('typing', { texts: { text: '지금부터 저희의 이야기를\n잠시 들려드릴게요', footer: '' } }),
+      makeScene('vignette2'),
+      makeScene('profile', { texts: { line3: '{신부} 앞에서만 웃음이 많은 사람' } }),
+      makeScene('profile', { opts: { flip: true }, texts: { eyebrow: 'Bride', title: '신부 {신부}', line1: '밝고 따뜻한 사람', line2: '작은 일에도 크게 웃는 사람', line3: '{신랑}을 가장 잘 아는 사람' } }),
+      makeScene('typing', { opts: { dark: true }, weight: 7, texts: { text: '그렇게 서로를 만나', footer: '' } }),
+      makeScene('vignette1', { caption: '처음 함께한 계절' }),
+      makeScene('filmstrip'),
+      makeScene('vignette1'),
+      makeScene('duo'),
+      makeScene('triptych'),
+      makeScene('typing', { weight: 7, texts: { text: '그리고 이제,\n같은 곳을 바라보려 합니다', footer: '' } }),
+      makeScene('full', { opts: { bw: true } }),
+      makeScene('polaroid'),
+      makeScene('triptych'),
+      makeScene('duo', { texts: { top: '' } }),
+      makeScene('full', { texts: { text: '' } }),
+      makeScene('ending')
+    ]
+  };
+}
+function normalize(p) {
+  p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
+  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy })); });
+  p.title = p.title || ''; p.audio = p.audio || null;
+  p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
+  return p;
+}
+
+/* ---------------- audio (Web Audio: works with any mp3 the browser can decode) ---------------- */
+let abuf = null, audioName = '', peaks = null, audioBlob = null;
+let actx = null, dest = null, srcNode = null, ctxStart = 0, offStart = 0;
+function getCtx() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+    try { dest = actx.createMediaStreamDestination(); } catch (e) { dest = null; }
+  }
+  return actx;
+}
+function decode(ab) {
+  const ctx = getCtx();
+  return new Promise((res, rej) => {
+    try { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); } catch (e) { rej(e); }
+  });
+}
+function computePeaks() {
+  if (!abuf) { peaks = null; return; }
+  const n = 1600, ch = abuf.getChannelData(0), ch2 = abuf.numberOfChannels > 1 ? abuf.getChannelData(1) : ch;
+  const step = Math.max(1, Math.floor(ch.length / n)); peaks = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let m = 0; const s = i * step, e = Math.min(ch.length, s + step);
+    for (let j = s; j < e; j += 16) { const v = Math.max(Math.abs(ch[j]), Math.abs(ch2[j])); if (v > m) m = v; }
+    peaks[i] = m;
+  }
+}
+const hasAudio = () => !!abuf;
+function startSource() {
+  stopSource();
+  const ctx = getCtx(); if (ctx.state === 'suspended') ctx.resume();
+  srcNode = ctx.createBufferSource(); srcNode.buffer = abuf;
+  srcNode.connect(ctx.destination); if (dest) srcNode.connect(dest);
+  srcNode.start(0, clamp(curT, 0, abuf.duration - 0.01));
+  ctxStart = ctx.currentTime; offStart = curT;
+}
+function stopSource() { if (srcNode) { try { srcNode.onended = null; srcNode.stop(); } catch (e) {} try { srcNode.disconnect(); } catch (e) {} srcNode = null; } }
+
+/* ---------------- timeline ---------------- */
+let timeline = [], total = 0, scale = 1;
+function computeTimeline() {
+  const sum = project.scenes.reduce((n, s) => n + Math.max(0.5, +s.weight || 1), 0);
+  total = abuf ? abuf.duration : sum;
+  scale = total / Math.max(sum, 0.001);
+  let t = 0;
+  timeline = project.scenes.map(s => { const d = Math.max(0.5, +s.weight || 1) * scale; const r = { start: t, dur: d }; t += d; return r; });
+}
+function sceneAt(T) {
+  for (let i = timeline.length - 1; i >= 0; i--) if (T >= timeline[i].start) return i;
+  return 0;
+}
+const xfOf = i => Math.min(0.9, timeline[i].dur * 0.3);
+function lyricAt(T) {
+  if (!project.lyricsOn) return null;
+  for (const l of project.lyrics) if (l.text && T >= l.start && T < l.end) return l;
+  return null;
+}
+
+/* ---------------- render ---------------- */
+const view = $('view');
+const PR = makeR(1, view);
+const TR = makeR(1 / 6);
+function drawScene(c, i, t, hit) {
+  const s = project.scenes[i]; if (!s) return;
+  const L = LAYOUTS[s.layout], d = timeline[i].dur;
+  curScene = s; curIdx = i; hitOn = !!hit;
+  c.save(); L.draw(c, s, t, d); c.restore();
+  if (s.caption) {
+    const [x, y, st] = L.cap(s);
+    let yo = 0;
+    if (activeLyric) yo = -((activeLyric.text.split('\n').length) * 52 + 18) * (project.lstyle.s || 1);
+    caption(c, fill(s.caption), x, y + yo, st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption');
+  }
+  hitOn = false; curScene = null;
+}
+function render(r, T, preview) {
+  R = r; const c = r.ctx;
+  c.setTransform(r.S, 0, 0, r.S, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  hits = preview ? [] : null;
+  collectVideos = preview || exportRT;
+  if (collectVideos) usedVideos.clear();
+  activeLyric = lyricAt(T);
+  if (!project.scenes.length) { bg(c, '#000'); return; }
+  const i = sceneAt(T), t = T - timeline[i].start, xf = xfOf(i);
+  if (i > 0 && t < xf) {
+    drawScene(c, i - 1, timeline[i - 1].dur + t, false);
+    r.LA.setTransform(1, 0, 0, 1, 0, 0); r.LA.globalAlpha = 1; r.LA.globalCompositeOperation = 'source-over';
+    r.LA.clearRect(0, 0, r.la.width, r.la.height);
+    r.LA.setTransform(r.S, 0, 0, r.S, 0, 0);
+    drawScene(r.LA, i, t, preview);
+    c.save(); c.globalAlpha = ease(t / xf); c.drawImage(r.la, 0, 0, W, H); c.restore();
+  } else drawScene(c, i, t, preview);
+  if (activeLyric) {
+    const s = project.scenes[i], [x, y, st] = LAYOUTS[s.layout].cap(s), ly = activeLyric;
+    const a = Math.min(fade(T, ly.start, 0.35), 1 - clamp((T - (ly.end - 0.35)) / 0.35));
+    curIdx = i; hitOn = preview;
+    caption(c, fill(ly.text), x, y, st === 'dark' ? 'photo' : st, a, 'lyrics', 40);
+    hitOn = false;
+  }
+  let black = 0;
+  if (T < 1) black = 1 - ease(clamp(T / 1));
+  if (T > total - 2.2) black = Math.max(black, clamp((T - (total - 2.2)) / 2));
+  if (black > 0) { c.fillStyle = `rgba(0,0,0,${black})`; c.fillRect(0, 0, W, H); }
+  if (preview && editSel && !playing) {
+    const h = hits.find(h => h.idx === editSel.idx && h.type === editSel.type && (h.type === 'text' ? h.key === editSel.key : h.si === editSel.si));
+    if (h) { c.save(); c.setLineDash([14, 9]); c.lineWidth = 3; c.strokeStyle = '#E7A9B6'; c.strokeRect(h.x, h.y, h.w, h.h); c.restore(); }
+  }
+  if (collectVideos) syncVideos();
+}
+function syncVideos() {
+  for (const id in media) {
+    const m = media[id]; if (m.type !== 'video') continue;
+    const v = m.el;
+    if (usedVideos.has(id)) {
+      const dur = v.duration || 1, want = usedVideos.get(id) % dur;
+      if (playing) {
+        if (v.paused) v.play().catch(() => {});
+        if (Math.abs(v.currentTime - want) > 0.35) v.currentTime = want;
+      } else {
+        if (!v.paused) v.pause();
+        if (Math.abs(v.currentTime - want) > 0.04) v.currentTime = want;
+      }
+    } else if (!v.paused) v.pause();
+  }
+}
+
+/* ---------------- playback ---------------- */
+let playing = false, curT = 0, perf0 = 0, t0 = 0, dirty = true;
+let exporting = false, exportRT = false;
+function play() {
+  if (curT >= total - 0.05) curT = 0;
+  playing = true; editSel = null;
+  if (abuf) startSource();
+  perf0 = performance.now(); t0 = curT; updatePlayIcon();
+}
+function pause() {
+  if (playing) curT = Math.min(clock(), total);
+  playing = false; stopSource(); updatePlayIcon(); dirty = true;
+}
+function seek(T) {
+  curT = clamp(T, 0, total);
+  if (playing && abuf) startSource();
+  perf0 = performance.now(); t0 = curT; dirty = true;
+}
+function clock() {
+  if (!playing) return curT;
+  if (abuf && srcNode) return offStart + (actx.currentTime - ctxStart);
+  return t0 + (performance.now() - perf0) / 1000;
+}
+function updatePlayIcon() {
+  $('playIcon').innerHTML = playing ? '<path d="M3 1.5h3.5v13H3zM9.5 1.5H13v13H9.5z" fill="currentColor"/>' : '<path d="M3 1.5v13l11-6.5z" fill="currentColor"/>';
+  $('playBtn').setAttribute('aria-label', playing ? '일시정지' : '재생');
+}
+const fmt = s => { s = Math.max(0, s); const m = Math.floor(s / 60), r = Math.floor(s % 60); return m + ':' + String(r).padStart(2, '0'); };
+const fmt1 = s => { s = Math.max(0, s); const m = Math.floor(s / 60), r = (s % 60).toFixed(1); return m + ':' + (r < 10 ? '0' : '') + r; };
+function parseT(v) {
+  v = String(v).trim(); if (!v) return NaN;
+  if (v.includes(':')) { const [m, s] = v.split(':'); return (+m) * 60 + (+s); }
+  return +v;
+}
+
+let lastSceneIdx = -1, ER = null, rtDone = null;
+function loop() {
+  if (playing) {
+    curT = clock();
+    if (curT >= total) { curT = total; if (exportRT) { if (rtDone) rtDone(); } else pause(); }
+    dirty = true;
+  }
+  if (exportRT && ER) {
+    render(ER, curT, false);
+    progress(curT / total);
+  } else if (dirty && !exporting) {
+    render(PR, curT, true); dirty = false;
+    $('timeLabel').textContent = fmt(curT) + ' / ' + fmt(total);
+    $('playhead').style.left = (total ? curT / total * 100 : 0) + '%';
+    const si = sceneAt(curT);
+    if (playing && si !== lastSceneIdx) { lastSceneIdx = si; markSeg(si); }
+    if (playing) markLyric();
+  }
+  if (!exporting) pumpThumbs();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- thumbnails ---------------- */
+const thumbQueue = new Set();
+function queueThumb(id) { thumbQueue.add(id); }
+function pumpThumbs() {
+  if (!thumbQueue.size || playing) return;
+  const id = thumbQueue.values().next().value; thumbQueue.delete(id);
+  const i = project.scenes.findIndex(s => s.id === id); if (i < 0) return;
+  const cv = document.querySelector(`.card[data-id="${id}"] canvas`); if (!cv) return;
+  R = TR; const c = TR.ctx; c.setTransform(TR.S, 0, 0, TR.S, 0, 0); c.globalAlpha = 1;
+  const keep = collectVideos; collectVideos = false; activeLyric = null;
+  drawScene(c, i, timeline[i].dur * 0.75, false);
+  collectVideos = keep;
+  cv.getContext('2d').drawImage(TR.canvas, 0, 0, cv.width, cv.height);
+}
+
+/* ---------------- direct manipulation on the preview ---------------- */
+let editSel = null, drag = null;
+const ptrs = new Map();
+function pt(e) { const r = view.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+function hitTest(p) {
+  if (!hits) return null;
+  const inside = hits.filter(h => p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h);
+  const area = h => h.w * h.h;
+  const t = inside.filter(h => h.type === 'text').sort((a, b) => area(a) - area(b))[0];
+  return t || inside.filter(h => h.type === 'media').sort((a, b) => area(a) - area(b))[0] || null;
+}
+function slotOf(h) { return project.scenes[h.idx].media[h.si]; }
+function curScaleOf(h) { return h.type === 'text' ? ensureStyle(h.idx, h.key).s : (slotOf(h).z || 1); }
+function setScaleOf(h, v) {
+  if (h.type === 'text') ensureStyle(h.idx, h.key).s = clamp(v, 0.3, 4);
+  else slotOf(h).z = clamp(v, 0.3, 4);
+  dirty = true;
+}
+function moveBy(h, dx, dy) {
+  if (h.type === 'text') { const st = ensureStyle(h.idx, h.key); st.x += dx; st.y += dy; }
+  else { const s = slotOf(h); if (!s.id) return; if (s.oy == null) s.oy = h.oy; s.ox = (s.ox || 0) + dx / h.w; s.oy += dy / h.h; }
+  dirty = true;
+}
+function afterEdit(h) {
+  touch(h.key === 'lyrics' ? 'lyrics' : project.scenes[h.idx].id);
+  save();
+  if (h.key === 'lyrics') { project.scenes.forEach(s => queueThumb(s.id)); buildLyricPane(); }
+  else { queueThumb(project.scenes[h.idx].id); buildScenePane(); }
+}
+view.addEventListener('pointerdown', e => {
+  if (exporting) return;
+  if (playing) pause();
+  if (dirty) render(PR, curT, true);
+  view.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, pt(e));
+  if (ptrs.size === 1) {
+    const h = hitTest(pt(e));
+    if (!h) { editSel = null; drag = null; dirty = true; return; }
+    if (h.idx !== sel) select(h.idx, true);
+    editSel = { type: h.type, key: h.key, si: h.si, idx: h.idx };
+    drag = { h, last: pt(e), moved: false };
+    dirty = true;
+  } else if (ptrs.size === 2 && drag) {
+    const [a, b] = [...ptrs.values()];
+    drag.pinch0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; drag.base = curScaleOf(drag.h); drag.moved = true;
+  }
+});
+view.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId, pt(e));
+  if (!drag) return;
+  if (ptrs.size >= 2 && drag.pinch0) {
+    const [a, b] = [...ptrs.values()];
+    setScaleOf(drag.h, drag.base * Math.hypot(a.x - b.x, a.y - b.y) / drag.pinch0);
+  } else if (ptrs.size === 1) {
+    const p = pt(e), dx = p.x - drag.last.x, dy = p.y - drag.last.y;
+    if (Math.abs(dx) + Math.abs(dy) > 0.5) { moveBy(drag.h, dx, dy); drag.moved = true; }
+    drag.last = p;
+  }
+});
+function endPtr(e) {
+  ptrs.delete(e.pointerId);
+  if (ptrs.size) { if (drag) { drag.pinch0 = null; drag.last = [...ptrs.values()][0]; } return; }
+  if (drag) { if (drag.moved) afterEdit(drag.h); else focusField(drag.h); }
+  drag = null;
+}
+view.addEventListener('pointerup', endPtr);
+view.addEventListener('pointercancel', endPtr);
+let wheelTimer = null;
+view.addEventListener('wheel', e => {
+  if (exporting || playing) return;
+  const h = hitTest(pt(e)); if (!h) return;
+  e.preventDefault();
+  editSel = { type: h.type, key: h.key, si: h.si, idx: h.idx };
+  setScaleOf(h, curScaleOf(h) * Math.exp(-e.deltaY * 0.0015));
+  clearTimeout(wheelTimer); wheelTimer = setTimeout(() => afterEdit(h), 350);
+}, { passive: false });
+function focusField(h) {
+  if (h.type !== 'text') return;
+  if (h.key === 'lyrics') {
+    showTab('lyrics');
+    const ly = activeLyric; if (!ly) return;
+    const ta = document.querySelector(`[data-ly="${ly.id}"] textarea`); if (ta) ta.focus();
+    return;
+  }
+  showTab('scene');
+  const el = h.key === 'caption' ? $('fCaption') : document.querySelector(`#pane-scene [data-text="${h.key}"]`);
+  if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+}
+
+/* ---------------- UI ---------------- */
+let sel = 0;
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2800); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+const TABS = CUSTOMER ? [['scene', '사진·글씨'], ['info', '기본 정보'], ['lyrics', '가사 자막']] : [['scene', '장면 편집'], ['info', '기본 정보'], ['lyrics', '가사 자막'], ['file', '파일']];
+function buildTabs() {
+  $('tabs').innerHTML = TABS.map(([k, n], i) => `<button role="tab" aria-selected="${i === 0}" data-tab="${k}">${n}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+}
+function showTab(k) {
+  $('tabs').querySelectorAll('button').forEach(x => x.setAttribute('aria-selected', x.dataset.tab === k));
+  ['scene', 'info', 'lyrics', 'file'].forEach(n => $('pane-' + n).hidden = n !== k);
+}
+
+function buildStrip() {
+  const el = $('strip'); el.innerHTML = '';
+  project.scenes.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'card' + (i === sel ? ' on' : ''); b.dataset.id = s.id;
+    b.innerHTML = `<canvas width="320" height="180"></canvas><div class="cap"><span>${i + 1}. ${esc(LAYOUTS[s.layout].name)}</span><span>${timeline[i].dur.toFixed(1)}초</span></div>`;
+    b.onclick = () => { select(i); seek(timeline[i].start + Math.min(timeline[i].dur * 0.6, 3)); };
+    el.appendChild(b); queueThumb(s.id);
+  });
+  if (CUSTOMER) return;
+  const add = document.createElement('div'); add.className = 'add-card';
+  add.innerHTML = `<span>선택한 장면 뒤에 추가</span><select aria-label="장면 추가"><option value="">장면 추가</option>${Object.entries(LAYOUTS).map(([k, L]) => `<option value="${k}">${esc(L.name)}</option>`).join('')}</select>`;
+  add.querySelector('select').onchange = e => { const k = e.target.value; if (!k) return; project.scenes.splice(sel + 1, 0, makeScene(k)); changed(true); select(sel + 1); toast('장면을 추가했어요'); };
+  el.appendChild(add);
+}
+function buildTimeline() {
+  const el = $('timeline'); el.querySelectorAll('.seg,.lyr').forEach(n => n.remove());
+  project.scenes.forEach((s, i) => {
+    const d = document.createElement('div'); d.className = 'seg' + (i === sel ? ' on' : '');
+    d.style.width = (timeline[i].dur / total * 100) + '%'; d.textContent = i + 1;
+    el.insertBefore(d, $('playhead'));
+  });
+  if (project.lyricsOn) project.lyrics.forEach(l => {
+    if (!(l.end > l.start)) return;
+    const d = document.createElement('div'); d.className = 'lyr';
+    d.style.left = (l.start / total * 100) + '%'; d.style.width = Math.max(0.4, (Math.min(l.end, total) - l.start) / total * 100) + '%';
+    el.insertBefore(d, $('playhead'));
+  });
+  drawWave();
+}
+function drawWave() {
+  const cv = $('wave'), r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+  if (!peaks) return;
+  c.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#888';
+  c.globalAlpha = 0.28;
+  const n = cv.width, mid = cv.height * 0.5;
+  for (let x = 0; x < n; x++) {
+    const p = peaks[Math.floor(x / n * peaks.length)] || 0, hh = Math.max(1, p * cv.height * 0.8);
+    c.fillRect(x, mid - hh / 2, 1, hh);
+  }
+}
+window.addEventListener('resize', () => drawWave());
+function markSeg(i) { document.querySelectorAll('.seg').forEach((n, k) => n.classList.toggle('on', k === i)); }
+function markLyric() {
+  const ly = lyricAt(curT), id = ly ? ly.id : '';
+  if (markLyric.last === id) return; markLyric.last = id;
+  document.querySelectorAll('.ly-item').forEach(n => n.classList.toggle('on', n.dataset.ly === id));
+}
+function updateScaleNote() {
+  const sum = project.scenes.reduce((n, s) => n + Math.max(0.5, +s.weight || 1), 0);
+  $('scaleNote').textContent = abuf
+    ? `장면 ${project.scenes.length}개, 음원 ${fmt(total)}에 맞춰 장면 길이를 ${scale.toFixed(2)}배로 맞췄어요`
+    : `장면 ${project.scenes.length}개, 기본 길이 합계 ${fmt(sum)}. 음원을 넣으면 그 길이에 맞춰져요`;
+}
+function select(i, keepEdit) {
+  sel = clamp(i, 0, project.scenes.length - 1);
+  if (!keepEdit) editSel = null;
+  document.querySelectorAll('.card').forEach((c, k) => c.classList.toggle('on', k === sel));
+  markSeg(sel); buildScenePane();
+  const card = document.querySelectorAll('.card')[sel];
+  if (card) card.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+}
+
+const SWATCH = ['#FFFFFF', '#222020', '#7B2C3A', '#F3E2E6', '#B89B6A', '#8A8580'];
+const openSty = new Set();
+function styleCtl(key, st) {
+  st = st || DEF;
+  return `<details class="sty" data-sty="${key}"${openSty.has(key) ? ' open' : ''}><summary>글씨 꾸미기 (크기, 위치, 폰트, 색)</summary>
+    <div class="ctl-row"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((st.s || 1) * 100)}" data-sk="s" aria-label="크기"></div>
+    <div class="ctl-row"><span>가로</span><input type="range" min="-900" max="900" value="${Math.round(st.x || 0)}" data-sk="x" aria-label="가로 위치"></div>
+    <div class="ctl-row"><span>세로</span><input type="range" min="-1000" max="1000" value="${Math.round(st.y || 0)}" data-sk="y" aria-label="세로 위치"></div>
+    <div class="ctl-row"><span>폰트</span><select data-sf aria-label="폰트">${FONTS.map(([f, n]) => `<option value="${f}" ${(st.f || '') === f ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    <div class="ctl-row"><span>색</span><div class="sw">${SWATCH.map(c => `<button type="button" class="swb${st.c === c ? ' on' : ''}" style="background:${c}" data-sc="${c}" aria-label="색 ${c}"></button>`).join('')}<input type="color" value="${st.c || '#ffffff'}" data-scp aria-label="색 직접 고르기"><button type="button" class="x" data-sc="">기본 색</button></div></div>
+    <div class="row" style="margin-top:4px"><button type="button" class="x" data-sreset>이 글씨 꾸미기 모두 되돌리기</button></div></details>`;
+}
+function wireStyle(root, getSt, onChange, onReset) {
+  root.querySelectorAll('details.sty').forEach(d => {
+    const key = d.dataset.sty;
+    d.addEventListener('toggle', () => { if (d.open) openSty.add(key); else openSty.delete(key); });
+    d.querySelectorAll('[data-sk]').forEach(r => r.oninput = () => { const st = getSt(key); st[r.dataset.sk] = r.dataset.sk === 's' ? r.value / 100 : +r.value; onChange(key); });
+    d.querySelector('[data-sf]').onchange = e => { const st = getSt(key); if (e.target.value) st.f = e.target.value; else delete st.f; loadFontsFor(allText()); onChange(key); };
+    d.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => {
+      const st = getSt(key); if (b.dataset.sc) { st.c = b.dataset.sc; d.querySelector('[data-scp]').value = b.dataset.sc; } else delete st.c;
+      d.querySelectorAll('.swb').forEach(x => x.classList.toggle('on', !!b.dataset.sc && x.dataset.sc === b.dataset.sc)); onChange(key);
+    });
+    d.querySelector('[data-scp]').oninput = e => { getSt(key).c = e.target.value; d.querySelectorAll('.swb').forEach(x => x.classList.remove('on')); onChange(key); };
+    d.querySelector('[data-sreset]').onclick = () => onReset(key);
+  });
+}
+function buildScenePane() {
+  const p = $('pane-scene'); const s = project.scenes[sel];
+  if (!s) { p.innerHTML = '<p class="hint">장면이 없어요. 장면 목록 끝에서 장면을 추가하세요.</p>'; return; }
+  const L = LAYOUTS[s.layout], ts = k => (s.tstyle && s.tstyle[k]) || DEF;
+  p.innerHTML = `
+    <div class="row"><h2 class="scene-title">장면 ${sel + 1}</h2>
+      ${CUSTOMER ? `<span class="hint" style="margin:0">${esc(L.name)}</span>` : `
+      <button class="btn small ghost" data-act="up" ${sel === 0 ? 'disabled' : ''}>앞으로</button>
+      <button class="btn small ghost" data-act="down" ${sel === project.scenes.length - 1 ? 'disabled' : ''}>뒤로</button>
+      <button class="btn small ghost" data-act="dup">복제</button>
+      <button class="btn small ghost" data-act="del">삭제</button>`}</div>
+    ${CUSTOMER ? '' : `<label class="field"><span>장면 구성</span><select id="fLayout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.layout ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>`}
+    ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
+    ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
+    ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
+    <div class="group"><h3>자막</h3>
+      <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label>${styleCtl('caption', ts('caption'))}</div></div>
+    ${CUSTOMER ? '' : `<div class="group"><h3>길이</h3>
+      <div class="field len"><input type="number" id="fWeight" min="1" max="60" step="0.5" value="${s.weight}" aria-label="기본 길이(초)"><span>기본 길이(초)</span></div>
+      <p class="hint" id="realLen"></p></div>`}`;
+  if (!CUSTOMER) {
+    p.querySelector('#realLen').textContent = `실제 영상에서는 ${timeline[sel].dur.toFixed(1)}초 (${fmt(timeline[sel].start)}부터)`;
+    p.querySelectorAll('[data-act]').forEach(b => b.onclick = () => sceneAction(b.dataset.act));
+    p.querySelector('#fLayout').onchange = e => changeLayout(s, e.target.value);
+    p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = clamp(+e.target.value || 1, 1, 60); changed(true); select(sel); };
+  }
+  p.querySelectorAll('[data-opt]').forEach(c => c.onchange = () => { s.opts[c.dataset.opt] = c.checked; sceneChanged(s); });
+  p.querySelectorAll('[data-text]').forEach(inp => inp.oninput = () => { s.texts[inp.dataset.text] = inp.value; loadFontsFor(inp.value); sceneChanged(s); });
+  p.querySelector('#fCaption').oninput = e => { s.caption = e.target.value; loadFontsFor(e.target.value); sceneChanged(s); };
+  wireStyle(p, k => ensureStyle(sel, k), k => { editSel = { type: 'text', key: k, idx: sel }; sceneChanged(s); }, k => { if (s.tstyle) delete s.tstyle[k]; sceneChanged(s); buildScenePane(); });
+  if (L.slots) buildSlots(s);
+}
+function buildSlots(s) {
+  const box = $('slots'); box.innerHTML = '';
+  s.media.forEach((slot, i) => {
+    const m = slot.id && media[slot.id];
+    const d = document.createElement('div'); d.className = 'slot';
+    d.innerHTML = `<button class="slot-btn" aria-label="사진 ${i + 1} ${m ? '바꾸기' : '넣기'}">${m ? (m.type === 'video' ? `<video src="${m.url}" muted playsinline></video>` : `<img src="${m.url}" alt="">`) : '사진 ' + (i + 1) + '<br>넣기'}${m ? `<span class="badge">${i + 1}${m.type === 'video' ? ' 영상' : ''}</span>` : ''}</button>
+      ${m ? `<div class="mini">
+        <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
+        <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
+        <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
+        <div class="row"><button class="x" data-r>되돌리기</button><button class="x" data-x>빼기</button></div></div>` : '<p class="hint" style="margin:0">눌러서 사진이나 영상을 넣어요.</p>'}`;
+    d.querySelector('.slot-btn').onclick = () => pickSlot(s, i);
+    if (m) {
+      d.querySelectorAll('[data-k]').forEach(r => r.oninput = () => {
+        const v = r.value / 100; slot[r.dataset.k] = v;
+        editSel = { type: 'media', si: i, idx: project.scenes.indexOf(s) }; sceneChanged(s);
+      });
+      d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; sceneChanged(s); buildSlots(s); };
+      d.querySelector('[data-x]').onclick = () => { s.media[i] = { id: null }; sceneChanged(s); buildSlots(s); };
+    }
+    box.appendChild(d);
+  });
+}
+let pending = null;
+function pickSlot(s, i) { pending = { s, i }; $('slotInput').value = ''; $('slotInput').click(); }
+$('slotInput').onchange = async e => {
+  const f = e.target.files[0]; if (!f || !pending) return;
+  const { s, i } = pending; pending = null;
+  try { s.media[i] = await importFile(f); sceneChanged(s); if (project.scenes[sel] === s) buildSlots(s); }
+  catch (err) { toast('이 파일은 열 수 없어요. JPG, PNG, MP4로 바꿔서 넣어주세요.'); }
+};
+function changeLayout(s, k) {
+  const L = LAYOUTS[k], old = s.media.filter(m => m.id);
+  s.layout = k;
+  const texts = {}; L.fields.forEach(f => texts[f[0]] = s.texts[f[0]] != null ? s.texts[f[0]] : f[2]); s.texts = texts;
+  const opts = {}; L.opts.forEach(o => opts[o[0]] = s.opts[o[0]] != null ? s.opts[o[0]] : o[2]); s.opts = opts;
+  s.media = []; for (let i = 0; i < L.slots; i++) s.media.push(old[i] || { id: null });
+  changed(true); select(sel);
+}
+function sceneAction(a) {
+  const sc = project.scenes;
+  if (a === 'up' && sel > 0) { [sc[sel - 1], sc[sel]] = [sc[sel], sc[sel - 1]]; changed(true); select(sel - 1); }
+  else if (a === 'down' && sel < sc.length - 1) { [sc[sel + 1], sc[sel]] = [sc[sel], sc[sel + 1]]; changed(true); select(sel + 1); }
+  else if (a === 'dup') { const c = JSON.parse(JSON.stringify(sc[sel])); c.id = uid(); sc.splice(sel + 1, 0, c); changed(true); select(sel + 1); toast('장면을 복제했어요'); }
+  else if (a === 'del') {
+    if (sc.length <= 1) { toast('장면은 하나 이상 있어야 해요'); return; }
+    ask('이 장면을 삭제할까요?', '넣어 둔 사진과 글씨도 함께 사라져요.', [['취소'], ['삭제', true, () => { sc.splice(sel, 1); changed(true); select(Math.min(sel, sc.length - 1)); }]]);
+  }
+}
+function sceneChanged(s) { touch(s.id); queueThumb(s.id); dirty = true; save(); }
+function changed(structure) {
+  if (structure) touch('order');
+  computeTimeline();
+  if (structure) { buildStrip(); buildTimeline(); }
+  updateScaleNote(); dirty = true; save();
+}
+
+function buildInfoPane() {
+  const i = project.info;
+  const fields = [['groomKo', '신랑 이름', '{신랑}'], ['brideKo', '신부 이름', '{신부}'], ['groomEn', '신랑 영문 이름', '{GROOM}'], ['brideEn', '신부 영문 이름', '{BRIDE}'], ['dateKo', '예식 날짜', '{날짜}'], ['dateEn', '예식 날짜 (영문)', '{DATE}']];
+  $('pane-info').innerHTML = `
+    <p class="hint" style="margin-top:0">${CUSTOMER ? '이름과 날짜를 적으면 영상 속 문구에 자동으로 들어가요.' : '여기 적은 값이 문구 속 표시어 자리에 자동으로 들어가요. 고객마다 이것만 바꾸면 돼요.'}</p>
+    ${TEAM ? `<label class="field"><span>프로젝트 이름</span><input type="text" id="fTitle" value="${esc(project.title || '')}"></label>` : ''}
+    ${fields.map(f => `<label class="field"><span>${f[1]}${CUSTOMER ? '' : ` <code style="font-size:11px">${f[2]}</code>`}</span><input type="text" data-info="${f[0]}" value="${esc(i[f[0]])}"></label>`).join('')}
+    <div class="group"><h3>사진 한 번에 넣기</h3>
+      <p class="hint">여러 장을 고르면 비어 있는 칸에 장면 순서대로 채워져요.</p>
+      <div class="row" style="margin-top:10px"><button class="btn small" id="bulkBtn">사진 여러 장 고르기</button></div></div>
+    ${CUSTOMER ? `<div class="group"><h3>처음부터 다시</h3><p class="hint">넣은 사진, 음원, 글씨를 모두 지우고 처음 상태로 돌아가요.</p><div class="row" style="margin-top:10px"><button class="btn small" id="resetBtn2">처음 상태로</button></div></div>` : ''}`;
+  $('pane-info').querySelectorAll('[data-info]').forEach(inp => inp.oninput = () => {
+    project.info[inp.dataset.info] = inp.value; loadFontsFor(inp.value); touch('info');
+    project.scenes.forEach(s => queueThumb(s.id)); dirty = true; save();
+  });
+  $('bulkBtn').onclick = () => { $('bulkInput').value = ''; $('bulkInput').click(); };
+  if ($('fTitle')) $('fTitle').oninput = e => { project.title = e.target.value; touch('info'); save(); };
+  if ($('resetBtn2')) $('resetBtn2').onclick = askReset;
+}
+$('bulkInput').onchange = async e => {
+  const files = [...e.target.files]; if (!files.length) return;
+  const empty = []; project.scenes.forEach(s => s.media.forEach((m, k) => { if (!m.id) empty.push([s, k]); }));
+  let n = 0, bad = 0;
+  toast(`${files.length}개 파일을 넣는 중이에요`);
+  for (const f of files) {
+    if (n >= empty.length) break;
+    try { const it = await importFile(f); const [s, k] = empty[n]; s.media[k] = it; touch(s.id); queueThumb(s.id); n++; dirty = true; }
+    catch (err) { bad++; }
+  }
+  save(); buildScenePane();
+  const left = files.length - n - bad;
+  toast(`${n}칸을 채웠어요` + (bad ? `, ${bad}개는 열 수 없었어요` : '') + (left > 0 ? `. 빈 칸이 모자라 ${left}개가 남았어요` : ''));
+};
+
+/* lyrics pane */
+function buildLyricPane() {
+  const p = $('pane-lyrics');
+  const list = project.lyrics.slice().sort((a, b) => a.start - b.start);
+  p.innerHTML = `
+    <div class="checks" style="margin-top:0"><label><input type="checkbox" id="lyOn" ${project.lyricsOn ? 'checked' : ''}>가사 자막 보이기</label></div>
+    <p class="hint">음원을 틀어 두고 하이라이트가 시작될 때 ‘지금 위치에 추가’를 누르세요. 시작·끝 옆의 ‘지금’ 버튼으로 재생 위치를 바로 찍을 수 있어요.</p>
+    <div class="row" style="margin-top:12px"><button class="btn small primary" id="lyAdd">지금 위치에 추가</button></div>
+    <div style="margin-top:12px">${styleCtl('lyrics', project.lstyle)}</div>
+    <div id="lyList">${list.length ? '' : '<p class="hint" style="margin-top:14px">아직 넣은 가사가 없어요.</p>'}</div>`;
+  const box = $('lyList');
+  list.forEach(l => {
+    const d = document.createElement('div'); d.className = 'ly-item'; d.dataset.ly = l.id;
+    d.innerHTML = `<textarea rows="2" placeholder="가사를 적어주세요" aria-label="가사">${esc(l.text)}</textarea>
+      <div class="ly-times">시작<input class="tin" data-f="start" value="${fmt1(l.start)}" aria-label="시작 시간"><button class="x" data-now="start">지금</button>
+      끝<input class="tin" data-f="end" value="${fmt1(l.end)}" aria-label="끝 시간"><button class="x" data-now="end">지금</button>
+      <button class="x" data-play>듣기</button><button class="x" data-del>빼기</button></div>`;
+    d.querySelector('textarea').oninput = e => { touch('lyrics'); l.text = e.target.value; loadFontsFor(l.text); dirty = true; save(); buildTimelineSoon(); };
+    d.querySelectorAll('.tin').forEach(inp => inp.onchange = () => {
+      const v = parseT(inp.value); if (isNaN(v)) { inp.value = fmt1(l[inp.dataset.f]); return; }
+      l[inp.dataset.f] = clamp(v, 0, total); if (l.end <= l.start) l.end = Math.min(total, l.start + 3);
+      lyricChanged();
+    });
+    d.querySelectorAll('[data-now]').forEach(b => b.onclick = () => {
+      const T = clock(); l[b.dataset.now] = +T.toFixed(1); if (l.end <= l.start) l.end = Math.min(total, l.start + 3); lyricChanged();
+    });
+    d.querySelector('[data-play]').onclick = () => { seek(Math.max(0, l.start - 0.3)); if (!playing) play(); };
+    d.querySelector('[data-del]').onclick = () => { project.lyrics = project.lyrics.filter(x => x !== l); lyricChanged(); };
+    box.appendChild(d);
+  });
+  $('lyOn').onchange = e => { project.lyricsOn = e.target.checked; lyricChanged(); };
+  $('lyAdd').onclick = () => {
+    const T = +clock().toFixed(1);
+    const l = { id: uid(), start: T, end: Math.min(total, T + 4), text: '' };
+    project.lyrics.push(l); project.lyricsOn = true; lyricChanged();
+    const ta = document.querySelector(`[data-ly="${l.id}"] textarea`); if (ta) ta.focus();
+  };
+  wireStyle(p, () => ensureStyle(0, 'lyrics'), () => { touch('lyrics'); dirty = true; save(); }, () => { touch('lyrics'); project.lstyle = { s: 1, x: 0, y: 0 }; dirty = true; save(); buildLyricPane(); });
+}
+let tlTimer = null;
+function buildTimelineSoon() { clearTimeout(tlTimer); tlTimer = setTimeout(buildTimeline, 300); }
+function lyricChanged() { touch('lyrics'); dirty = true; save(); buildTimeline(); buildLyricPane(); }
+
+function buildFilePane() {
+  if (CUSTOMER) return;
+  $('pane-file').innerHTML = `
+    <h3 style="margin:0;font-size:13px">작업 파일</h3>
+    <p class="hint">사진, 영상, 음원, 글씨까지 모두 담긴 .zip 파일로 저장해요. 나중에 불러오면 그대로 이어서 편집할 수 있고, 다른 컴퓨터나 휴대폰에서도 열 수 있어요.</p>
+    <div class="row" style="margin-top:10px"><button class="btn small primary" id="workSave2">작업 저장</button><button class="btn small" id="workLoad">작업 불러오기</button></div>
+    <div class="group"><h3>음원</h3></div>
+    <p class="hint" id="audioInfo"></p>
+    <div class="row" style="margin-top:10px"><label class="btn small"><input type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" class="sr" id="audioInput2">음원 바꾸기</label>
+      <button class="btn small ghost" id="audioClear">음원 빼기</button></div>
+    <div class="group"><h3>템플릿 (고객용 페이지에 쓰기)</h3>
+      <p class="hint">장면 구성, 글씨, 글씨 위치, 가사를 template.json 파일로 저장해요. 사진과 음원은 빠져요. 고객용 페이지와 같은 폴더에 올리면 고객이 이 구성으로 시작해요.</p>
+      <div class="row" style="margin-top:10px"><button class="btn small" id="tplSave">템플릿 저장</button><button class="btn small" id="tplLoad">템플릿 불러오기</button></div></div>
+    ${TEAM ? '' : `<div class="group"><h3>새로 시작</h3>
+      <p class="hint">기본 템플릿으로 되돌려요. 넣어 둔 사진과 음원은 지워져요.</p>
+      <div class="row" style="margin-top:10px"><button class="btn small" id="resetBtn">처음 상태로</button></div></div>`}
+    <p class="status" id="saveStatus"></p>`;
+  $('audioInput2').onchange = e => loadAudioFile(e.target.files[0]);
+  $('audioClear').onclick = () => { if (!abuf) return; pause(); abuf = null; peaks = null; audioName = ''; audioBlob = null; if (TEAM) { project.audio = null; loadedAudioId = null; touch('audio'); save(); } else idbDel('audio'); onAudioReady(); };
+  $('tplSave').onclick = saveTemplate;
+  $('workSave2').onclick = saveWork;
+  $('workLoad').onclick = () => { $('workInput').value = ''; $('workInput').click(); };
+  $('tplLoad').onclick = () => { $('tplInput').value = ''; $('tplInput').click(); };
+  if ($('resetBtn')) $('resetBtn').onclick = askReset;
+  updateAudioInfo();
+  $('saveStatus').textContent = TEAM ? '작업 내용은 서버에 자동 저장되고, 함께 쓰는 사람 화면에도 몇 초 안에 반영돼요.' : storageOK ? '작업 내용은 이 브라우저에 자동 저장돼요.' : '이 브라우저에서는 자동 저장을 쓸 수 없어요. 창을 닫기 전에 영상을 만들어 두세요.';
+}
+function askReset() {
+  ask('처음 상태로 되돌릴까요?', '지금 작업한 사진, 글씨, 음원이 모두 지워져요.', [['취소'], ['되돌리기', true, async () => {
+    pause(); for (const k of (await idbKeys()) || []) await idbDel(k);
+    for (const id in media) { if (media[id].url.startsWith('blob:')) URL.revokeObjectURL(media[id].url); delete media[id]; }
+    abuf = null; peaks = null; audioName = '';
+    project = defaultProject(); sel = 0; curT = 0; onAudioReady(); buildInfoPane(); buildLyricPane(); resetHistory(); toast('처음 상태로 되돌렸어요');
+  }]]);
+}
+function updateAudioInfo() {
+  const el = $('audioInfo'), chip = $('audioChip');
+  if (abuf) {
+    if (el) el.textContent = `${audioName} (${fmt(abuf.duration)}). 영상 길이가 이 음원 길이에 맞춰져요.`;
+    chip.innerHTML = `<span>음원</span><strong>${esc(audioName)}</strong><span>${fmt(abuf.duration)}</span>`;
+  } else {
+    if (el) el.textContent = '음원이 없어요. 음원을 넣으면 전체 길이가 음원에 맞춰 자동으로 늘거나 줄어요.';
+    chip.innerHTML = '<span>음원이 없어요</span>';
+  }
+}
+async function loadAudioFile(f, persist = true) {
+  if (!f) return;
+  pause();
+  try {
+    const ab = await f.arrayBuffer();
+    abuf = await decode(ab.slice(0));
+  } catch (e) {
+    toast('이 음원은 열 수 없어요. MP3, M4A, WAV 파일로 넣어주세요.'); return;
+  }
+  audioName = f.name || '음원'; audioBlob = f; computePeaks();
+  if (persist) {
+    if (TEAM) {
+      try { const id = await uploadMedia(f, 'audio'); project.audio = { id, name: audioName }; loadedAudioId = id; touch('audio'); save(); }
+      catch (e) { toast('음원을 서버에 올리지 못했어요. 다시 넣어주세요.'); }
+    } else idbSet('audio', { blob: f, name: audioName });
+    toast(`음원 길이 ${fmt(abuf.duration)}에 맞췄어요`);
+  }
+  curT = 0; onAudioReady();
+}
+function onAudioReady() { changed(true); select(sel); updateAudioInfo(); buildLyricPane(); }
+$('audioInput').onchange = e => { getCtx(); loadAudioFile(e.target.files[0]); };
+
+/* template save / load */
+async function getDownloads() {
+  try { if (window.claude && typeof window.claude.use === 'function') return await window.claude.use('downloads'); } catch (e) {}
+  return null;
+}
+async function saveFile(blob, filename) {
+  const dl = await getDownloads();
+  if (dl) {
+    try { await dl.save({ filename, data: blob }); toast('저장했어요'); return true; }
+    catch (e) {
+      if (e && e.code === 'declined') { toast('저장을 취소했어요'); return false; }
+      if (e && e.code === 'rate_limited') { toast('잠시 후 다시 눌러주세요'); return false; }
+      if (e && e.code === 'too_large') { toast('파일이 너무 커요. FHD로 다시 만들어 주세요.'); return false; }
+    }
+  }
+  try {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    return true;
+  } catch (e) { toast('이 화면에서는 파일을 저장할 수 없어요'); return false; }
+}
+function templateData() {
+  return {
+    kind: 'prelude-template', v: 2, info: project.info,
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {} })),
+    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text })), lyricsOn: project.lyricsOn, lstyle: project.lstyle
+  };
+}
+function saveTemplate() { saveFile(new Blob([JSON.stringify(templateData(), null, 2)], { type: 'application/json' }), 'template.json'); }
+$('tplInput').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const tpl = JSON.parse(await f.text());
+    if (tpl.kind !== 'prelude-template' || !Array.isArray(tpl.scenes)) throw 0;
+    ask('템플릿을 불러올까요?', '지금 장면 구성과 글씨가 바뀌고, 넣어 둔 사진은 빈 칸으로 돌아가요.', [['취소'], ['불러오기', true, () => {
+      const np = projectFromTemplate(tpl); project.scenes = np.scenes; project.info = np.info;
+      project.lyrics = np.lyrics; project.lyricsOn = np.lyricsOn; project.lstyle = np.lstyle;
+      touch('all'); sel = 0; changed(true); select(0); buildInfoPane(); buildLyricPane(); loadFontsFor(allText()); toast('템플릿을 불러왔어요');
+    }]]);
+  } catch (err) { toast('템플릿 파일을 읽지 못했어요. 이 에디터에서 저장한 .json 파일을 골라주세요.'); }
+};
+
+/* modal */
+function ask(title, body, actions, html) {
+  $('mTitle').textContent = title; $('mBody').innerHTML = html || `<p>${esc(body)}</p>`;
+  const row = $('mActions'); row.innerHTML = '';
+  actions.forEach(([label, primary, fn]) => {
+    const b = document.createElement('button'); b.className = 'btn' + (primary ? ' primary' : ''); b.textContent = label;
+    b.onclick = () => { $('modal').hidden = true; fn && fn(); }; row.appendChild(b);
+  });
+  $('modal').hidden = false; row.lastChild.focus();
+}
+
+/* ---------------- save / restore ---------------- */
+let saveTimer = null;
+function save() {
+  if (!suppressSave && !histMute) scheduleCommit();
+  if (TEAM) {
+    if (suppressSave || !pid) return;
+    if (!localDirty.size && project.scenes[sel]) localDirty.add(project.scenes[sel].id);
+    lastEdit = Date.now(); saveScheduled = true; setSync('저장 대기 중');
+    clearTimeout(saveTimer); saveTimer = setTimeout(pushSave, 1000);
+    return;
+  }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { if (idb) idbSet('project', JSON.parse(JSON.stringify(project))); }, 500);
+}
+async function restore() {
+  idb = await openDB(); storageOK = !!idb;
+  const p = idb && await idbGet('project');
+  project = normalize((p && p.scenes) ? p : defaultProject());
+  if (!idb) return;
+  const ids = new Set(); project.scenes.forEach(s => s.media.forEach(m => m.id && ids.add(m.id)));
+  for (const id of ids) {
+    const rec = await idbGet('media:' + id);
+    if (rec && rec.blob) { try { await makeMedia(id, rec.blob, rec.type); } catch (e) { } }
+  }
+  project.scenes.forEach(s => s.media.forEach((m, k) => { if (m.id && !media[m.id]) s.media[k] = { id: null }; }));
+  const keys = (await idbKeys()) || [];
+  keys.filter(k => typeof k === 'string' && k.startsWith('media:') && !ids.has(k.slice(6))).forEach(k => idbDel(k));
+  const a = await idbGet('audio');
+  if (a && a.blob) {
+    try { abuf = await decode(await a.blob.arrayBuffer()); audioName = a.name || '음원'; audioBlob = a.blob; computePeaks(); } catch (e) { abuf = null; }
+  }
+}
+async function fetchTemplate() {
+  if (!CUSTOMER) return null;
+  try {
+    const r = await fetch('template.json', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const t = await r.json();
+    return (t && t.kind === 'prelude-template' && Array.isArray(t.scenes)) ? t : null;
+  } catch (e) { return null; }
+}
+
+/* ---------------- fonts ---------------- */
+const FONT_SAMPLES = [F.kr(40), F.kr(62, 700), F.serif(40, 300, true), F.serif(40, 400, true), F.serif(40, 300, false), F.script(80)].concat(FONTS.slice(1).map(([f]) => `400 40px "${f}"`));
+function allText() {
+  const i = project.info; let s = Object.values(i).join(' ');
+  project.scenes.forEach(sc => { s += ' ' + Object.values(sc.texts).join(' ') + ' ' + sc.caption; });
+  project.lyrics.forEach(l => { s += ' ' + l.text; });
+  return s + ' 사진0123456789';
+}
+let fontTimer = null;
+function loadFontsFor(text) {
+  if (!document.fonts || !text) return Promise.resolve();
+  return Promise.all(FONT_SAMPLES.map(f => document.fonts.load(f, text).catch(() => {}))).then(() => {
+    clearTimeout(fontTimer);
+    fontTimer = setTimeout(() => { project.scenes.forEach(s => queueThumb(s.id)); dirty = true; }, 60);
+  });
+}
+
+/* ---------------- MP4 writer (H.264 + AAC/Opus) ---------------- */
+const te = new TextEncoder();
+function cat(arrs) { let n = 0; for (const a of arrs) n += a.length; const o = new Uint8Array(n); let p = 0; for (const a of arrs) { o.set(a, p); p += a.length; } return o; }
+const u8 = v => new Uint8Array([v & 255]);
+const u16 = v => new Uint8Array([(v >> 8) & 255, v & 255]);
+const u24 = v => new Uint8Array([(v >> 16) & 255, (v >> 8) & 255, v & 255]);
+const u32 = v => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v >>> 0); return b; };
+const i32 = v => { const b = new Uint8Array(4); new DataView(b.buffer).setInt32(0, v); return b; };
+const u64 = v => { const b = new Uint8Array(8); const d = new DataView(b.buffer); d.setUint32(0, Math.floor(v / 4294967296)); d.setUint32(4, v >>> 0); return b; };
+const s4 = s => te.encode(s);
+function box(type, ...p) { const body = cat(p.flat(Infinity)); return cat([u32(body.length + 8), s4(type), body]); }
+function fbox(type, v, f, ...p) { return box(type, u8(v), u24(f), ...p); }
+const MATRIX = () => [0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000].map(u32);
+function runs(arr) { const out = []; for (const v of arr) { const l = out[out.length - 1]; if (l && l[1] === v) l[0]++; else out.push([1, v]); } return out; }
+function toU8(d) { if (!d) return null; if (d instanceof ArrayBuffer) return new Uint8Array(d.slice(0)); return new Uint8Array(d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength)); }
+function createMp4(vw, vh, fps, audioKind) {
+  const parts = []; let size = 0;
+  const V = { s: [], desc: null }, A = { s: [], desc: null };
+  function add(tr, chunk, meta) {
+    const d = new Uint8Array(chunk.byteLength); chunk.copyTo(d);
+    if (!tr.desc && meta && meta.decoderConfig && meta.decoderConfig.description) tr.desc = toU8(meta.decoderConfig.description);
+    tr.s.push({ off: size, size: d.byteLength, ts: chunk.timestamp, dur: chunk.duration || 0, key: chunk.type === 'key' });
+    parts.push(d); size += d.byteLength;
+  }
+  function stbl(entry, durs, sizes, offs, keys, ctts) {
+    const b = [fbox('stsd', 0, 0, u32(1), entry), fbox('stts', 0, 0, u32(runs(durs).length), runs(durs).map(([c, d]) => [u32(c), u32(d)]))];
+    if (keys) b.push(fbox('stss', 0, 0, u32(keys.length), keys.map(u32)));
+    if (ctts) b.push(fbox('ctts', 1, 0, u32(runs(ctts).length), runs(ctts).map(([c, d]) => [u32(c), i32(d)])));
+    b.push(fbox('stsc', 0, 0, u32(1), u32(1), u32(1), u32(1)));
+    b.push(fbox('stsz', 0, 0, u32(0), u32(sizes.length), sizes.map(u32)));
+    b.push(fbox('co64', 0, 0, u32(offs.length), offs.map(u64)));
+    return box('stbl', ...b);
+  }
+  function trak(id, isA, tsc, dur, durMs, minfHead, st, w, h) {
+    return box('trak',
+      fbox('tkhd', 0, 3, u32(0), u32(0), u32(id), u32(0), u32(durMs), u32(0), u32(0), u16(0), u16(0), u16(isA ? 0x0100 : 0), u16(0), MATRIX(), u32(w * 65536), u32(h * 65536)),
+      box('mdia',
+        fbox('mdhd', 0, 0, u32(0), u32(0), u32(tsc), u32(dur), u16(0x55c4), u16(0)),
+        fbox('hdlr', 0, 0, u32(0), s4(isA ? 'soun' : 'vide'), u32(0), u32(0), u32(0), s4(isA ? 'SoundHandler' : 'VideoHandler'), u8(0)),
+        box('minf', minfHead, box('dinf', fbox('dref', 0, 0, u32(1), fbox('url ', 0, 1))), st)));
+  }
+  function finalize() {
+    const ftyp = box('ftyp', s4('isom'), u32(0x200), s4('isom'), s4('iso2'), s4('avc1'), s4('mp41'));
+    const base = ftyp.length + 16;
+    const traks = [];
+    // video
+    const vts = 90000, fd = Math.round(vts / fps), n = V.s.length;
+    const vd = new Array(n).fill(fd);
+    let ct = V.s.map((s, i) => Math.round(s.ts * vts / 1e6) - i * fd); if (ct.every(x => x === 0)) ct = null;
+    const keys = []; V.s.forEach((s, i) => s.key && keys.push(i + 1));
+    const avc = box('avc1', new Uint8Array(6), u16(1), u16(0), u16(0), u32(0), u32(0), u32(0), u16(vw), u16(vh), u32(0x00480000), u32(0x00480000), u32(0), u16(1), new Uint8Array(32), u16(0x18), u16(0xffff), box('avcC', V.desc || new Uint8Array(0)));
+    const vDur = n * fd, vMs = Math.round(vDur / vts * 1000);
+    traks.push(trak(1, false, vts, vDur, vMs, fbox('vmhd', 0, 1, u16(0), u16(0), u16(0), u16(0)), stbl(avc, vd, V.s.map(s => s.size), V.s.map(s => base + s.off), keys, ct), vw, vh));
+    let durMs = vMs;
+    if (audioKind && A.s.length) {
+      const sr = 48000;
+      const ad = A.s.map((s, i) => { const nx = A.s[i + 1]; return Math.max(1, Math.round((s.dur || (nx ? nx.ts - s.ts : 21333)) * sr / 1e6)); });
+      const head = [new Uint8Array(6), u16(1), u32(0), u32(0), u16(2), u16(16), u16(0), u16(0), u32(sr * 65536)];
+      let entry;
+      if (audioKind === 'aac') {
+        const asc = A.desc && A.desc.length ? A.desc : new Uint8Array([0x11, 0x90]);
+        const dsi = cat([u8(5), u8(asc.length), asc]);
+        const dcd = cat([u8(4), u8(13 + dsi.length), u8(0x40), u8(0x15), u24(0), u32(192000), u32(192000), dsi]);
+        const sl = cat([u8(6), u8(1), u8(2)]);
+        const es = cat([u8(3), u8(3 + dcd.length + sl.length), u16(1), u8(0), dcd, sl]);
+        entry = box('mp4a', ...head, fbox('esds', 0, 0, es));
+      } else {
+        let pre = 312; const d = A.desc;
+        if (d && d.length >= 12 && String.fromCharCode(...d.slice(0, 8)) === 'OpusHead') pre = d[10] | (d[11] << 8);
+        entry = box('Opus', ...head, box('dOps', u8(0), u8(2), u16(pre), u32(sr), u16(0), u8(0)));
+      }
+      const aDur = ad.reduce((a, b) => a + b, 0), aMs = Math.round(aDur / sr * 1000);
+      durMs = Math.max(durMs, aMs);
+      traks.push(trak(2, true, sr, aDur, aMs, fbox('smhd', 0, 0, u16(0), u16(0)), stbl(entry, ad, A.s.map(s => s.size), A.s.map(s => base + s.off), null, null), 0, 0));
+    }
+    const moov = box('moov', fbox('mvhd', 0, 0, u32(0), u32(0), u32(1000), u32(durMs), u32(0x00010000), u16(0x0100), u16(0), u32(0), u32(0), MATRIX(), new Array(6).fill(0).map(() => u32(0)), u32(3)), ...traks);
+    const mdatHead = cat([u32(1), s4('mdat'), u64(16 + size)]);
+    return new Blob([ftyp, mdatHead, ...parts, moov], { type: 'video/mp4' });
+  }
+  return { addVideo: (c, m) => add(V, c, m), addAudio: (c, m) => add(A, c, m), finalize };
+}
+
+/* ---------------- export ---------------- */
+let cancelled = false;
+function progress(p, note) {
+  const bar = $('expBar'); if (!bar) return;
+  bar.style.width = (clamp(p) * 100).toFixed(1) + '%';
+  const tEl = $('expTime'); if (tEl) tEl.textContent = (note || '') + Math.round(clamp(p) * 100) + '%';
+}
+function emptySlots() { let n = 0; project.scenes.forEach(s => s.media.forEach(m => { if (!m.id) n++; })); return n; }
+function rtMime() {
+  if (!window.MediaRecorder) return '';
+  const c = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.4D0028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  return c.find(m => { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } }) || '';
+}
+async function pickVideoCfg(S) {
+  if (!window.VideoEncoder || !window.VideoFrame) return null;
+  const w = W * S, h = H * S;
+  const codecs = S > 1 ? ['avc1.640034', 'avc1.640033', 'avc1.4d0034', 'avc1.4d0033'] : ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640029'];
+  for (const codec of codecs) for (const hw of ['prefer-hardware', 'no-preference']) {
+    const cfg = { codec, width: w, height: h, bitrate: S > 1 ? 24e6 : 8e6, framerate: 30, hardwareAcceleration: hw, avc: { format: 'avc' } };
+    try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return cfg; } catch (e) {}
+  }
+  return null;
+}
+async function pickAudioCfg() {
+  if (!window.AudioEncoder || !window.AudioData) return null;
+  for (const [codec, kind] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
+    const cfg = { codec, sampleRate: 48000, numberOfChannels: 2, bitrate: 192000 };
+    try { const r = await AudioEncoder.isConfigSupported(cfg); if (r.supported) return { cfg, kind }; } catch (e) {}
+  }
+  return null;
+}
+async function resample48(buf) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const len = Math.ceil(buf.duration * 48000);
+  const oc = new OAC(2, len, 48000);
+  const s = oc.createBufferSource(); s.buffer = buf; s.connect(oc.destination); s.start(0);
+  return await new Promise((res, rej) => { const p = oc.startRendering(); if (p && p.then) p.then(res, rej); else oc.oncomplete = e => res(e.renderedBuffer); });
+}
+function videosAt(T) {
+  const out = [], i = sceneAt(T);
+  const add = (k, t) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (md && md.type === 'video') out.push([md.el, t]); });
+  const t = T - timeline[i].start; add(i, t);
+  if (i > 0 && t < xfOf(i)) add(i - 1, timeline[i - 1].dur + t);
+  return out;
+}
+function seekVideo(v, t) {
+  const want = t % (v.duration || 1);
+  if (Math.abs(v.currentTime - want) < 0.004) return Promise.resolve();
+  return new Promise(res => {
+    const to = setTimeout(res, 1500);
+    v.addEventListener('seeked', () => { clearTimeout(to); res(); }, { once: true });
+    v.currentTime = want;
+  });
+}
+async function waitQueue(enc, max) {
+  while (enc.encodeQueueSize > max) {
+    await new Promise(r => { if ('ondequeue' in enc) enc.addEventListener('dequeue', () => r(), { once: true }); else setTimeout(r, 4); });
+  }
+}
+// Fast path: renders frame by frame and encodes with WebCodecs (no real-time wait)
+async function exportFast(S) {
+  const vcfg = await pickVideoCfg(S); if (!vcfg) return null;
+  let acfg = null, pcm = null;
+  if (abuf) {
+    acfg = await pickAudioCfg();
+    if (!acfg) return null;
+    if (acfg.kind === 'opus' && rtMime().includes('mp4')) return null; // prefer an AAC file from the recorder
+  }
+  const fps = 30, nF = Math.ceil(total * fps);
+  ER = makeR(S);
+  const mux = createMp4(W * S, H * S, fps, acfg && acfg.kind);
+  let err = null;
+  const venc = new VideoEncoder({ output: (c, m) => mux.addVideo(c, m), error: e => { err = e; } });
+  venc.configure(vcfg);
+  let aenc = null, aPos = 0, L0, L1, aN = 0;
+  if (acfg) {
+    progress(0, '음원 준비 중 ');
+    pcm = await resample48(abuf); L0 = pcm.getChannelData(0); L1 = pcm.getChannelData(1); aN = pcm.length;
+    aenc = new AudioEncoder({ output: (c, m) => mux.addAudio(c, m), error: e => { err = e; } });
+    aenc.configure(acfg.cfg);
+  }
+  const pushAudio = upTo => {
+    if (!aenc) return;
+    const lim = Math.min(aN, Math.floor(upTo * 48000));
+    while (aPos < lim) {
+      const n = Math.min(4800, lim - aPos), data = new Float32Array(n * 2);
+      data.set(L0.subarray(aPos, aPos + n), 0); data.set(L1.subarray(aPos, aPos + n), n);
+      const ad = new AudioData({ format: 'f32-planar', sampleRate: 48000, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round(aPos / 48000 * 1e6), data });
+      aenc.encode(ad); ad.close(); aPos += n;
+    }
+  };
+  for (const id in media) if (media[id].type === 'video') media[id].el.pause();
+  const t0 = performance.now();
+  for (let f = 0; f < nF; f++) {
+    if (cancelled || err) break;
+    const T = f / fps;
+    for (const [v, t] of videosAt(T)) await seekVideo(v, t);
+    render(ER, T, false);
+    const vf = new VideoFrame(ER.canvas, { timestamp: Math.round(f * 1e6 / fps), duration: Math.round(1e6 / fps) });
+    venc.encode(vf, { keyFrame: f % (fps * 2) === 0 }); vf.close();
+    pushAudio(T + 1);
+    if (aenc) await waitQueue(aenc, 30);
+    await waitQueue(venc, 6);
+    if (f % 6 === 0) {
+      const p = (f + 1) / nF, el = (performance.now() - t0) / 1000, left = p > 0.02 ? el / p - el : 0;
+      progress(p, left ? `남은 시간 약 ${fmt(left)}, ` : '');
+      await yieldUI();
+    }
+  }
+  if (err) throw err;
+  if (cancelled) { try { venc.close(); aenc && aenc.close(); } catch (e) {} return 'cancel'; }
+  pushAudio(total + 1);
+  progress(1, '마무리 중 ');
+  await venc.flush(); venc.close();
+  if (aenc) { await aenc.flush(); aenc.close(); }
+  if (err) throw err;
+  return { blob: mux.finalize(), ext: 'mp4' };
+}
+// Fallback: record in real time
+function exportRealtime(S) {
+  return new Promise(resolve => {
+    const mime = rtMime(); if (!mime) return resolve(null);
+    ER = makeR(S);
+    const tracks = [...ER.canvas.captureStream(30).getVideoTracks()];
+    if (abuf) { getCtx(); if (dest) tracks.push(...dest.stream.getAudioTracks()); }
+    let rec;
+    try { rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: S > 1 ? 30000000 : 12000000, audioBitsPerSecond: 192000 }); }
+    catch (e) { return resolve(null); }
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = () => { exportRT = false; resolve(cancelled ? 'cancel' : { blob: new Blob(chunks, { type: mime.split(';')[0] }), ext: mime.includes('mp4') ? 'mp4' : 'webm' }); };
+    rtDone = () => { rtDone = null; pause(); setTimeout(() => { try { rec.stop(); } catch (e) {} }, 250); };
+    $('expNote').textContent = '이 브라우저는 실시간으로 녹화해요. 끝날 때까지 이 탭을 화면에 띄워 두세요.';
+    curT = 0; exportRT = true; render(ER, 0, false);
+    rec.start(1000);
+    setTimeout(() => { if (exportRT) play(); }, 350);
+  });
+}
+$('exportBtn').onclick = () => {
+  if (exporting) return;
+  const n = emptySlots(), warn = [];
+  if (!abuf) warn.push('음원이 없어 소리 없는 영상이 만들어져요.');
+  if (n) warn.push(`비어 있는 사진 칸이 ${n}개 있어요.`);
+  const fast = !!(window.VideoEncoder && window.VideoFrame);
+  const html = `${warn.length ? `<p>${esc(warn.join(' '))}</p>` : ''}
+    <div class="res">
+      <label><input type="radio" name="res" value="1" checked><span>FHD 1920×1080<small>대부분의 예식장 화면에 충분해요. 빨리 만들어져요.</small></span></label>
+      <label><input type="radio" name="res" value="2"><span>4K 3840×2160<small>큰 스크린용이에요. 시간이 더 걸리고 파일이 커요.</small></span></label>
+    </div>
+    <p style="margin-top:12px">${fast ? '영상 길이보다 빠르게 만들어져요. 사진이 많으면 몇 분 걸릴 수 있어요.' : `이 브라우저는 영상 길이(${fmt(total)})만큼 실시간으로 녹화해요.`}</p>`;
+  ask('영상 만들기', '', [['취소'], ['만들기', true, () => runExport(+document.querySelector('input[name=res]:checked').value)]], html);
+};
+async function runExport(S) {
+  pause(); cancelled = false; exporting = true; editSel = null;
+  if (abuf) getCtx().resume();
+  await loadFontsFor(allText());
+  $('mTitle').textContent = '영상을 만드는 중이에요';
+  $('mBody').innerHTML = `<p id="expNote">${S > 1 ? '4K' : 'FHD'} 화질로 만들고 있어요. 다른 탭으로 옮겨도 되지만 창은 닫지 마세요.</p><div class="bar"><i id="expBar"></i></div><p id="expTime" style="font-variant-numeric:tabular-nums">0%</p>`;
+  const row = $('mActions'); row.innerHTML = '';
+  const cb = document.createElement('button'); cb.className = 'btn'; cb.textContent = '멈추기';
+  cb.onclick = () => { cancelled = true; if (rtDone) rtDone(); }; row.appendChild(cb);
+  $('modal').hidden = false;
+  let out = null;
+  try { out = await exportFast(S); } catch (e) { out = null; }
+  if (out === null && !cancelled) out = await exportRealtime(S);
+  exporting = false; exportRT = false; ER = null; dirty = true; curT = 0;
+  if (cancelled || out === 'cancel') { $('modal').hidden = true; toast('영상 만들기를 멈췄어요'); return; }
+  if (!out) { ask('이 브라우저에서는 영상을 만들 수 없어요', '컴퓨터의 크롬이나 엣지, 또는 최신 사파리에서 열어주세요.', [['확인', true]]); return; }
+  const name = `식전영상_${project.info.groomKo}_${project.info.brideKo}_${S > 1 ? '4K' : 'FHD'}.${out.ext}`.replace(/[\\/:*?"<>|]/g, '');
+  $('mTitle').textContent = '영상이 준비됐어요';
+  $('mBody').innerHTML = `<p>${esc(name)} (${(out.blob.size / 1048576).toFixed(1)}MB)</p>` + (out.ext === 'webm' ? '<p>이 브라우저는 WebM으로 저장해요. MP4가 필요하면 컴퓨터의 크롬에서 다시 만들어 주세요.</p>' : '');
+  row.innerHTML = '';
+  const close = document.createElement('button'); close.className = 'btn'; close.textContent = '닫기'; close.onclick = () => { $('modal').hidden = true; };
+  const sv = document.createElement('button'); sv.className = 'btn primary'; sv.textContent = '영상 저장';
+  sv.onclick = async () => { if (await saveFile(out.blob, name)) $('modal').hidden = true; };
+  row.append(close, sv); sv.focus();
+}
+
+/* ---------------- team: shared projects on your own Cloudflare server ---------------- */
+let me = '', pid = null, baseEtag = null, saving = false, saveAgain = false, saveScheduled = false;
+let suppressSave = false, lastEdit = 0, loadedAudioId = null, uploads = 0;
+const localDirty = new Set();
+function touch(k) { if (TEAM && !suppressSave && k) { localDirty.add(k); lastEdit = Date.now(); } }
+function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+async function api(method, path, body, headers = {}) {
+  const r = await fetch(path, { method, body, headers, credentials: 'same-origin', cache: 'no-store' });
+  if (r.status === 401 && path !== '/api/login') { showLogin(); throw new Error('login'); }
+  return r;
+}
+function setSync(t) { const el = $('sync'); if (el) el.textContent = t; }
+function ago(ms) {
+  const s = (Date.now() - ms) / 1000;
+  if (s < 60) return '방금'; if (s < 3600) return Math.floor(s / 60) + '분 전';
+  if (s < 86400) return Math.floor(s / 3600) + '시간 전';
+  return new Date(ms).toLocaleDateString('ko-KR');
+}
+async function uploadMedia(blob, type) {
+  uploads++; setSync(`올리는 중 (${uploads})`);
+  try {
+    const ct = blob.type || (type === 'video' ? 'video/mp4' : type === 'audio' ? 'audio/mpeg' : 'image/jpeg');
+    const r = await api('POST', '/api/media', blob, { 'content-type': ct });
+    if (!r.ok) throw new Error('upload');
+    return (await r.json()).id;
+  } finally { uploads--; setSync(uploads ? `올리는 중 (${uploads})` : (saveScheduled || saving ? '저장 중' : '저장됨')); }
+}
+function closeProject() {
+  if (!pid) return;
+  undoStack.length = 0; redoStack.length = 0; updateHistButtons();
+  pause(); pid = null; baseEtag = null; localDirty.clear();
+  $('backBtn').hidden = true; $('sync').hidden = true;
+}
+function showLogin(msg) {
+  closeProject();
+  $('lobby').hidden = false;
+  $('lobbyBody').innerHTML = `<form class="login" id="loginForm">
+    <h2 class="scene-title" style="margin-bottom:6px">들어가기</h2>
+    <p class="hint" style="margin-top:0">함께 쓰는 비밀번호와 내 이름을 적어주세요. 이름은 누가 고쳤는지 보여줄 때 써요.</p>
+    <label class="field"><span>내 이름</span><input type="text" id="lgName" value="${esc(lsGet('prelude-name'))}" required></label>
+    <label class="field"><span>비밀번호</span><input type="password" id="lgPw" required autocomplete="current-password"></label>
+    <p class="hint" id="lgErr" style="color:var(--accent)">${esc(msg || '')}</p>
+    <div class="row" style="margin-top:12px"><button class="btn primary">들어가기</button></div></form>`;
+  $('loginForm').onsubmit = async e => {
+    e.preventDefault();
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: $('lgPw').value }), credentials: 'same-origin' }).catch(() => null);
+    if (!r || !r.ok) { $('lgErr').textContent = r ? (r.status === 401 ? '비밀번호가 맞지 않아요.' : '서버 설정을 확인해 주세요. (' + r.status + ')') : '서버에 연결하지 못했어요.'; return; }
+    me = $('lgName').value.trim(); lsSet('prelude-name', me); route();
+  };
+}
+async function showLobby() {
+  closeProject();
+  $('lobby').hidden = false; $('lobbyBody').innerHTML = '<p class="hint" style="margin-top:24px">불러오는 중이에요</p>';
+  let list;
+  try { const r = await api('GET', '/api/projects'); if (!r.ok) throw new Error('list'); list = await r.json(); }
+  catch (e) { if (e.message !== 'login') $('lobbyBody').innerHTML = '<p class="hint" style="margin-top:24px">프로젝트 목록을 불러오지 못했어요. 새로고침해 주세요.</p>'; return; }
+  $('lobbyBody').innerHTML = `
+    <div class="row" style="margin-top:22px;align-items:flex-end">
+      <label class="field" style="margin:0;max-width:200px"><span>내 이름</span><input type="text" id="meName" value="${esc(me)}"></label>
+      <span style="flex:1"></span><button class="btn primary" id="newProj">새 프로젝트</button></div>
+    <div class="plist">${list.length ? list.map(p => `<div class="pitem"><div class="grow"><div class="t">${esc(p.title || '제목 없음')}</div><div class="m">${ago(p.updated)}${p.by ? `, ${esc(p.by)} 수정` : ''}</div></div><button class="btn small" data-open="${p.id}">열기</button><button class="btn small ghost" data-delp="${p.id}">삭제</button></div>`).join('') : '<p class="hint">아직 프로젝트가 없어요. ‘새 프로젝트’로 첫 작업을 만들어 보세요.</p>'}</div>`;
+  $('meName').onchange = e => { me = e.target.value.trim(); lsSet('prelude-name', me); };
+  $('newProj').onclick = () => newProjectDialog(list);
+  document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { location.hash = 'p=' + b.dataset.open; });
+  document.querySelectorAll('[data-delp]').forEach(b => b.onclick = () => {
+    const p = list.find(x => x.id === b.dataset.delp);
+    ask('이 프로젝트를 삭제할까요?', `${p.title || '제목 없음'} 프로젝트가 함께 쓰는 사람 화면에서도 사라지고, 넣어 둔 사진과 음원도 지워져요. 되돌릴 수 없어요.`,
+      [['취소'], ['삭제', true, async () => { await api('DELETE', '/api/projects/' + p.id); toast('삭제했어요'); showLobby(); }]]);
+  });
+}
+function newProjectDialog(list) {
+  const html = `<label class="field"><span>프로젝트 이름</span><input type="text" id="npName" placeholder="예: 5월 23일 도윤과 서연"></label>
+    <label class="field"><span>시작할 구성</span><select id="npFrom"><option value="">기본 템플릿</option>${list.map(p => `<option value="${p.id}">${esc(p.title || '제목 없음')} 구성 (사진 제외)</option>`).join('')}</select></label>`;
+  ask('새 프로젝트', '', [['취소'], ['만들기', true, async () => {
+    const name = $('npName').value.trim() || '새 프로젝트', from = $('npFrom').value;
+    let p;
+    try {
+      if (from) { const r = await api('GET', '/api/projects/' + from); p = projectFromTemplate(await r.json()); }
+      else p = normalize(defaultProject());
+      p.title = name; p.audio = null;
+      const id = uid() + uid();
+      const r = await api('PUT', '/api/projects/' + id, JSON.stringify({ project: p, baseEtag: null, by: me }), { 'content-type': 'application/json' });
+      if (!r.ok) throw new Error('create');
+      location.hash = 'p=' + id;
+    } catch (e) { if (e.message !== 'login') toast('프로젝트를 만들지 못했어요'); }
+  }]], html);
+  setTimeout(() => $('npName').focus(), 30);
+}
+async function openProject(id) {
+  if (pid === id) { $('lobby').hidden = true; return; }
+  closeProject();
+  $('lobby').hidden = false; $('lobbyBody').innerHTML = '<p class="hint" style="margin-top:24px">프로젝트를 여는 중이에요</p>';
+  let r; try { r = await api('GET', '/api/projects/' + id); } catch (e) { return; }
+  if (!r.ok) { toast('프로젝트를 찾지 못했어요'); location.hash = ''; return; }
+  const etag = r.headers.get('x-etag'), p = await r.json();
+  pid = id; localDirty.clear();
+  await applyProject(p, etag, true);
+  $('lobby').hidden = true; $('backBtn').hidden = false; $('sync').hidden = false; setSync('저장됨');
+}
+function route() {
+  const m = location.hash.match(/p=([a-z0-9-]+)/);
+  if (m) openProject(m[1]); else showLobby();
+}
+function rememberFocus() {
+  const a = document.activeElement;
+  if (!a || !a.closest || !a.closest('.panel')) return null;
+  const ly = a.closest('[data-ly]');
+  const q = a.dataset.text ? `[data-text="${a.dataset.text}"]` : a.dataset.info ? `[data-info="${a.dataset.info}"]` : ly ? `[data-ly="${ly.dataset.ly}"] textarea` : a.id ? '#' + a.id : null;
+  return q ? { q, s: a.selectionStart, e: a.selectionEnd } : null;
+}
+function restoreFocus(f) {
+  if (!f) return;
+  const el = document.querySelector('.panel ' + f.q);
+  if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(f.s, f.e); } catch (e) {} }
+}
+async function ensureAudio() {
+  const a = project.audio;
+  if (!a || !a.id) { if (loadedAudioId || abuf) { pause(); abuf = null; peaks = null; audioName = ''; loadedAudioId = null; } return; }
+  if (a.id === loadedAudioId) { audioName = a.name || audioName; return; }
+  try {
+    const r = await api('GET', '/api/media/' + a.id); if (!r.ok) throw 0;
+    pause(); abuf = await decode(await r.arrayBuffer()); audioName = a.name || '음원'; loadedAudioId = a.id; computePeaks();
+  } catch (e) { toast('음원을 불러오지 못했어요'); }
+}
+const mediaLoading = new Set();
+function ensureMedia() {
+  project.scenes.forEach(s => s.media.forEach(m => {
+    if (!m.id || media[m.id] || mediaLoading.has(m.id)) return;
+    const id = m.id; mediaLoading.add(id);
+    (async () => {
+      const r = await api('GET', '/api/media/' + id); if (!r.ok) throw 0;
+      const b = await r.blob();
+      await makeMedia(id, b, m.t || ((b.type || '').startsWith('video') ? 'video' : 'image'));
+    })().then(() => {
+      project.scenes.forEach(x => { if (x.media.some(y => y.id === id)) queueThumb(x.id); });
+      dirty = true;
+      const cur = project.scenes[sel];
+      if (cur && $('slots') && cur.media.some(y => y.id === id)) buildSlots(cur);
+    }).catch(() => {}).finally(() => mediaLoading.delete(id));
+  }));
+}
+async function applyProject(p, etag, fresh) {
+  const focus = rememberFocus();
+  suppressSave = true;
+  try {
+    project = normalize(p); baseEtag = etag;
+    if (fresh) { sel = 0; curT = 0; editSel = null; }
+    await ensureAudio();
+    ensureMedia();
+    computeTimeline(); buildStrip(); buildTimeline(); updateScaleNote();
+    select(Math.min(sel, project.scenes.length - 1), true);
+    buildInfoPane(); buildLyricPane(); buildFilePane(); updateAudioInfo(); loadFontsFor(allText());
+    dirty = true;
+    if (fresh) resetHistory(); else lastSnap = clone(project);
+  } finally { suppressSave = false; }
+  restoreFocus(focus);
+}
+function mergeProjects(local, remote, d) {
+  if (d.has('all')) return JSON.parse(JSON.stringify(local));
+  const r = normalize(JSON.parse(JSON.stringify(remote)));
+  const L = new Map(local.scenes.map(s => [s.id, s])), Rm = new Map(r.scenes.map(s => [s.id, s]));
+  if (d.has('order')) r.scenes = local.scenes.map(s => (d.has(s.id) || !Rm.has(s.id)) ? s : Rm.get(s.id));
+  else r.scenes = r.scenes.map(s => (d.has(s.id) && L.has(s.id)) ? L.get(s.id) : s);
+  if (d.has('info')) { r.info = local.info; r.title = local.title; }
+  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; }
+  if (d.has('audio')) r.audio = local.audio;
+  return JSON.parse(JSON.stringify(r));
+}
+async function pushSave() {
+  if (!TEAM || !pid) return;
+  saveScheduled = false; clearTimeout(saveTimer);
+  if (saving) { saveAgain = true; return; }
+  saving = true; setSync('저장 중');
+  const dirtyNow = new Set(localDirty); localDirty.clear();
+  const myPid = pid;
+  try {
+    const r = await api('PUT', '/api/projects/' + pid, JSON.stringify({ project, baseEtag, by: me }), { 'content-type': 'application/json' });
+    if (myPid !== pid) return;
+    if (r.ok) { baseEtag = (await r.json()).etag; setSync(uploads ? '올리는 중' : '저장됨'); }
+    else if (r.status === 409) {
+      const j = await r.json();
+      if (j.project) await applyProject(mergeProjects(project, j.project, dirtyNow), j.etag, false);
+      else baseEtag = null;
+      dirtyNow.forEach(k => localDirty.add(k)); saveAgain = true;
+      if (j.by && j.by !== me) toast(`${j.by}님이 고친 내용과 합쳤어요`);
+    } else throw new Error('save ' + r.status);
+  } catch (e) {
+    if (e.message !== 'login') {
+      dirtyNow.forEach(k => localDirty.add(k));
+      setSync('저장하지 못했어요. 다시 시도할게요');
+      setTimeout(() => { if (pid === myPid) pushSave(); }, 4000);
+    }
+  } finally { saving = false; }
+  if (saveAgain) { saveAgain = false; pushSave(); }
+}
+async function flushSave() {
+  if (!TEAM) return;
+  if (saveScheduled || localDirty.size) await pushSave();
+  let n = 0; while ((saving || uploads) && n++ < 300) await new Promise(r => setTimeout(r, 100));
+}
+async function pollRemote() {
+  if (!TEAM || !pid || exporting || saving || saveScheduled || uploads || localDirty.size || document.hidden || drag || playing) return;
+  if (Date.now() - lastEdit < 4000) return;
+  try {
+    const r = await api('GET', `/api/projects/${pid}/meta`); if (!r.ok) return;
+    const m = await r.json();
+    if (!m.etag || m.etag === baseEtag) return;
+    const r2 = await api('GET', '/api/projects/' + pid); if (!r2.ok) return;
+    const et = r2.headers.get('x-etag'), p = await r2.json();
+    if (saving || saveScheduled || localDirty.size || Date.now() - lastEdit < 4000) return;
+    await applyProject(p, et, false);
+    toast(`${m.by || '다른 사람'}님이 고친 내용을 불러왔어요`); setSync('저장됨');
+  } catch (e) {}
+}
+function initTeam() {
+  me = lsGet('prelude-name');
+  $('brandSub').textContent = '함께 편집하는 식전영상 작업실';
+  document.title = '식전영상 작업실';
+  $('backBtn').onclick = async () => { await flushSave(); location.hash = ''; };
+  window.addEventListener('hashchange', route);
+  window.addEventListener('beforeunload', e => { if (saveScheduled || saving || uploads || localDirty.size) { e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && (saveScheduled || localDirty.size)) pushSave(); });
+  setInterval(pollRemote, 5000);
+  route();
+}
+
+/* ---------------- work file (.zip with photos, videos, music and text) ---------------- */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u) { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC_T[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function makeZip(files) {
+  const parts = [], central = [], enc = new TextEncoder(); let off = 0;
+  for (const f of files) {
+    const data = new Uint8Array(await f.blob.arrayBuffer()), crc = crc32(data), nm = enc.encode(f.name), len = data.length;
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, len, true); h.setUint32(22, len, true);
+    h.setUint16(26, nm.length, true); h.setUint16(28, 0, true);
+    parts.push(new Uint8Array(h.buffer), nm, f.blob);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, len, true); c.setUint32(24, len, true);
+    c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), nm);
+    off += 30 + nm.length + len;
+    await yieldUI();
+  }
+  const cdSize = central.reduce((n, a) => n + a.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
+}
+async function readZip(file) {
+  const tl = Math.min(file.size, 65557), tail = new DataView(await file.slice(file.size - tl).arrayBuffer());
+  let p = -1; for (let i = tl - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { p = i; break; }
+  if (p < 0) throw new Error('zip');
+  const n = tail.getUint16(p + 10, true), cdSize = tail.getUint32(p + 12, true), cdOff = tail.getUint32(p + 16, true);
+  const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer()), dec = new TextDecoder(), out = new Map();
+  let q = 0;
+  for (let i = 0; i < n; i++) {
+    if (cd.getUint32(q, true) !== 0x02014b50) throw new Error('zip');
+    const method = cd.getUint16(q + 10, true), csize = cd.getUint32(q + 20, true);
+    const nl = cd.getUint16(q + 28, true), el = cd.getUint16(q + 30, true), cl = cd.getUint16(q + 32, true), lho = cd.getUint32(q + 42, true);
+    const name = dec.decode(new Uint8Array(cd.buffer, cd.byteOffset + q + 46, nl)); q += 46 + nl + el + cl;
+    const lh = new DataView(await file.slice(lho, lho + 30).arrayBuffer());
+    const start = lho + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+    out.set(name.replace(/^.*?(project\.json|media\/|audio\/)/, '$1'), { method, blob: file.slice(start, start + csize) });
+  }
+  return out;
+}
+async function entryBlob(e, mime) {
+  let b;
+  if (e.method === 0) b = e.blob;
+  else if (e.method === 8 && window.DecompressionStream) b = await new Response(e.blob.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+  else throw new Error('method');
+  return mime ? new Blob([b], { type: mime }) : b;
+}
+let workBusy = false;
+async function saveWork() {
+  if (exporting || workBusy) return;
+  workBusy = true;
+  try {
+    commitNow();
+    const ids = new Set(); project.scenes.forEach(s => s.media.forEach(m => m.id && ids.add(m.id)));
+    const files = [], mediaIndex = {};
+    for (const id of ids) { const m = media[id]; if (!m || !m.blob) continue; mediaIndex[id] = { type: m.type, mime: m.blob.type || '' }; files.push({ name: 'media/' + id, blob: m.blob }); }
+    let audio = null;
+    if (abuf && audioBlob) { audio = { name: audioName, mime: audioBlob.type || '', file: 'audio/track' }; files.push({ name: 'audio/track', blob: audioBlob }); }
+    const meta = { kind: 'prelude-project', v: 3, saved: Date.now(), project: clone(project), media: mediaIndex, audio };
+    files.unshift({ name: 'project.json', blob: new Blob([JSON.stringify(meta)], { type: 'application/json' }) });
+    toast('작업 파일을 만드는 중이에요');
+    const zip = await makeZip(files);
+    const d = new Date(), pad = n => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    const name = `식전영상_작업파일_${project.info.groomKo || ''}_${project.info.brideKo || ''}_${stamp}.zip`.replace(/[\\/:*?"<>|]/g, '').replace(/__+/g, '_');
+    await saveFile(zip, name);
+  } catch (e) { toast('작업 파일을 만들지 못했어요. 다시 눌러주세요.'); }
+  finally { workBusy = false; }
+}
+async function loadWork(file) {
+  let entries, meta;
+  try {
+    entries = await readZip(file);
+    const pj = entries.get('project.json'); if (!pj) throw 0;
+    meta = JSON.parse(await (await entryBlob(pj)).text());
+    if (meta.kind !== 'prelude-project' || !meta.project) throw 0;
+  } catch (e) { toast('작업 파일을 읽지 못했어요. 이 에디터에서 저장한 .zip 파일을 골라주세요.'); return; }
+  pause(); workBusy = true; toast('작업 파일을 불러오는 중이에요');
+  try {
+    for (const id in media) { if (media[id].url.startsWith('blob:')) URL.revokeObjectURL(media[id].url); delete media[id]; }
+    if (idb) { for (const k of (await idbKeys()) || []) if (typeof k === 'string' && k.startsWith('media:')) await idbDel(k); }
+    let bad = 0;
+    for (const [id, info] of Object.entries(meta.media || {})) {
+      const e = entries.get('media/' + id); if (!e) { bad++; continue; }
+      try { const b = await entryBlob(e, info.mime); await makeMedia(id, b, info.type); idbSet('media:' + id, { blob: b, type: info.type }); }
+      catch (err) { bad++; }
+    }
+    project = normalize(meta.project);
+    project.scenes.forEach(s => s.media.forEach((m, k) => { if (m.id && !media[m.id]) s.media[k] = { id: null }; }));
+    abuf = null; peaks = null; audioName = ''; audioBlob = null; idbDel('audio');
+    sel = 0; curT = 0; editSel = null;
+    const ae = meta.audio && entries.get(meta.audio.file);
+    if (ae) {
+      const b = await entryBlob(ae, meta.audio.mime);
+      await loadAudioFile(new File([b], meta.audio.name || '음원', { type: meta.audio.mime || b.type || 'audio/mpeg' }), true);
+    } else onAudioReady();
+    buildInfoPane(); buildLyricPane(); loadFontsFor(allText()); save(); resetHistory();
+    toast(bad ? `불러왔어요. 파일 ${bad}개는 열지 못했어요` : '작업 파일을 불러왔어요. 이어서 편집하세요');
+  } finally { workBusy = false; }
+}
+$('saveWorkBtn').onclick = saveWork;
+$('workInput').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  ask('작업 파일을 불러올까요?', '지금 화면의 작업이 이 파일 내용으로 바뀌어요. 지금 작업이 필요하면 먼저 ‘작업 저장’을 눌러주세요.', [['취소'], ['불러오기', true, () => loadWork(f)]]);
+};
+
+/* ---------------- undo / redo ---------------- */
+const undoStack = [], redoStack = [];
+let lastSnap = null, commitTimer = null, histMute = false;
+const clone = o => JSON.parse(JSON.stringify(o));
+function resetHistory() { undoStack.length = 0; redoStack.length = 0; clearTimeout(commitTimer); lastSnap = clone(project); updateHistButtons(); }
+function diffKeys(a, b) {
+  const k = new Set(), J = JSON.stringify;
+  if (a.scenes.map(s => s.id).join(',') !== b.scenes.map(s => s.id).join(',')) k.add('order');
+  const am = new Map(a.scenes.map(s => [s.id, J(s)])), bIds = new Set(b.scenes.map(s => s.id));
+  b.scenes.forEach(s => { if (am.get(s.id) !== J(s)) k.add(s.id); });
+  a.scenes.forEach(s => { if (!bIds.has(s.id)) k.add(s.id); });
+  if (J(a.info) !== J(b.info) || (a.title || '') !== (b.title || '')) k.add('info');
+  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle)) k.add('lyrics');
+  if (J(a.audio || null) !== J(b.audio || null)) k.add('audio');
+  return k;
+}
+function scheduleCommit() { clearTimeout(commitTimer); commitTimer = setTimeout(commitNow, 600); }
+function commitNow() {
+  clearTimeout(commitTimer);
+  if (!project) return;
+  const cur = clone(project);
+  if (!lastSnap) { lastSnap = cur; return; }
+  const keys = diffKeys(lastSnap, cur);
+  if (!keys.size) return;
+  undoStack.push({ before: lastSnap, after: cur, keys: [...keys] });
+  if (undoStack.length > 100) undoStack.shift();
+  redoStack.length = 0; lastSnap = cur; updateHistButtons();
+}
+function updateHistButtons() {
+  const u = $('undoBtn'), r = $('redoBtn');
+  if (u) u.disabled = !undoStack.length;
+  if (r) r.disabled = !redoStack.length;
+}
+async function applyHistory(target, keys) {
+  if (playing) pause();
+  histMute = true;
+  try {
+    const k = new Set(keys);
+    project = normalize(mergeProjects(target, project, k));
+    keys.forEach(x => touch(x));
+    if (TEAM) { await ensureAudio(); ensureMedia(); }
+    computeTimeline(); buildStrip(); buildTimeline(); updateScaleNote();
+    select(Math.min(sel, project.scenes.length - 1));
+    buildInfoPane(); buildLyricPane(); buildFilePane(); updateAudioInfo();
+    lastSnap = clone(project); dirty = true;
+    save();
+  } finally { histMute = false; }
+  updateHistButtons();
+}
+async function undo() {
+  if (exporting) return;
+  commitNow();
+  const e = undoStack.pop();
+  if (!e) { toast('되돌릴 작업이 없어요'); return; }
+  redoStack.push(e);
+  await applyHistory(e.before, e.keys);
+  toast('실행 취소했어요');
+}
+async function redo() {
+  if (exporting) return;
+  commitNow();
+  const e = redoStack.pop();
+  if (!e) { toast('다시 실행할 작업이 없어요'); return; }
+  undoStack.push(e);
+  await applyHistory(e.after, e.keys);
+  toast('다시 실행했어요');
+}
+$('undoBtn').onclick = undo;
+$('redoBtn').onclick = redo;
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const isZ = e.code === 'KeyZ' || (e.key || '').toLowerCase() === 'z';
+  const isY = e.code === 'KeyY' || (e.key || '').toLowerCase() === 'y';
+  if (!isZ && !isY) return;
+  const a = document.activeElement;
+  if (a && /INPUT|TEXTAREA/.test(a.tagName) && !/range|checkbox|radio/.test(a.type || '')) return; // 글씨 칸 안에서는 브라우저 기본 되돌리기
+  if (!$('modal').hidden || !$('lobby').hidden) return;
+  e.preventDefault();
+  if ((isZ && e.shiftKey) || isY) redo(); else undo();
+});
+
+/* ---------------- wiring ---------------- */
+$('playBtn').onclick = () => { if (exporting) return; if (abuf) getCtx(); playing ? pause() : play(); };
+const tl = $('timeline');
+function tlSeek(e) {
+  const r = tl.getBoundingClientRect(); const T = clamp((e.clientX - r.left) / r.width) * total;
+  seek(T); const i = sceneAt(T); if (i !== sel) select(i);
+}
+tl.addEventListener('pointerdown', e => { if (exporting) return; tl.setPointerCapture(e.pointerId); tlSeek(e); tl.onpointermove = tlSeek; });
+tl.addEventListener('pointerup', () => { tl.onpointermove = null; });
+tl.addEventListener('keydown', e => {
+  if (exporting) return;
+  if (e.key === 'ArrowRight') { seek(curT + 2); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { seek(curT - 2); e.preventDefault(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(document.activeElement.tagName) && !exporting) { e.preventDefault(); playing ? pause() : play(); }
+  if (e.key === 'Escape' && !exporting && !$('modal').hidden) $('modal').hidden = true;
+});
+
+(async function init() {
+  if (CUSTOMER) { $('brandSub').textContent = '우리만의 식전영상 만들기'; document.title = '식전영상 만들기'; }
+  buildTabs();
+  BASE_TPL = await fetchTemplate();
+  project = normalize(defaultProject()); computeTimeline(); render(PR, 0, true);
+  if (TEAM) {
+    buildStrip(); buildTimeline(); updateScaleNote(); select(0); buildInfoPane(); buildLyricPane(); buildFilePane();
+    requestAnimationFrame(loop); initTeam(); return;
+  }
+  await restore();
+  computeTimeline(); buildStrip(); buildTimeline(); updateScaleNote(); select(0);
+  buildInfoPane(); buildLyricPane(); buildFilePane(); updateAudioInfo();
+  loadFontsFor(allText());
+  resetHistory();
+  if (document.fonts) document.fonts.ready.then(() => { project.scenes.forEach(s => queueThumb(s.id)); dirty = true; });
+  dirty = true; requestAnimationFrame(loop);
+})();
+})();
+</script>
+</body>
+</html>
