@@ -6,7 +6,7 @@
 <title>식전영상 에디터 – 클래식 모던</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&family=Pinyon+Script&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600&family=Nanum+Pen+Script&family=Great+Vibes&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&family=Pinyon+Script&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600&family=Nanum+Pen+Script&family=Great+Vibes&family=VT323&display=swap" rel="stylesheet">
 <style>
 :root{
   box-sizing:border-box;
@@ -255,6 +255,7 @@ const F = {
   script: px => `${px}px "Pinyon Script", "Nanum Myeongjo", cursive`,
   serif: (px, w = 300, it = true) => `${it ? 'italic ' : ''}${w} ${px}px "Cormorant Garamond", "Nanum Myeongjo", Georgia, serif`,
   kr: (px, w = 400) => `${w} ${px}px "Nanum Myeongjo", "AppleMyungjo", "Batang", serif`,
+  mono: px => `${px}px "VT323", "Share Tech Mono", ui-monospace, monospace`,
   ui: (px, w = 500) => `${w} ${px}px "IBM Plex Sans KR", system-ui, sans-serif`
 };
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -262,7 +263,7 @@ const ease = x => 1 - Math.pow(1 - x, 3);
 const fade = (t, s, len = 0.9) => ease(clamp((t - s) / len));
 const uid = () => Math.random().toString(36).slice(2, 10);
 const $ = id => document.getElementById(id);
-const FONTS = [['', '기본'], ['Nanum Myeongjo', '나눔명조'], ['Gowun Batang', '고운바탕'], ['Hahmlet', '함렛'], ['Gowun Dodum', '고운돋움'], ['Noto Sans KR', '노토 산스'], ['Nanum Pen Script', '나눔펜 손글씨'], ['Cormorant Garamond', 'Cormorant (영문)'], ['Pinyon Script', 'Pinyon Script (영문 필기체)'], ['Great Vibes', 'Great Vibes (영문 필기체)']];
+const FONTS = [['', '기본'], ['Nanum Myeongjo', '나눔명조'], ['Gowun Batang', '고운바탕'], ['Hahmlet', '함렛'], ['Gowun Dodum', '고운돋움'], ['Noto Sans KR', '노토 산스'], ['Nanum Pen Script', '나눔펜 손글씨'], ['Cormorant Garamond', 'Cormorant (영문)'], ['Pinyon Script', 'Pinyon Script (영문 필기체)'], ['Great Vibes', 'Great Vibes (영문 필기체)'], ['VT323', '캠코더 숫자 (영문)']];
 function withFont(font, fam) {
   if (!fam) return font;
   const px = +(/(\d+(?:\.\d+)?)px/.exec(font) || [0, 40])[1];
@@ -377,7 +378,7 @@ function makeR(S, canvas) {
   return { S, canvas, ctx: canvas.getContext('2d'), la, lb, LA: la.getContext('2d'), LB: lb.getContext('2d') };
 }
 let R = null;               // renderer being drawn
-let curScene = null, curIdx = -1;
+let curScene = null, curIdx = -1, curDur = 1;
 let hits = null, hitOn = false;
 let collectVideos = false;
 const usedVideos = new Map();
@@ -451,7 +452,8 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   }
   const sw = m.type === 'video' ? (m.el.videoWidth || m.w) : m.w;
   const sh = m.type === 'video' ? (m.el.videoHeight || m.h) : m.h;
-  const z = (o.zoom || 1) * (slot.z || 1);
+  const mv = motionOf(slot.mo, t);
+  const z = (mv ? mv.z : (o.zoom || 1)) * (slot.z || 1);
   const k = Math.max(w / sw, h / sh) * z;
   const dw = sw * k, dh = sh * k;
   const vertical = dh / h > dw / w;
@@ -459,9 +461,27 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
   if (z < 1 || ox || slot.oy != null) { c.fillStyle = o.dark ? '#000' : PAPER; c.fillRect(x, y, w, h); }
-  c.drawImage(m.el, x + w / 2 + ox * w - dw / 2, y + h / 2 + oy * h - dh / 2, dw, dh);
+  c.drawImage(m.el, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
   if (o.bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(x, y, w, h); }
   c.restore();
+}
+const MOTIONS = [['auto', '기본'], ['none', '멈춤'], ['in', '천천히 확대'], ['out', '천천히 축소'], ['left', '왼쪽으로 흐름'], ['right', '오른쪽으로 흐름'], ['up', '위로 흐름'], ['down', '아래로 흐름'], ['sway', '살짝 흔들림'], ['pulse', '숨 쉬듯 확대·축소']];
+const TRANS = [['dissolve', '부드럽게 겹치기'], ['cut', '바로 넘기기'], ['black', '검은 화면 거쳐'], ['white', '흰 화면 거쳐'], ['slide', '옆으로 밀기'], ['zoom', '확대되며 나타나기']];
+function motionOf(mo, t) {
+  if (!mo || mo === 'auto') return null;
+  const p = clamp(t / Math.max(curDur, 0.1)), TAU = Math.PI * 2;
+  switch (mo) {
+    case 'none': return { z: 1, x: 0, y: 0 };
+    case 'in': return { z: 1.02 + 0.10 * p, x: 0, y: 0 };
+    case 'out': return { z: 1.12 - 0.10 * p, x: 0, y: 0 };
+    case 'left': return { z: 1.12, x: 0.045 - 0.09 * p, y: 0 };
+    case 'right': return { z: 1.12, x: -0.045 + 0.09 * p, y: 0 };
+    case 'up': return { z: 1.12, x: 0, y: 0.045 - 0.09 * p };
+    case 'down': return { z: 1.12, x: 0, y: -0.045 + 0.09 * p };
+    case 'sway': return { z: 1.07, x: 0.012 * Math.sin(t * TAU / 6), y: 0.01 * Math.sin(t * TAU / 8 + 1) };
+    case 'pulse': return { z: 1.04 + 0.025 * Math.sin(t * TAU / 4), x: 0, y: 0 };
+  }
+  return null;
 }
 const kb = (t, d, amt = 0.06) => 1.02 + amt * clamp(t / Math.max(d, 0.1));
 
@@ -886,7 +906,52 @@ Object.assign(LAYOUTS, {
   }
 });
 
-['full', 'quote', 'framed'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+Object.assign(LAYOUTS, {
+  vignette3: {
+    name: '필름 프레임 3장', slots: 3, weight: 10, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1010, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      const fw = 560, fh = 720, g = 40, x0 = (W - (fw * 3 + g * 2)) / 2;
+      for (let i = 0; i < 3; i++) frame(c, s, i, x0 + i * (fw + g), 150, fw, fh, t, d, { bw: s.opts.bw, alpha: fade(t, i * 0.4, 1.1) });
+    }
+  },
+  cam: {
+    name: '캠코더 화면', slots: 1, weight: 10,
+    fields: [['tl', '왼쪽 위', 'PLAY'], ['rec', '녹화 표시', 'REC'], ['tr', '오른쪽 위', '--:--'], ['bl', '왼쪽 아래', 'SLP']],
+    opts: [['timecode', '타임코드', true], ['bw', '흑백', false]],
+    cap: () => [960, 985, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      const x = 36, y = 30, w = W - 72, h = H - 60, r = 64;
+      c.save(); rr(c, x, y, w, h, r); c.clip();
+      cover(c, s, 0, x, y, w, h, t, { bw: s.opts.bw, dark: true, zoom: kb(t, d, 0.04) });
+      const g = c.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, W * 0.62);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
+      c.fillStyle = g; c.fillRect(x, y, w, h);
+      c.restore();
+      c.save(); c.shadowColor = 'rgba(0,0,0,.95)'; c.shadowBlur = 40 * R.S; c.lineWidth = 34; c.strokeStyle = '#000';
+      rr(c, x - 17, y - 17, w + 34, h + 34, r + 17); c.stroke(); c.restore();
+      const mono = F.mono(60), a = fade(t, 0.3, 0.6), o = { sp: 4, shadow: 'rgba(0,0,0,.55)', blur: 6 };
+      txt(c, fill(s.texts.tl), 130, 135, mono, '#FFFFFF', a, { ...o, align: 'left', k: 'tl' });
+      const rec = fill(s.texts.rec);
+      txt(c, rec, 130, 220, mono, '#FFFFFF', a, { ...o, align: 'left', k: 'rec' });
+      if (rec && (t % 1) < 0.6) {
+        const st = getStyle('rec');
+        c.save(); c.font = withFont(mono, st.f); setSpacing(c, 4); const rw = c.measureText(rec).width;
+        c.globalAlpha = a; c.fillStyle = '#E5352B'; c.beginPath(); c.arc(130 + st.x + (rw + 26) * st.s, 222 + st.y, 10 * st.s, 0, Math.PI * 2); c.fill(); c.restore();
+      }
+      txt(c, fill(s.texts.tr), 1790, 135, mono, '#FFFFFF', a, { ...o, align: 'right', k: 'tr' });
+      txt(c, fill(s.texts.bl), 130, 955, mono, '#FFFFFF', a, { ...o, align: 'left', k: 'bl' });
+      if (s.opts.timecode) {
+        const T = t + 1, p2 = n => String(Math.floor(n)).padStart(2, '0');
+        txt(c, `00:${p2(T / 60)}:${p2(T % 60)}:${p2((T % 1) * 30)}`, 1790, 955, mono, '#FFFFFF', a, { ...o, align: 'right', k: 'tc' });
+      }
+    }
+  }
+});
+['full', 'quote', 'framed', 'cam'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 function makeScene(layout, over = {}) {
   const L = LAYOUTS[layout];
   const s = { id: uid(), layout, weight: L.weight, caption: '', texts: {}, opts: {}, media: [], tstyle: {} };
@@ -898,6 +963,7 @@ function makeScene(layout, over = {}) {
   if (over.weight) s.weight = over.weight;
   if (over.caption) s.caption = over.caption;
   if (over.bgc) s.bgc = over.bgc;
+  if (over.tr) s.tr = over.tr;
   if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
   return s;
 }
@@ -943,7 +1009,7 @@ function defaultProject() {
 }
 function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
-  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold })); });
+  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo })); });
   p.title = p.title || ''; p.audio = p.audio || null;
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
   return p;
@@ -1000,7 +1066,7 @@ function sceneAt(T) {
   for (let i = timeline.length - 1; i >= 0; i--) if (T >= timeline[i].start) return i;
   return 0;
 }
-const xfOf = i => Math.min(0.9, timeline[i].dur * 0.3);
+const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' ? 1.4 : 0.9, timeline[i].dur * 0.35); };
 function lyricAt(T) {
   if (!project.lyricsOn) return null;
   for (const l of project.lyrics) if (l.text && T >= l.start && T < l.end) return l;
@@ -1014,6 +1080,7 @@ const TR = makeR(1 / 6);
 function drawScene(c, i, t, hit) {
   const s = project.scenes[i]; if (!s) return;
   const L = LAYOUTS[s.layout], d = timeline[i].dur;
+  curDur = d;
   curScene = s; curIdx = i; hitOn = !!hit;
   curBgLum = (s.bgc && !L.bgHidden) ? colorLum(s.bgc) : null;
   c.save(); L.draw(c, s, t, d); c.restore();
@@ -1035,12 +1102,26 @@ function render(r, T, preview) {
   if (!project.scenes.length) { bg(c, '#000'); return; }
   const i = sceneAt(T), t = T - timeline[i].start, xf = xfOf(i);
   if (i > 0 && t < xf) {
-    drawScene(c, i - 1, timeline[i - 1].dur + t, false);
-    r.LA.setTransform(1, 0, 0, 1, 0, 0); r.LA.globalAlpha = 1; r.LA.globalCompositeOperation = 'source-over';
-    r.LA.clearRect(0, 0, r.la.width, r.la.height);
-    r.LA.setTransform(r.S, 0, 0, r.S, 0, 0);
-    drawScene(r.LA, i, t, preview);
-    c.save(); c.globalAlpha = ease(t / xf); c.drawImage(r.la, 0, 0, W, H); c.restore();
+    const tr = project.scenes[i].tr || 'dissolve', pr = t / xf, prevT = timeline[i - 1].dur + t;
+    if (tr === 'black' || tr === 'white') {
+      const col = tr === 'black' ? '0,0,0' : '255,255,255';
+      if (pr < 0.5) { drawScene(c, i - 1, prevT, false); c.fillStyle = `rgba(${col},${ease(pr * 2)})`; }
+      else { drawScene(c, i, t, preview); c.fillStyle = `rgba(${col},${1 - ease((pr - 0.5) * 2)})`; }
+      c.fillRect(0, 0, W, H);
+    } else {
+      const e = pr < 0.5 ? 2 * pr * pr : 1 - Math.pow(-2 * pr + 2, 2) / 2;
+      if (tr === 'slide') { c.save(); c.translate(-W * e, 0); drawScene(c, i - 1, prevT, false); c.restore(); }
+      else drawScene(c, i - 1, prevT, false);
+      r.LA.setTransform(1, 0, 0, 1, 0, 0); r.LA.globalAlpha = 1; r.LA.globalCompositeOperation = 'source-over';
+      r.LA.clearRect(0, 0, r.la.width, r.la.height);
+      r.LA.setTransform(r.S, 0, 0, r.S, 0, 0);
+      drawScene(r.LA, i, t, preview);
+      c.save();
+      if (tr === 'slide') c.drawImage(r.la, W * (1 - e), 0, W, H);
+      else if (tr === 'zoom') { const sc = 1.12 - 0.12 * e; c.globalAlpha = e; c.translate(W / 2, H / 2); c.scale(sc, sc); c.drawImage(r.la, -W / 2, -H / 2, W, H); }
+      else { c.globalAlpha = ease(pr); c.drawImage(r.la, 0, 0, W, H); }
+      c.restore();
+    }
   } else drawScene(c, i, t, preview);
   if (activeLyric) {
     const s = project.scenes[i], [x, y, st] = LAYOUTS[s.layout].cap(s), ly = activeLyric;
@@ -1384,6 +1465,9 @@ function buildScenePane() {
       ${BG_SW.map(c => `<button type="button" class="swb${s.bgc === c ? ' on' : ''}" style="background:${c}" data-bg="${c}" aria-label="배경 ${c}"></button>`).join('')}
       <input type="color" id="fBg" value="${s.bgc || '#ffffff'}" aria-label="배경 색 직접 고르기"></div>
       <p class="hint">배경이 바뀌면 글씨 색도 잘 보이게 자동으로 바뀌어요. 원하는 색은 ‘글씨 꾸미기’에서 고를 수 있어요.</p></div>`}
+    <div class="group"><h3>효과</h3>
+      <label class="field"><span>이 장면으로 넘어올 때</span><select id="fTr">${TRANS.map(([k, n]) => `<option value="${k}" ${(s.tr || 'dissolve') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      ${L.slots ? `<label class="field"><span>이 장면 사진 움직임 한 번에 바꾸기 (사진마다 따로 고르려면 위 사진 칸에서)</span><select id="fMoAll"><option value="">골라주세요</option>${MOTIONS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>` : ''}</div>
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
       <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label>${styleCtl('caption', ts('caption'))}</div></div>
@@ -1400,6 +1484,13 @@ function buildScenePane() {
     if (v) s.bgc = v.toUpperCase(); else delete s.bgc;
     if (v && L.opts.some(o => o[0] === 'dark')) s.opts.dark = colorLum(v) < 0.5;
     sceneChanged(s); if (rebuild) buildScenePane();
+  };
+  p.querySelector('#fTr').onchange = e => { if (e.target.value === 'dissolve') delete s.tr; else s.tr = e.target.value; sceneChanged(s); };
+  if (p.querySelector('#fMoAll')) p.querySelector('#fMoAll').onchange = e => {
+    const v = e.target.value; if (!v) return;
+    s.media.forEach(m => { if (v === 'auto') delete m.mo; else m.mo = v; });
+    sceneChanged(s); buildSlots(s); e.target.value = '';
+    toast('이 장면 사진 움직임을 모두 바꿨어요');
   };
   p.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => setBg(b.dataset.bg, true));
   const fb = p.querySelector('#fBg'); if (fb) { fb.oninput = e => setBg(e.target.value, false); fb.onchange = e => setBg(e.target.value, true); }
@@ -1445,6 +1536,7 @@ function buildSlots(s) {
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
+        <label class="ctl"><span>움직임</span><select data-mo aria-label="사진 움직임" style="min-width:0;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--surface)">${MOTIONS.map(([k, n]) => `<option value="${k}" ${(slot.mo || 'auto') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         ${m.type === 'video' ? vidCtl(slot, m) : ''}
         <div class="row"><button class="x" data-r>되돌리기</button><button class="x" data-x>빼기</button></div></div>` : '<p class="hint" style="margin:0">눌러서 사진이나 영상을 넣어요.</p>'}`;
     d.querySelector('.slot-btn').onclick = () => pickSlot(s, i);
@@ -1455,6 +1547,7 @@ function buildSlots(s) {
         editSel = { type: 'media', si: i, idx: project.scenes.indexOf(s) }; sceneChanged(s);
       });
       d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; sceneChanged(s); buildSlots(s); };
+      d.querySelector('[data-mo]').onchange = e => { if (e.target.value === 'auto') delete slot.mo; else slot.mo = e.target.value; sceneChanged(s); };
       if (m.type === 'video') wireVid(d, s, slot, m);
       d.querySelector('[data-x]').onclick = () => { s.media[i] = { id: null }; sceneChanged(s); buildSlots(s); };
     }
@@ -1681,7 +1774,7 @@ async function saveFile(blob, filename) {
 function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
-    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc })),
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr })),
     lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text })), lyricsOn: project.lyricsOn, lstyle: project.lstyle
   };
 }
