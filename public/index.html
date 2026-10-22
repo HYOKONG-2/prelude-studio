@@ -954,7 +954,256 @@ Object.assign(LAYOUTS, {
     }
   }
 });
-['full', 'quote', 'framed', 'cam'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+function bgOf(def) { return (curScene && curScene.bgc && !LAYOUTS[curScene.layout].bgHidden) ? curScene.bgc : def; }
+function rgbaOf(hex, a) { const n = parseInt(String(hex).replace('#', '').slice(0, 6), 16) || 0; return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+const PEN = px => `400 ${px}px "Nanum Pen Script", "Nanum Myeongjo", serif`;
+Object.assign(LAYOUTS, {
+  letter: {
+    name: '편지', slots: 1, weight: 12,
+    fields: [['to', '받는 사람', 'To. 소중한 분들께'], ['text', '편지 내용', '바쁘신 와중에도 저희의 시작을\n함께해 주셔서 진심으로 감사합니다\n오늘의 마음을 오래 기억하며\n예쁘게 살아가겠습니다', true], ['from', '보내는 사람', 'From. {신랑} & {신부}']],
+    opts: [['typewriter', '타자 효과', true]],
+    cap: () => [960, 1030, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#F3EEE5');
+      c.save(); c.shadowColor = 'rgba(0,0,0,.12)'; c.shadowBlur = 30 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FFFDF8'; c.fillRect(300, 110, 1320, 860); c.restore();
+      const body = fill(s.texts.text), n = Math.max(1, body.split('\n').length), st = getStyle('text');
+      const base = 520 + st.y - (n - 1) * 36 * st.s + 34;
+      c.save(); c.strokeStyle = 'rgba(120,100,80,.16)'; c.lineWidth = 2;
+      for (let y = base - 72 * Math.floor((base - 270) / 72); y < 940; y += 72) { c.beginPath(); c.moveTo(380, y); c.lineTo(1540, y); c.stroke(); }
+      c.restore();
+      const cb = curBgLum; curBgLum = null;
+      txt(c, fill(s.texts.to), 400, 220, PEN(58), '#3A3634', fade(t, 0.3, 1), { align: 'left', k: 'to' });
+      const done = block(c, body, 960, 520, PEN(58), 72, '#3A3634', t, 1.0, d * 0.55, s.opts.typewriter, 'text');
+      txt(c, fill(s.texts.from), 1520, 885, PEN(58), '#3A3634', fade(t, done + 0.3, 1), { align: 'right', k: 'from' });
+      curBgLum = cb;
+      const a = fade(t, 0.6, 1);
+      if (a > 0.001) {
+        const ho = hitOn; hitOn = false;
+        c.save(); c.globalAlpha = a; c.translate(1560, 220); c.rotate(6 * Math.PI / 180);
+        c.save(); c.shadowColor = 'rgba(0,0,0,.2)'; c.shadowBlur = 20 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(-150, -150, 300, 340); c.restore();
+        cover(c, s, 0, -130, -130, 260, 260, t, { zoom: 1.02 });
+        c.save(); c.rotate(-10 * Math.PI / 180); c.fillStyle = 'rgba(232,222,196,.8)'; c.fillRect(-70, -178, 140, 46); c.restore();
+        c.restore(); hitOn = ho;
+        addHit({ type: 'media', si: 0, x: 1430, y: 90, w: 260, h: 260, oy: 0 });
+      }
+    }
+  },
+  magazine: {
+    name: '매거진 커버', slots: 1, weight: 10,
+    fields: [['top', '맨 위 작은 글씨', 'VOL. 01        {DATE}'], ['title', '제목', 'WEDDING'], ['l1', '작은 소제목', 'THE STORY OF'], ['l2', '큰 이름', '{GROOM} & {BRIDE}'], ['l3', '한글 문구', '우리가 함께 걸어온 시간']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1035, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1 + 0.06 * clamp(t / d) });
+      const g = c.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, 'rgba(0,0,0,.38)'); g.addColorStop(0.3, 'rgba(0,0,0,0)'); g.addColorStop(0.6, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.58)');
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
+      txt(c, fill(s.texts.top), 960, 60, F.serif(28, 400, false), 'rgba(255,255,255,.85)', fade(t, 0.3, 1), { sp: 6, k: 'top' });
+      txt(c, fill(s.texts.title), 960, 205, F.serif(210, 300, false), '#FFFFFF', fade(t, 0.6, 1.4), { sp: 34, k: 'title', rise: 10 });
+      txt(c, fill(s.texts.l1), 120, 800, F.serif(30, 500, false), 'rgba(255,255,255,.85)', fade(t, 1.4, 1), { align: 'left', sp: 8, k: 'l1' });
+      txt(c, fill(s.texts.l2), 120, 880, F.serif(80, 300, true), '#FFFFFF', fade(t, 1.7, 1.2), { align: 'left', k: 'l2' });
+      txt(c, fill(s.texts.l3), 120, 960, F.kr(34), 'rgba(255,255,255,.85)', fade(t, 2.1, 1), { align: 'left', k: 'l3' });
+    }
+  },
+  ticket: {
+    name: '웨딩 티켓', slots: 1, weight: 10,
+    fields: [['head', '머리말', 'WEDDING TICKET'], ['from', '출발', 'SEOUL'], ['to', '도착', 'FOREVER'], ['who', '탑승객', '{GROOM} & {BRIDE}'], ['when', '날짜', '{DATE}'], ['stub', '오른쪽 큰 글씨', 'ADMIT TWO']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1000, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#E9E4DC');
+      const a = fade(t, 0, 1.1), X = 190, Y = 250, TW = 1540, TH = 580, cut = X + 1100;
+      c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * 20);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 36 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFDF9'; rr(c, X, Y, TW, TH, 26); c.fill(); c.restore();
+      c.save(); rr(c, X, Y, TW, TH, 26); c.clip(); cover(c, s, 0, X, Y, 440, TH, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+      c.fillStyle = bgOf('#E9E4DC');
+      [Y, Y + TH].forEach(yy => { c.beginPath(); c.arc(cut, yy, 26, 0, Math.PI * 2); c.fill(); });
+      c.strokeStyle = 'rgba(0,0,0,.25)'; c.setLineDash([10, 10]); c.lineWidth = 2; c.beginPath(); c.moveTo(cut, Y + 40); c.lineTo(cut, Y + TH - 40); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#2A2725'; let sd = 7, bx = cut + 70;
+      while (bx < X + TW - 70) { sd = (sd * 9301 + 49297) % 233280; const w = 2 + (sd % 4); c.fillRect(bx, Y + 400, w, 110); bx += w + 3 + (sd % 3); }
+      c.restore();
+      const cb = curBgLum, mx = X + 500, sx = (cut + X + TW) / 2; curBgLum = null;
+      txt(c, fill(s.texts.head), mx, Y + 72, F.serif(30, 500, false), WINE, a, { align: 'left', sp: 8, k: 'head' });
+      txt(c, fill(s.texts.from), mx, Y + 175, F.serif(92, 300, false), INK, fade(t, 0.5, 1), { align: 'left', k: 'from' });
+      txt(c, '→  ' + fill(s.texts.to), mx, Y + 280, F.serif(92, 300, false), INK, fade(t, 0.8, 1), { align: 'left', k: 'to' });
+      txt(c, 'PASSENGER', mx, Y + 400, F.serif(22, 500, false), '#8A8580', fade(t, 1.1, 1), { align: 'left', sp: 4 });
+      txt(c, fill(s.texts.who), mx, Y + 450, F.serif(40, 400, true), INK, fade(t, 1.2, 1), { align: 'left', k: 'who' });
+      txt(c, 'DATE', mx, Y + 510, F.serif(22, 500, false), '#8A8580', fade(t, 1.3, 1), { align: 'left', sp: 4 });
+      txt(c, fill(s.texts.when), mx + 110, Y + 510, F.serif(30, 400, true), INK, fade(t, 1.4, 1), { align: 'left', k: 'when' });
+      txt(c, fill(s.texts.stub), sx, Y + 190, F.serif(54, 300, false), INK, fade(t, 1.0, 1), { sp: 6, k: 'stub' });
+      txt(c, fill('{DATE}'), sx, Y + 280, F.serif(28, 400, true), '#6A6461', fade(t, 1.2, 1));
+      curBgLum = cb;
+    }
+  },
+  booth: {
+    name: '포토부스 네 컷', slots: 4, weight: 10,
+    fields: [['under', '스트립 아래 글씨', '{DATE}'], ['title', '오른쪽 제목', '우리의 네 컷'], ['sub', '오른쪽 작은 글씨', '웃음이 많았던 날들']],
+    opts: [['dark', '검은 배경', true], ['bw', '흑백', false]],
+    cap: s => [1300, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#151413' : PAPER);
+      const sx = 400, sy = 40, sw = 420, sh = 1000, ph = 207, a = fade(t, 0, 1);
+      const ho = hitOn; hitOn = false;
+      c.save(); c.globalAlpha = a; c.translate(sx + sw / 2, sy + sh / 2 + (1 - a) * 24); c.rotate(-1.5 * Math.PI / 180);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 30 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(-sw / 2, -sh / 2, sw, sh); c.restore();
+      for (let i = 0; i < 4; i++) { c.save(); c.globalAlpha = a * fade(t, 0.3 + i * 0.3, 0.8); cover(c, s, i, -190, -sh / 2 + 20 + i * (ph + 14), 380, ph, t, { bw: s.opts.bw, zoom: 1.02 }); c.restore(); }
+      const cb = curBgLum; curBgLum = null;
+      txt(c, fill(s.texts.under), 0, sh / 2 - 48, PEN(46), '#3A3634', 1, { k: 'under' });
+      curBgLum = cb;
+      c.restore(); hitOn = ho;
+      for (let i = 0; i < 4; i++) addHit({ type: 'media', si: i, x: sx + 20, y: sy + 20 + i * (ph + 14), w: 380, h: ph, oy: 0 });
+      txt(c, fill(s.texts.title), 1300, 470, F.kr(70, 700), dk ? '#F2F0EE' : INK, fade(t, 1.2, 1.2), { rise: 12, k: 'title' });
+      txt(c, fill(s.texts.sub), 1300, 570, F.kr(36), dk ? 'rgba(255,255,255,.7)' : '#6A6461', fade(t, 1.7, 1), { k: 'sub' });
+    }
+  },
+  circle: {
+    name: '원형 프레임', slots: 1, weight: 10,
+    fields: [['title', '이름', '{GROOM}  &  {BRIDE}'], ['sub', '아래 글씨', '{DATE}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1040, 'light'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      const cx = 960, cy = 450, r = 320, a = fade(t, 0, 1.2);
+      c.save(); c.globalAlpha = a; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.clip();
+      cover(c, s, 0, cx - r, cy - r, 2 * r, 2 * r, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore();
+      const p = ease(clamp((t - 0.6) / 1.6));
+      if (p > 0) { c.save(); c.strokeStyle = autoCol(WINE); c.globalAlpha = 0.55; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, r + 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); c.stroke(); c.restore(); }
+      txt(c, fill(s.texts.title), 960, 870, F.serif(56, 300, true), INK, fade(t, 1.2, 1.2), { k: 'title' });
+      txt(c, fill(s.texts.sub), 960, 950, F.serif(30, 400, false), '#6A6461', fade(t, 1.6, 1), { sp: 6, k: 'sub' });
+    }
+  },
+  arch: {
+    name: '아치 창문', slots: 1, weight: 10,
+    fields: [['left', '왼쪽 필기체', 'Love'], ['right', '오른쪽 글씨', '{DATE}'], ['rsub', '오른쪽 작은 글씨', '{신랑} 그리고 {신부}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1040, 'light'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      const x = 660, y = 90, w = 600, h = 900, r = w / 2, a = fade(t, 0, 1.2);
+      c.save(); c.globalAlpha = a; c.beginPath(); c.moveTo(x, y + r); c.arc(x + r, y + r, r, Math.PI, 0); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.closePath(); c.clip();
+      cover(c, s, 0, x, y, w, h, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore();
+      c.save(); c.globalAlpha = a * 0.5; c.strokeStyle = autoCol(INK); c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(x - 20, y + r); c.arc(x + r, y + r, r + 20, Math.PI, 0); c.lineTo(x + w + 20, y + h + 20); c.lineTo(x - 20, y + h + 20); c.closePath(); c.stroke(); c.restore();
+      txt(c, fill(s.texts.left), 330, 540, F.script(120), WINE, fade(t, 0.9, 1.4), { k: 'left' });
+      txt(c, fill(s.texts.right), 1590, 510, F.serif(40, 400, true), INK, fade(t, 1.3, 1), { k: 'right' });
+      txt(c, fill(s.texts.rsub), 1590, 575, F.kr(30), '#6A6461', fade(t, 1.6, 1), { k: 'rsub' });
+    }
+  },
+  timeline: {
+    name: '우리의 타임라인', slots: 3, weight: 12,
+    fields: [['title', '제목 (필기체)', 'Our Timeline'], ['y1', '첫째 연도', '2019'], ['d1', '첫째 설명', '처음 만난 날'], ['y2', '둘째 연도', '2022'], ['d2', '둘째 설명', '함께 떠난 첫 여행'], ['y3', '셋째 연도', '2026'], ['d3', '셋째 설명', '우리의 결혼']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1040, 'light'],
+    draw(c, s, t, d) {
+      bg(c, PAPER);
+      txt(c, fill(s.texts.title), 960, 150, F.script(84), WINE, fade(t, 0.2, 1.2), { k: 'title' });
+      const p = ease(clamp((t - 0.5) / 2.2));
+      c.save(); c.strokeStyle = autoCol('#B9B2AA'); c.lineWidth = 2; c.beginPath(); c.moveTo(200, 760); c.lineTo(200 + 1520 * p, 760); c.stroke(); c.restore();
+      [400, 960, 1520].forEach((x, i) => {
+        const a = fade(t, 0.7 + i * 0.7, 1), yy = 300 + (1 - a) * 20;
+        if (a > 0.001) {
+          c.save(); c.globalAlpha = a; rr(c, x - 190, yy, 380, 400, 14); c.clip(); cover(c, s, i, x - 190, yy, 380, 400, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore();
+          c.save(); c.globalAlpha = a; c.fillStyle = autoCol(WINE); c.beginPath(); c.arc(x, 760, 11, 0, Math.PI * 2); c.fill(); c.restore();
+        }
+        txt(c, fill(s.texts['y' + (i + 1)]), x, 830, F.serif(48, 400, true), INK, a, { k: 'y' + (i + 1) });
+        txt(c, fill(s.texts['d' + (i + 1)]), x, 895, F.kr(32), '#5A5552', a, { k: 'd' + (i + 1) });
+      });
+    }
+  },
+  together: {
+    name: '함께한 날 (숫자)', slots: 0, weight: 8,
+    fields: [['meet', '처음 만난 날 (예: 2019년 4월 12일)', '2019년 4월 12일'], ['top', '위 문구', '처음 만난 날부터 예식 날까지'], ['unit', '숫자 뒤 글씨', '일'], ['sub', '아래 문구', '그리고 이제, 평생을 함께하려 합니다']],
+    opts: [['dark', '검은 배경', true]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : PAPER);
+      const col = dk ? '#F2F0EE' : INK, mut = dk ? 'rgba(255,255,255,.65)' : '#6A6461';
+      const a = parseKoDate(s.texts.meet), b = parseKoDate(project.info.dateKo);
+      const days = (a && b) ? Math.round((Date.UTC(b.y, b.mo - 1, b.d) - Date.UTC(a.y, a.mo - 1, a.d)) / 86400000) : 0;
+      const n = Math.round(days * ease(clamp((t - 0.8) / 2.2)));
+      txt(c, fill(s.texts.top), 960, 330, F.kr(40), mut, fade(t, 0.3, 1), { k: 'top' });
+      txt(c, (a && b) ? n.toLocaleString('ko-KR') + (s.texts.unit || '') : '날짜를 확인해 주세요', 960, 520, F.serif(200, 300, false), col, fade(t, 0.6, 0.8), { k: 'num' });
+      txt(c, fill(s.texts.sub), 960, 720, F.kr(42), col, fade(t, 3.2, 1.2), { rise: 10, k: 'sub' });
+    }
+  },
+  slideshow: {
+    name: '사진 넘기기 (3장)', slots: 3, weight: 9, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1005, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      const n = 3, seg = d / n, f = Math.min(0.7, seg * 0.3), k = Math.min(n - 1, Math.floor(t / seg));
+      const drawK = (i, alpha) => {
+        if (alpha <= 0.001) return;
+        const lt = t - i * seg, keep = curDur; curDur = seg;
+        c.save(); c.globalAlpha = alpha; cover(c, s, i, 0, 0, W, H, lt, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.06 * clamp(lt / seg) }); c.restore();
+        curDur = keep;
+      };
+      drawK(k, 1);
+      const nt = t - (k + 1) * seg;
+      if (k < n - 1 && nt > -f) drawK(k + 1, ease(clamp((nt + f) / f)));
+    }
+  },
+  credits: {
+    name: '엔딩 크레딧', slots: 0, weight: 16,
+    fields: [['title', '제목 (필기체)', 'Thank you'], ['text', '크레딧 내용 (줄마다)', '사랑으로 키워주신\n양가 부모님께 감사드립니다\n\n바쁘신 와중에도\n저희의 시작을 축하해 주시는\n모든 분들께 감사드립니다\n\n앞으로 서로 아끼며\n행복하게 살겠습니다\n\n{신랑} 그리고 {신부}', true]],
+    opts: [['dark', '검은 배경', true]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark, base = dk ? '#000000' : PAPER; bg(c, base);
+      const col = dk ? '#EDEBE8' : INK, ls = fill(s.texts.text).split('\n'), lh = 74, titleH = 230;
+      const totalH = titleH + ls.length * lh, p = clamp(t / Math.max(d - 1.2, 1));
+      const y0 = H + 40 - (H + totalH + 80) * p, st = getStyle('text');
+      c.save(); c.translate(st.x, st.y);
+      txt(c, fill(s.texts.title), 960, y0 + 90, F.script(110), dk ? ROSE : WINE, 1, {});
+      const font = withFont(F.kr(44), st.f);
+      ls.forEach((l, i) => { const y = y0 + titleH + i * lh; if (y > -60 && y < H + 60) txt(c, l, 960, y, font, st.c || col, 1, {}); });
+      c.restore();
+      const bgc = bgOf(base);
+      let g = c.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, rgbaOf(bgc, 1)); g.addColorStop(1, rgbaOf(bgc, 0)); c.fillStyle = g; c.fillRect(0, 0, W, 170);
+      g = c.createLinearGradient(0, H - 170, 0, H); g.addColorStop(0, rgbaOf(bgc, 0)); g.addColorStop(1, rgbaOf(bgc, 1)); c.fillStyle = g; c.fillRect(0, H - 170, W, 170);
+    }
+  },
+  invite: {
+    name: '청첩장 카드', slots: 1, weight: 11,
+    fields: [['top', '머리말', 'We are getting married'], ['names', '이름', '{신랑} 그리고 {신부}'], ['when', '날짜·시간', '{날짜} 오후 1시'], ['place', '장소', '○○웨딩홀 3층 그랜드홀']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1052, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#E9E4DC');
+      const a = fade(t, 0, 1.1), X = 600, Y = 50, CW = 720, CH = 980;
+      c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * 24);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.16)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 12 * R.S; c.fillStyle = '#FFFDF9'; c.fillRect(X, Y, CW, CH); c.restore();
+      c.strokeStyle = 'rgba(123,44,58,.35)'; c.lineWidth = 1.5; c.strokeRect(X + 22, Y + 22, CW - 44, CH - 44);
+      cover(c, s, 0, X + 50, Y + 50, CW - 100, 470, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
+      c.restore();
+      const cb = curBgLum; curBgLum = null;
+      txt(c, fill(s.texts.top), 960, Y + 600, F.serif(36, 400, true), WINE, fade(t, 0.8, 1), { k: 'top' });
+      txt(c, fill(s.texts.names), 960, Y + 690, F.kr(50, 700), INK, fade(t, 1.1, 1), { k: 'names' });
+      const la = fade(t, 1.3, 1); if (la > 0) { c.save(); c.globalAlpha = la * 0.4; c.fillStyle = INK; c.fillRect(960 - 30, Y + 742, 60, 1.5); c.restore(); }
+      txt(c, fill(s.texts.when), 960, Y + 795, F.kr(32), '#4A4643', fade(t, 1.5, 1), { k: 'when' });
+      txt(c, fill(s.texts.place), 960, Y + 850, F.kr(30), '#6A6461', fade(t, 1.8, 1), { k: 'place' });
+      curBgLum = cb;
+    }
+  }
+});
+const CATS = [
+  ['오프닝·문구', ['title', 'typing', 'chapter', 'together']],
+  ['사진 1장', ['full', 'vignette1', 'cinema', 'cam', 'framed', 'circle', 'arch', 'split', 'quote', 'magazine', 'profile']],
+  ['사진 여러 장', ['vignette2', 'vignette3', 'filmstrip', 'triptych', 'duo', 'grid4', 'mosaic5', 'polaroid', 'polaroid3', 'booth', 'slideshow', 'timeline']],
+  ['카드·소품', ['calendar', 'letter', 'ticket', 'invite']],
+  ['엔딩', ['ending', 'credits']]
+];
+function layoutOptions(selected) {
+  const used = new Set(); let h = '';
+  const opt = k => `<option value="${k}" ${k === selected ? 'selected' : ''}>${esc(LAYOUTS[k].name)}</option>`;
+  CATS.forEach(([n, ks]) => { const ok = ks.filter(k => LAYOUTS[k]); ok.forEach(k => used.add(k)); h += `<optgroup label="${n}">${ok.map(opt).join('')}</optgroup>`; });
+  const rest = Object.keys(LAYOUTS).filter(k => !used.has(k));
+  if (rest.length) h += `<optgroup label="기타">${rest.map(opt).join('')}</optgroup>`;
+  return h;
+}
+['full', 'quote', 'framed', 'cam', 'magazine', 'slideshow'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 function makeScene(layout, over = {}) {
   const L = LAYOUTS[layout];
   const s = { id: uid(), layout, weight: L.weight, caption: '', texts: {}, opts: {}, media: [], tstyle: {} };
@@ -1362,7 +1611,7 @@ function buildStrip() {
   });
   const as = $('addScene'); if (!as) return;
   as.hidden = CUSTOMER;
-  as.innerHTML = `<option value="">＋ 장면 추가 (선택한 장면 ${sel + 1} 뒤에)</option>${Object.entries(LAYOUTS).map(([k, L]) => `<option value="${k}">${esc(L.name)}</option>`).join('')}`;
+  as.innerHTML = `<option value="">＋ 장면 추가 (선택한 장면 ${sel + 1} 뒤에)</option>${layoutOptions('')}`;
   as.onchange = e => { const k = e.target.value; if (!k) return; project.scenes.splice(sel + 1, 0, makeScene(k)); changed(true); select(sel + 1); toast('장면을 추가했어요'); };
 }
 function buildTimeline() {
@@ -1458,7 +1707,7 @@ function buildScenePane() {
       <button class="btn small ghost" data-act="down" ${sel === project.scenes.length - 1 ? 'disabled' : ''}>뒤로</button>
       <button class="btn small ghost" data-act="dup">복제</button>
       <button class="btn small ghost" data-act="del">삭제</button>`}</div>
-    ${CUSTOMER ? '' : `<label class="field"><span>장면 구성</span><select id="fLayout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.layout ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>`}
+    ${CUSTOMER ? '' : `<label class="field"><span>장면 구성</span><select id="fLayout">${layoutOptions(s.layout)}</select></label>`}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
     ${L.bgHidden ? '' : `<div class="group"><h3>배경</h3><div class="bgrow">
