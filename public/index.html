@@ -385,7 +385,7 @@ let curScene = null, curIdx = -1, curDur = 1;
 let hits = null, hitOn = false;
 let collectVideos = false;
 const usedVideos = new Map();
-let activeLyric = null;
+let activeLyric = null, activeLyricA = 0;
 const DEF = { s: 1, x: 0, y: 0 };
 function getStyle(k) {
   if (k === 'lyrics') return project.lstyle || DEF;
@@ -647,15 +647,15 @@ const LAYOUTS = {
       c.save(); c.globalAlpha = fade(t, 0, 1.1);
       cover(c, s, 0, flip ? 1040 : 0, 0, 880, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
       c.restore();
-      const tx = flip ? 150 : 1010;
-      txt(c, fill(s.texts.eyebrow), tx, 320, F.script(76), WINE, fade(t, 0.6, 1.1), { align: 'left', k: 'eyebrow' });
-      txt(c, fill(s.texts.title), tx, 428, F.kr(62, 700), INK, fade(t, 1.0, 1.0), { align: 'left', rise: 10, k: 'title' });
-      const ra = fade(t, 1.4, 1.0), ts = getStyle('title');
-      if (ra > 0) { c.save(); c.globalAlpha = ra * 0.5; c.fillStyle = autoCol(INK); c.fillRect(tx + ts.x, 498 + ts.y + 38 * (ts.s - 1), 70 * ra * ts.s, 2); c.restore(); }
+      const tx = flip ? 910 : 1010, al = flip ? 'right' : 'left';
+      txt(c, fill(s.texts.eyebrow), tx, 320, F.script(76), WINE, fade(t, 0.6, 1.1), { align: al, k: 'eyebrow' });
+      txt(c, fill(s.texts.title), tx, 428, F.kr(62, 700), INK, fade(t, 1.0, 1.0), { align: al, rise: 10, k: 'title' });
+      const ra = fade(t, 1.4, 1.0), ts = getStyle('title'), rw = 70 * ra * ts.s;
+      if (ra > 0) { c.save(); c.globalAlpha = ra * 0.5; c.fillStyle = autoCol(INK); c.fillRect(flip ? tx + ts.x - rw : tx + ts.x, 498 + ts.y + 38 * (ts.s - 1), rw, 2); c.restore(); }
       let n = 0;
       ['line1', 'line2', 'line3'].forEach(k => {
         const l = fill(s.texts[k]); if (!l) return;
-        txt(c, l, tx, 588 + n * 84, F.kr(40), '#45413E', fade(t, 1.9 + n * 0.8, 1.0), { align: 'left', rise: 10, k }); n++;
+        txt(c, l, tx, 588 + n * 84, F.kr(40), '#45413E', fade(t, 1.9 + n * 0.8, 1.0), { align: al, rise: 10, k }); n++;
       });
     }
   },
@@ -1195,6 +1195,189 @@ const CATS = [
   ['카드·소품', ['calendar', 'letter', 'ticket', 'invite']],
   ['엔딩', ['ending', 'credits']]
 ];
+/* ---------------- photo frame decorations (per scene) ---------------- */
+const FRAMES = [['none', '없음'], ['line', '얇은 테두리'], ['double', '이중 테두리'], ['corners', '모서리 장식'], ['oval', '타원 라인'], ['ribbon', '손그림 + 리본'], ['wave', '물결 손그림 + 하트'], ['film', '필름 가장자리']];
+const FX_SW = ['#FFFFFF', '#222020', '#7B2C3A', '#B89B6A', '#F3E2E6'];
+function rrPoint(x, y, w, h, r, d) {
+  const sx = w - 2 * r, sy = h - 2 * r, q = Math.PI * r / 2;
+  const segs = [['L', x + r, y, 1, 0, sx, 0, -1], ['A', x + w - r, y + r, -Math.PI / 2], ['L', x + w, y + r, 0, 1, sy, 1, 0], ['A', x + w - r, y + h - r, 0],
+    ['L', x + w - r, y + h, -1, 0, sx, 0, 1], ['A', x + r, y + h - r, Math.PI / 2], ['L', x, y + h - r, 0, -1, sy, -1, 0], ['A', x + r, y + r, Math.PI]];
+  for (const sg of segs) {
+    const len = sg[0] === 'L' ? sg[5] : q;
+    if (d <= len) {
+      if (sg[0] === 'L') return [sg[1] + sg[3] * d, sg[2] + sg[4] * d, sg[6], sg[7]];
+      const ang = sg[3] + d / r; return [sg[1] + Math.cos(ang) * r, sg[2] + Math.sin(ang) * r, Math.cos(ang), Math.sin(ang)];
+    }
+    d -= len;
+  }
+  return [x + r, y, 0, -1];
+}
+function wobblyRect(c, x, y, w, h, r, amp, freq, seed) {
+  const per = 2 * (w + h - 4 * r) + 2 * Math.PI * r, N = Math.ceil(per / 6);
+  c.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const dd = i / N * per, [px, py, nx, ny] = rrPoint(x, y, w, h, r, dd);
+    const o = amp * Math.sin(dd * freq + seed) + amp * 0.45 * Math.sin(dd * freq * 2.3 + seed * 1.7);
+    if (i) c.lineTo(px + nx * o, py + ny * o); else c.moveTo(px + nx * o, py + ny * o);
+  }
+  c.closePath();
+}
+function drawBow(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  c.beginPath(); c.ellipse(-36, -2, 34, 18, -0.35, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.ellipse(36, -2, 34, 18, 0.35, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.arc(0, 0, 8, 0, Math.PI * 2); c.stroke();
+  c.beginPath(); c.moveTo(-4, 7); c.quadraticCurveTo(-14, 34, -30, 62); c.stroke();
+  c.beginPath(); c.moveTo(4, 7); c.quadraticCurveTo(14, 34, 32, 60); c.stroke();
+  c.restore();
+}
+function drawHeart(c, x, y, k) {
+  c.save(); c.translate(x, y); c.scale(k, k);
+  c.beginPath(); c.moveTo(0, 22); c.bezierCurveTo(-34, -2, -22, -30, 0, -12); c.bezierCurveTo(22, -30, 34, -2, 0, 22); c.stroke();
+  c.restore();
+}
+function drawSpark(c, x, y, r) {
+  c.beginPath(); c.moveTo(x, y - r); c.quadraticCurveTo(x, y, x + r, y); c.quadraticCurveTo(x, y, x, y + r); c.quadraticCurveTo(x, y, x - r, y); c.quadraticCurveTo(x, y, x, y - r); c.fill();
+}
+function drawFrameFx(c, s, t) {
+  const fx = s.fx; if (!fx || ((!fx.type || fx.type === 'none') && !fx.spark && !fx.text)) return;
+  const col = fx.color || '#FFFFFF', a = fade(t, 0.2, 1.2);
+  if (a <= 0.001) return;
+  c.save(); c.globalAlpha *= a; c.strokeStyle = col; c.fillStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
+  const sh = colorLum(col) > 0.6 ? 'rgba(0,0,0,.25)' : 'rgba(255,255,255,.25)';
+  c.shadowColor = sh; c.shadowBlur = 6 * R.S;
+  switch (fx.type) {
+    case 'line': c.lineWidth = 2.5; c.strokeRect(44, 44, W - 88, H - 88); break;
+    case 'double': c.lineWidth = 1.6; c.strokeRect(34, 34, W - 68, H - 68); c.strokeRect(52, 52, W - 104, H - 104); break;
+    case 'corners': {
+      c.lineWidth = 3; const m = 50, L = 110;
+      [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]].forEach(([x, y, sx, sy]) => { c.beginPath(); c.moveTo(x + sx * L, y); c.lineTo(x, y); c.lineTo(x, y + sy * L); c.stroke(); });
+      break;
+    }
+    case 'oval': {
+      c.lineWidth = 2.5; c.beginPath(); c.ellipse(960, 525, 865, 470, 0, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(95, 525, 7, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(1825, 525, 7, 0, Math.PI * 2); c.fill();
+      break;
+    }
+    case 'ribbon': {
+      c.lineWidth = 2.6; wobblyRect(c, 30, 34, W - 60, H - 68, 40, 2.2, 0.011, 1.3); c.stroke();
+      c.globalAlpha *= 0.55; c.lineWidth = 1.6; wobblyRect(c, 38, 42, W - 76, H - 84, 46, 2.6, 0.009, 4.1); c.stroke(); c.globalAlpha /= 0.55;
+      c.fillStyle = s.bgc && !LAYOUTS[s.layout].bgHidden ? s.bgc : 'rgba(0,0,0,0)';
+      c.lineWidth = 2.6; drawBow(c, 960, 40, 1.5);
+      break;
+    }
+    case 'wave': {
+      c.lineWidth = 3; wobblyRect(c, 26, 40, W - 52, H - 80, 120, 9, 0.006, 0.6); c.stroke();
+      c.lineWidth = 3; drawHeart(c, 960, 40, 1.6);
+      break;
+    }
+    case 'film': {
+      c.shadowColor = 'transparent';
+      c.fillStyle = '#121110'; c.fillRect(0, 0, W, 64); c.fillRect(0, H - 64, W, 64);
+      c.fillStyle = col; c.globalAlpha *= 0.85;
+      for (let x = 20; x < W; x += 62) { rr(c, x, 20, 30, 22, 5); c.fill(); rr(c, x, H - 42, 30, 22, 5); c.fill(); }
+      break;
+    }
+  }
+  if (fx.spark) {
+    c.shadowBlur = 8 * R.S; c.shadowColor = col;
+    let sd = 11;
+    for (let i = 0; i < 26; i++) {
+      sd = (sd * 9301 + 49297) % 233280; const x = 60 + (sd / 233280) * (W - 120);
+      sd = (sd * 9301 + 49297) % 233280; const y = 50 + (sd / 233280) * (H - 100);
+      sd = (sd * 9301 + 49297) % 233280; const ph = sd / 233280 * 6.28, r = 6 + (sd % 9);
+      const tw = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * 2.2 + ph));
+      c.save(); c.globalAlpha *= tw; drawSpark(c, x, y, r); c.restore();
+    }
+  }
+  c.restore();
+  if (fx.text) {
+    const y = fx.type === 'oval' ? 900 : fx.type === 'film' ? 130 : 44;
+    txt(c, fill(fx.text), 960, fx.type === 'wave' || fx.type === 'ribbon' ? 110 : y, F.script(fx.type === 'oval' ? 96 : 60), col, fade(t, 0.6, 1.2), { shadow: 'rgba(0,0,0,.3)', blur: 8, k: 'fxlabel' });
+  }
+}
+Object.assign(LAYOUTS, {
+  stack2: {
+    name: '위아래 두 장', slots: 2, weight: 9, fields: [],
+    opts: [['same', '두 칸 모두 첫 사진', false], ['bw', '흑백', false]],
+    cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000'); const g = 8, h = (H - g) / 2;
+      for (let i = 0; i < 2; i++) { c.save(); c.globalAlpha = fade(t, i * 0.4, 1); cover(c, s, s.opts.same ? 0 : i, 0, i * (h + g), W, h, t, { bw: s.opts.bw, dark: true, zoom: kb(t, d, 0.04) }); c.restore(); }
+    }
+  },
+  half2: {
+    name: '좌우 두 장 (꽉 차게)', slots: 2, weight: 9, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, PAPER); const g = 10, w = (W - g) / 2;
+      for (let i = 0; i < 2; i++) { c.save(); c.globalAlpha = fade(t, i * 0.4, 1); cover(c, s, i, i * (w + g), 0, w, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); }
+    }
+  },
+  wide3: {
+    name: '가로 띠 세 장', slots: 3, weight: 10, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000'); const g = 8, h = (H - g * 2) / 3;
+      for (let i = 0; i < 3; i++) { c.save(); c.globalAlpha = fade(t, i * 0.35, 1); cover(c, s, i, 0, i * (h + g), W, h, t, { bw: s.opts.bw, dark: true, zoom: kb(t, d, 0.03) }); c.restore(); }
+    }
+  },
+  bigsmall: {
+    name: '큰 사진 + 작은 두 장', slots: 3, weight: 10, fields: [],
+    opts: [['flip', '큰 사진 오른쪽', false], ['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 1280 : 640, 1000, 'photo'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark, f = s.opts.flip; bg(c, dk ? '#000' : PAPER);
+      const big = [f ? 660 : 40, 40, 1220, 1000], sx = f ? 40 : 1280;
+      [big, [sx, 40, 600, 490], [sx, 550, 600, 490]].forEach((r, i) => { c.save(); c.globalAlpha = fade(t, i * 0.35, 1); cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.04) }); c.restore(); });
+    }
+  },
+  center: {
+    name: '가운데 작은 사진 + 글씨', slots: 1, weight: 9,
+    fields: [['title', '제목', '{신랑} 그리고 {신부}'], ['sub', '작은 글씨', '{DATE}']],
+    opts: [['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: s => [960, 1020, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : PAPER);
+      c.save(); c.globalAlpha = fade(t, 0, 1.2); cover(c, s, 0, 560, 130, 800, 540, t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.05) }); c.restore();
+      txt(c, fill(s.texts.title), 960, 780, F.kr(52, 700), dk ? '#F2F0EE' : INK, fade(t, 0.9, 1.1), { rise: 10, k: 'title' });
+      txt(c, fill(s.texts.sub), 960, 860, F.serif(34, 400, true), dk ? 'rgba(255,255,255,.7)' : '#6A6461', fade(t, 1.3, 1), { k: 'sub' });
+    }
+  },
+  diagonal: {
+    name: '사선으로 나눈 두 장', slots: 2, weight: 9, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF');
+      const top = 1110, bot = 810, g = 7;
+      c.save(); c.globalAlpha = fade(t, 0, 1); c.beginPath(); c.moveTo(0, 0); c.lineTo(top - g, 0); c.lineTo(bot - g, H); c.lineTo(0, H); c.closePath(); c.clip();
+      cover(c, s, 0, 0, 0, top, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+      c.save(); c.globalAlpha = fade(t, 0.4, 1); c.beginPath(); c.moveTo(top + g, 0); c.lineTo(W, 0); c.lineTo(W, H); c.lineTo(bot + g, H); c.closePath(); c.clip();
+      cover(c, s, 1, bot, 0, W - bot, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+    }
+  },
+  offset2: {
+    name: '겹친 사진 두 장', slots: 2, weight: 10, fields: [],
+    opts: [['dark', '검은 배경', false], ['bw', '흑백', false]],
+    cap: s => [960, 1030, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : PAPER);
+      c.save(); c.globalAlpha = fade(t, 0, 1.1); cover(c, s, 0, 180, 90, 980, 680, t, { bw: s.opts.bw, dark: dk, zoom: kb(t, d, 0.04) }); c.restore();
+      const a = fade(t, 0.7, 1.1);
+      if (a > 0.001) {
+        c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * 24);
+        c.save(); c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 36 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(1000, 360, 740, 600); c.restore();
+        cover(c, s, 1, 1018, 378, 704, 564, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) });
+        c.restore();
+      }
+    }
+  }
+});
+CATS[1][1].push('center');
+CATS[2][1].push('stack2', 'half2', 'wide3', 'bigsmall', 'diagonal', 'offset2');
 function layoutOptions(selected) {
   const used = new Set(); let h = '';
   const opt = k => `<option value="${k}" ${k === selected ? 'selected' : ''}>${esc(LAYOUTS[k].name)}</option>`;
@@ -1203,7 +1386,7 @@ function layoutOptions(selected) {
   if (rest.length) h += `<optgroup label="기타">${rest.map(opt).join('')}</optgroup>`;
   return h;
 }
-['full', 'quote', 'framed', 'cam', 'magazine', 'slideshow'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+['full', 'quote', 'framed', 'cam', 'magazine', 'slideshow', 'stack2', 'wide3', 'diagonal'].forEach(k => { if (LAYOUTS[k]) LAYOUTS[k].bgHidden = true; });
 function makeScene(layout, over = {}) {
   const L = LAYOUTS[layout];
   const s = { id: uid(), layout, weight: L.weight, caption: '', texts: {}, opts: {}, media: [], tstyle: {} };
@@ -1216,6 +1399,7 @@ function makeScene(layout, over = {}) {
   if (over.caption) s.caption = over.caption;
   if (over.bgc) s.bgc = over.bgc;
   if (over.tr) s.tr = over.tr;
+  if (over.fx) s.fx = JSON.parse(JSON.stringify(over.fx));
   if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
   return s;
 }
@@ -1336,10 +1520,11 @@ function drawScene(c, i, t, hit) {
   curScene = s; curIdx = i; hitOn = !!hit;
   curBgLum = (s.bgc && !L.bgHidden) ? colorLum(s.bgc) : null;
   c.save(); L.draw(c, s, t, d); c.restore();
+  c.save(); drawFrameFx(c, s, t); c.restore();
   if (s.caption) {
     const [x, y, st] = L.cap(s);
     let yo = 0;
-    if (activeLyric) yo = -((activeLyric.text.split('\n').length) * 52 + 18) * (project.lstyle.s || 1);
+    if (activeLyric && Math.abs(x - 960) < 200) yo = -((activeLyric.text.split('\n').length) * 52 + 18) * (project.lstyle.s || 1) * activeLyricA;
     caption(c, fill(s.caption), x, y + yo, st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption');
   }
   hitOn = false; curScene = null; curBgLum = null;
@@ -1351,6 +1536,7 @@ function render(r, T, preview) {
   collectVideos = preview || exportRT;
   if (collectVideos) usedVideos.clear();
   activeLyric = lyricAt(T);
+  activeLyricA = activeLyric ? Math.min(fade(T, activeLyric.start, 0.35), 1 - clamp((T - (activeLyric.end - 0.35)) / 0.35)) : 0;
   if (!project.scenes.length) { bg(c, '#000'); return; }
   const i = sceneAt(T), t = T - timeline[i].start, xf = xfOf(i);
   if (i > 0 && t < xf) {
@@ -1376,8 +1562,8 @@ function render(r, T, preview) {
     }
   } else drawScene(c, i, t, preview);
   if (activeLyric) {
-    const s = project.scenes[i], [x, y, st] = LAYOUTS[s.layout].cap(s), ly = activeLyric;
-    const a = Math.min(fade(T, ly.start, 0.35), 1 - clamp((T - (ly.end - 0.35)) / 0.35));
+    const s = project.scenes[i], st = LAYOUTS[s.layout].cap(s)[2], ly = activeLyric, x = 960, y = 1012;
+    const a = activeLyricA;
     curIdx = i; hitOn = preview;
     curBgLum = (s.bgc && !LAYOUTS[s.layout].bgHidden) ? colorLum(s.bgc) : null;
     const lst = curBgLum != null ? (curBgLum > 0.5 ? 'light' : 'photo') : (st === 'dark' ? 'photo' : st);
@@ -1719,6 +1905,10 @@ function buildScenePane() {
       <p class="hint">배경이 바뀌면 글씨 색도 잘 보이게 자동으로 바뀌어요. 원하는 색은 ‘글씨 꾸미기’에서 고를 수 있어요.</p></div>`}
     <div class="group"><h3>효과</h3>
       <label class="field"><span>이 장면으로 넘어올 때</span><select id="fTr">${TRANS.map(([k, n]) => `<option value="${k}" ${(s.tr || 'dissolve') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <label class="field"><span>사진 프레임 장식</span><select id="fFx">${FRAMES.map(([k, n]) => `<option value="${k}" ${((s.fx && s.fx.type) || 'none') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <div class="bgrow"><span class="hint" style="margin:0">프레임 색</span>${FX_SW.map(c => `<button type="button" class="swb${((s.fx && s.fx.color) || '#FFFFFF') === c ? ' on' : ''}" style="background:${c}" data-fxc="${c}" aria-label="프레임 색 ${c}"></button>`).join('')}<input type="color" id="fFxC" value="${(s.fx && s.fx.color) || '#ffffff'}" aria-label="프레임 색 직접 고르기"></div>
+      <div class="checks"><label><input type="checkbox" id="fFxSpark" ${s.fx && s.fx.spark ? 'checked' : ''}>반짝이 효과</label></div>
+      <div class="field"><label><span>프레임 글씨 (예: Our Wedding Day, 비워두면 없음)</span><input type="text" id="fFxT" value="${esc((s.fx && s.fx.text) || '')}"></label>${styleCtl('fxlabel', ts('fxlabel'))}</div>
       ${L.slots ? `<label class="field"><span>이 장면 사진 움직임 한 번에 바꾸기 (사진마다 따로 고르려면 위 사진 칸에서)</span><select id="fMoAll"><option value="">골라주세요</option>${MOTIONS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>` : ''}</div>
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
@@ -1737,6 +1927,13 @@ function buildScenePane() {
     if (v && L.opts.some(o => o[0] === 'dark')) s.opts.dark = colorLum(v) < 0.5;
     sceneChanged(s); if (rebuild) buildScenePane();
   };
+  const fxOf = () => s.fx || (s.fx = {});
+  const fxDone = () => { if (s.fx && (!s.fx.type || s.fx.type === 'none') && !s.fx.spark && !s.fx.text) delete s.fx; sceneChanged(s); };
+  p.querySelector('#fFx').onchange = e => { fxOf().type = e.target.value; fxDone(); };
+  p.querySelectorAll('[data-fxc]').forEach(b => b.onclick = () => { fxOf().color = b.dataset.fxc; p.querySelector('#fFxC').value = b.dataset.fxc; p.querySelectorAll('[data-fxc]').forEach(x => x.classList.toggle('on', x === b)); fxDone(); });
+  p.querySelector('#fFxC').oninput = e => { fxOf().color = e.target.value.toUpperCase(); p.querySelectorAll('[data-fxc]').forEach(x => x.classList.remove('on')); fxDone(); };
+  p.querySelector('#fFxSpark').onchange = e => { fxOf().spark = e.target.checked; fxDone(); };
+  p.querySelector('#fFxT').oninput = e => { fxOf().text = e.target.value; loadFontsFor(e.target.value); fxDone(); };
   p.querySelector('#fTr').onchange = e => { if (e.target.value === 'dissolve') delete s.tr; else s.tr = e.target.value; sceneChanged(s); };
   if (p.querySelector('#fMoAll')) p.querySelector('#fMoAll').onchange = e => {
     const v = e.target.value; if (!v) return;
@@ -2026,7 +2223,7 @@ async function saveFile(blob, filename) {
 function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
-    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr })),
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx })),
     lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text })), lyricsOn: project.lyricsOn, lstyle: project.lstyle
   };
 }
@@ -2176,7 +2373,7 @@ function createMp4(vw, vh, fps, audioKind) {
       if (audioKind === 'aac') {
         const asc = A.desc && A.desc.length ? A.desc : new Uint8Array([0x11, 0x90]);
         const dsi = cat([u8(5), u8(asc.length), asc]);
-        const dcd = cat([u8(4), u8(13 + dsi.length), u8(0x40), u8(0x15), u24(0), u32(192000), u32(192000), dsi]);
+        const dcd = cat([u8(4), u8(13 + dsi.length), u8(0x40), u8(0x15), u24(0), u32(320000), u32(256000), dsi]);
         const sl = cat([u8(6), u8(1), u8(2)]);
         const es = cat([u8(3), u8(3 + dcd.length + sl.length), u16(1), u8(0), dcd, sl]);
         entry = box('mp4a', ...head, fbox('esds', 0, 0, es));
@@ -2221,8 +2418,8 @@ async function pickVideoCfg(S) {
 }
 async function pickAudioCfg() {
   if (!window.AudioEncoder || !window.AudioData) return null;
-  for (const [codec, kind] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) {
-    const cfg = { codec, sampleRate: 48000, numberOfChannels: 2, bitrate: 192000 };
+  for (const [codec, kind] of [['mp4a.40.2', 'aac'], ['opus', 'opus']]) for (const bitrate of [320000, 256000, 192000]) {
+    const cfg = { codec, sampleRate: 48000, numberOfChannels: 2, bitrate };
     try { const r = await AudioEncoder.isConfigSupported(cfg); if (r.supported) return { cfg, kind }; } catch (e) {}
   }
   return null;
@@ -2236,7 +2433,14 @@ async function resample48(buf) {
   const g = oc.createGain(); s.connect(g); g.connect(oc.destination);
   if (total < buf.duration - 0.05) { const f0 = Math.max(0, end - 2); g.gain.setValueAtTime(1, f0); g.gain.linearRampToValueAtTime(0, end); }
   s.start(0);
-  return await new Promise((res, rej) => { const p = oc.startRendering(); if (p && p.then) p.then(res, rej); else oc.oncomplete = e => res(e.renderedBuffer); });
+  const out = await new Promise((res, rej) => { const p = oc.startRendering(); if (p && p.then) p.then(res, rej); else oc.oncomplete = e => res(e.renderedBuffer); });
+  // 음원 자체가 0dB를 넘는 부분이 있으면 인코딩 때 딱딱하게 잘리며 소리가 깨져요. 넘는 부분만 부드럽게 눌러줘요.
+  const K = 0.86, Rm = 1 - K;
+  for (let ch = 0; ch < out.numberOfChannels; ch++) {
+    const d = out.getChannelData(ch);
+    for (let i = 0; i < d.length; i++) { const v = d[i], av = v < 0 ? -v : v; if (av > K) d[i] = (v < 0 ? -1 : 1) * (K + Rm * Math.tanh((av - K) / Rm)) * 0.97; }
+  }
+  return out;
 }
 function videosAt(T) {
   const out = [], i = sceneAt(T);
@@ -2325,7 +2529,7 @@ function exportRealtime(S) {
     const tracks = [...ER.canvas.captureStream(30).getVideoTracks()];
     if (abuf) { getCtx(); if (dest) tracks.push(...dest.stream.getAudioTracks()); }
     let rec;
-    try { rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: S > 1 ? 30000000 : 12000000, audioBitsPerSecond: 192000 }); }
+    try { rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: S > 1 ? 30000000 : 12000000, audioBitsPerSecond: 256000 }); }
     catch (e) { return resolve(null); }
     const chunks = [];
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
