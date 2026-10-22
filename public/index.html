@@ -244,7 +244,7 @@ body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
 <input type="file" id="slotInput" accept="image/*,video/*" class="sr">
 <input type="file" id="bulkInput" accept="image/*,video/*" multiple class="sr">
 <input type="file" id="tplInput" accept=".json,application/json" class="sr">
-<input type="file" id="workInput" accept=".zip,application/zip,application/x-zip-compressed" class="sr">
+<input type="file" id="workInput" accept=".prelude,.zip,.json,application/zip,application/x-zip-compressed,application/json,application/octet-stream" multiple class="sr">
 
 <script>
 (() => {
@@ -2134,8 +2134,11 @@ function buildFilePane() {
   if (CUSTOMER) return;
   $('pane-file').innerHTML = `
     <h3 style="margin:0;font-size:13px">작업 파일</h3>
-    <p class="hint">사진, 영상, 음원, 글씨까지 모두 담긴 .zip 파일로 저장해요. 나중에 불러오면 그대로 이어서 편집할 수 있고, 다른 컴퓨터나 휴대폰에서도 열 수 있어요.</p>
+    <p class="hint">사진, 영상, 음원, 글씨까지 모두 담긴 작업 파일 하나(식전영상_신랑_신부_날짜.prelude)로 저장해요. 그 파일을 그대로 ‘작업 불러오기’로 열면 이어서 편집할 수 있어요. 나중에 불러오면 그대로 이어서 편집할 수 있고, 다른 컴퓨터나 휴대폰에서도 열 수 있어요.</p>
     <div class="row" style="margin-top:10px"><button class="btn small primary" id="workSave2">작업 저장</button><button class="btn small" id="workLoad">작업 불러오기</button></div>
+    <div class="group"><h3>직전 작업 되살리기</h3>
+      <p class="hint" id="bakInfo">작업 불러오기나 처음 상태로를 누르기 직전의 작업을 이 브라우저에 한 번 보관해요.</p>
+      <div class="row" style="margin-top:10px"><button class="btn small" id="bakRestore">직전 작업 되살리기</button></div></div>
     <div class="group"><h3>음원</h3></div>
     <p class="hint" id="audioInfo"></p>
     <div class="row" style="margin-top:10px"><label class="btn small"><input type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac" class="sr" id="audioInput2">음원 바꾸기</label>
@@ -2152,18 +2155,21 @@ function buildFilePane() {
   $('tplSave').onclick = saveTemplate;
   $('workSave2').onclick = saveWork;
   $('workLoad').onclick = () => { $('workInput').value = ''; $('workInput').click(); };
+  $('bakRestore').onclick = () => askReplace('직전 작업을 되살릴까요?', restoreBackup);
+  idbGet('bak:meta').then(m => { const el = $('bakInfo'); if (el && m) el.textContent = `보관된 작업: ${m.name || '이름 없음'} (${new Date(m.saved).toLocaleString('ko-KR')})`; });
   $('tplLoad').onclick = () => { $('tplInput').value = ''; $('tplInput').click(); };
   if ($('resetBtn')) $('resetBtn').onclick = askReset;
   updateAudioInfo();
   $('saveStatus').textContent = TEAM ? '작업 내용은 서버에 자동 저장되고, 함께 쓰는 사람 화면에도 몇 초 안에 반영돼요.' : storageOK ? '작업 내용은 이 브라우저에 자동 저장돼요.' : '이 브라우저에서는 자동 저장을 쓸 수 없어요. 창을 닫기 전에 영상을 만들어 두세요.';
 }
 function askReset() {
-  ask('처음 상태로 되돌릴까요?', '지금 작업한 사진, 글씨, 음원이 모두 지워져요.', [['취소'], ['되돌리기', true, async () => {
-    pause(); for (const k of (await idbKeys()) || []) await idbDel(k);
+  askReplace('처음 상태로 되돌릴까요?', async () => {
+    pause(); await backupCurrent();
+    for (const k of (await idbKeys()) || []) if (!(typeof k === 'string' && k.startsWith('bak:'))) await idbDel(k);
     for (const id in media) { if (media[id].url.startsWith('blob:')) URL.revokeObjectURL(media[id].url); delete media[id]; }
     abuf = null; peaks = null; audioName = '';
-    project = defaultProject(); sel = 0; curT = 0; onAudioReady(); buildInfoPane(); buildLyricPane(); resetHistory(); toast('처음 상태로 되돌렸어요');
-  }]]);
+    project = defaultProject(); sel = 0; curT = 0; onAudioReady(); buildInfoPane(); buildLyricPane(); resetHistory(); buildFilePane(); toast('처음 상태로 되돌렸어요');
+  });
 }
 function updateAudioInfo() {
   const el = $('audioInfo'), chip = $('audioChip');
@@ -2887,22 +2893,53 @@ async function saveWork() {
     const zip = await makeZip(files, skipped);
     const d = new Date(), pad = n => String(n).padStart(2, '0');
     const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-    const name = `식전영상_작업파일_${project.info.groomKo || ''}_${project.info.brideKo || ''}_${stamp}.zip`.replace(/[\\/:*?"<>|]/g, '').replace(/__+/g, '_');
+    const ext = (window.claude && typeof window.claude.use === 'function') ? 'zip' : 'prelude';
+    const name = `식전영상_${project.info.groomKo || ''}_${project.info.brideKo || ''}_${stamp}.${ext}`.replace(/[\\/:*?"<>|]/g, '').replace(/__+/g, '_');
     const ok = await saveFile(zip, name);
+    if (ok) setTimeout(() => toast(`저장했어요: ${name}`), 50);
     if (ok && skipped.length) setTimeout(() => toast(`저장했어요. 다시 읽을 수 없는 파일 ${skipped.length}개는 빠졌어요. 그 칸만 다시 넣어주세요.`), 300);
-  } catch (e) { console.error(e); toast('작업 파일을 만들지 못했어요 (' + ((e && (e.name || e.message)) || '알 수 없는 오류') + '). 새로고침 후 다시 눌러주세요.'); }
+    return ok;
+  } catch (e) { console.error(e); toast('작업 파일을 만들지 못했어요 (' + ((e && (e.name || e.message)) || '알 수 없는 오류') + '). 새로고침 후 다시 눌러주세요.'); return false; }
   finally { workBusy = false; }
 }
-async function loadWork(file) {
-  let entries, meta;
+async function isZipFile(f) {
+  try { const b = new Uint8Array(await f.slice(0, 4).arrayBuffer()); return b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04; } catch (e) { return false; }
+}
+function entriesFromLoose(files) {
+  // 압축이 풀린 폴더의 파일들: project.json, media/아이디, audio/track
+  const m = new Map();
+  for (const f of files) {
+    const path = (f.relPath || f.webkitRelativePath || f.name || '').replace(/\\/g, '/');
+    const base = path.split('/').pop();
+    if (/^project\.json$/i.test(base)) m.set('project.json', { method: 0, blob: f });
+    else if (/(^|\/)audio\//.test(path) || /^track(\.\w+)?$/i.test(base)) m.set('audio/track', { method: 0, blob: f });
+    else m.set('media/' + base.replace(/\.[^.]+$/, ''), { method: 0, blob: f });
+  }
+  return m;
+}
+async function loadWork(input) {
+  const files = Array.isArray(input) ? input : [input];
+  let entries, meta, loose = false;
   try {
-    entries = await readZip(file);
+    const zipF = files.length === 1 ? files[0] : files.find(f => /\.(prelude|zip)$/i.test(f.name || ''));
+    if (zipF && await isZipFile(zipF)) entries = await readZip(zipF);
+    else { entries = entriesFromLoose(files); loose = true; }
     const pj = entries.get('project.json'); if (!pj) throw 0;
     meta = JSON.parse(await (await entryBlob(pj)).text());
     if (meta.kind !== 'prelude-project' || !meta.project) throw 0;
-  } catch (e) { toast('작업 파일을 읽지 못했어요. 이 에디터에서 저장한 .zip 파일을 골라주세요.'); return; }
+  } catch (e) { toast('작업 파일을 읽지 못했어요. 저장할 때 받은 작업 파일(.prelude 또는 .zip)을 그대로 골라주세요.'); return; }
+  const need = Object.keys(meta.media || {}).length + (meta.audio ? 1 : 0);
+  const have = Object.keys(meta.media || {}).filter(id => entries.has('media/' + id)).length + (meta.audio && entries.has(meta.audio.file || 'audio/track') ? 1 : 0);
+  if (loose && need && have < need) {
+    const go = await new Promise(res => ask('사진 파일이 함께 필요해요', `압축이 풀린 project.json만으로는 사진과 음원을 불러올 수 없어요 (${need}개 중 ${have}개 찾음). 원래 저장한 작업 파일을 고르거나, 압축이 풀린 폴더를 통째로 화면에 끌어다 놓아주세요. 글씨와 장면 구성만 먼저 불러올까요?`, [['취소', false, () => res(false)], ['글씨만 불러오기', true, () => res(true)]]));
+    if (!go) return;
+  }
+  await applyWork(entries, meta);
+}
+async function applyWork(entries, meta) {
   pause(); workBusy = true; toast('작업 파일을 불러오는 중이에요');
   try {
+    await backupCurrent();
     for (const id in media) { if (media[id].url.startsWith('blob:')) URL.revokeObjectURL(media[id].url); delete media[id]; }
     if (idb) { for (const k of (await idbKeys()) || []) if (typeof k === 'string' && k.startsWith('media:')) await idbDel(k); }
     let bad = 0;
@@ -2915,22 +2952,69 @@ async function loadWork(file) {
     project.scenes.forEach(s => s.media.forEach((m, k) => { if (m.id && !media[m.id]) s.media[k] = { id: null }; }));
     abuf = null; peaks = null; audioName = ''; audioBlob = null; idbDel('audio');
     sel = 0; curT = 0; editSel = null;
-    const ae = meta.audio && entries.get(meta.audio.file);
+    const ae = meta.audio && (entries.get(meta.audio.file) || entries.get('audio/track'));
     if (ae) {
       const b = await entryBlob(ae, meta.audio.mime);
       await loadAudioFile(new File([b], meta.audio.name || '음원', { type: meta.audio.mime || b.type || 'audio/mpeg' }), true);
     } else onAudioReady();
     buildInfoPane(); buildLyricPane(); loadFontsFor(allText()); save(); resetHistory();
     toast(bad ? `불러왔어요. 파일 ${bad}개는 열지 못했어요` : '작업 파일을 불러왔어요. 이어서 편집하세요');
+    buildFilePane();
   } finally { workBusy = false; }
+}
+/* 직전 작업 자동 보관: 불러오기나 처음 상태로를 누르기 직전 작업을 이 브라우저에 한 번 보관해요 */
+function workIsEmpty() { return !abuf && !project.scenes.some(s => s.media.some(m => m.id)); }
+async function backupCurrent() {
+  if (!idb || workIsEmpty()) return;
+  for (const k of (await idbKeys()) || []) if (typeof k === 'string' && k.startsWith('bak:')) await idbDel(k);
+  const ids = new Set(); project.scenes.forEach(s => s.media.forEach(m => m.id && ids.add(m.id)));
+  for (const id of ids) { const m = media[id]; if (m && m.blob) { try { await idbSet('bak:media:' + id, { blob: new Blob([await m.blob.arrayBuffer()], { type: m.blob.type }), type: m.type }); } catch (e) {} } }
+  if (abuf && audioBlob) { try { await idbSet('bak:audio', { blob: new Blob([await audioBlob.arrayBuffer()], { type: audioBlob.type }), name: audioName }); } catch (e) {} }
+  await idbSet('bak:project', clone(project));
+  await idbSet('bak:meta', { saved: Date.now(), name: `${project.info.groomKo || ''} ${project.info.brideKo || ''}`.trim() });
+}
+async function restoreBackup() {
+  if (!idb) { toast('이 브라우저에서는 직전 작업을 보관할 수 없어요'); return; }
+  const bp = await idbGet('bak:project');
+  if (!bp) { toast('되살릴 직전 작업이 없어요'); return; }
+  const entries = new Map(), mediaIdx = {};
+  for (const k of (await idbKeys()) || []) {
+    if (typeof k === 'string' && k.startsWith('bak:media:')) {
+      const r = await idbGet(k);
+      if (r && r.blob) { const id = k.slice(10); entries.set('media/' + id, { method: 0, blob: new Blob([await r.blob.arrayBuffer()], { type: r.blob.type }) }); mediaIdx[id] = { type: r.type, mime: r.blob.type || '' }; }
+    }
+  }
+  const ba = await idbGet('bak:audio'); let audio = null;
+  if (ba && ba.blob) { entries.set('audio/track', { method: 0, blob: new Blob([await ba.blob.arrayBuffer()], { type: ba.blob.type }) }); audio = { name: ba.name, mime: ba.blob.type || '', file: 'audio/track' }; }
+  await applyWork(entries, { kind: 'prelude-project', project: bp, media: mediaIdx, audio });
+  toast('직전 작업을 되살렸어요. 방금 화면에 있던 작업은 다시 이 버튼으로 돌아갈 수 있어요');
+}
+function askReplace(title, proceed) {
+  const body = workIsEmpty() ? '지금 화면에는 저장할 사진이나 음원이 없어요.' : '지금 화면의 작업이 바뀌어요. 지금 작업도 나중에 이어서 하려면 먼저 작업 저장을 해주세요. (저장하지 않아도 ‘파일’ 탭의 ‘직전 작업 되살리기’로 한 번은 되돌릴 수 있어요)';
+  const acts = [['취소'], ['저장하지 않고 진행', false, proceed]];
+  if (!workIsEmpty()) acts.push(['작업 저장하고 진행', true, async () => { if (await saveWork()) proceed(); }]);
+  else acts[1][1] = true;
+  ask(title, body, acts);
 }
 $('saveWorkBtn').onclick = saveWork;
 $('workInput').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  ask('작업 파일을 불러올까요?', '지금 화면의 작업이 이 파일 내용으로 바뀌어요. 지금 작업이 필요하면 먼저 ‘작업 저장’을 눌러주세요.', [['취소'], ['불러오기', true, () => loadWork(f)]]);
+  const fs = [...e.target.files]; if (!fs.length) return;
+  askReplace('작업 파일을 불러올까요?', () => loadWork(fs));
 };
 
 /* ---------------- drag & drop files ---------------- */
+async function readEntries(entries) {
+  const out = [];
+  const walk = async (en, path) => {
+    if (en.isFile) { const f = await new Promise((res, rej) => en.file(res, rej)); f.relPath = path + f.name; out.push(f); }
+    else if (en.isDirectory) {
+      const rd = en.createReader(); let batch;
+      do { batch = await new Promise((res, rej) => rd.readEntries(res, rej)); for (const c of batch) await walk(c, path + en.name + '/'); } while (batch.length);
+    }
+  };
+  for (const en of entries) { try { await walk(en, ''); } catch (e) {} }
+  return out;
+}
 const isAudioFile = f => (f.type || '').startsWith('audio') || /\.(mp3|m4a|aac|wav|ogg|flac)$/i.test(f.name || '');
 const isMediaFile = f => /^(image|video)\//.test(f.type || '') || /\.(jpe?g|png|gif|webp|heic|mp4|mov|m4v|webm)$/i.test(f.name || '');
 let dragDepth = 0, hotEl = null;
@@ -2965,9 +3049,11 @@ window.addEventListener('drop', async e => {
   e.preventDefault();
   const tgt = dropTarget(e); endDrag();
   if (exporting || workBusy) return;
-  const all = [...e.dataTransfer.files];
-  const zip = all.find(f => /\.zip$/i.test(f.name || ''));
-  if (zip) { ask('작업 파일을 불러올까요?', '지금 화면의 작업이 이 파일 내용으로 바뀌어요. 지금 작업이 필요하면 먼저 ‘작업 저장’을 눌러주세요.', [['취소'], ['불러오기', true, () => loadWork(zip)]]); return; }
+  const dirEntries = [...(e.dataTransfer.items || [])].map(it => it.webkitGetAsEntry ? it.webkitGetAsEntry() : null).filter(Boolean);
+  let all = [...e.dataTransfer.files];
+  if (dirEntries.some(en => en.isDirectory)) all = await readEntries(dirEntries);
+  const isWork = all.find(f => /\.(prelude|zip)$/i.test(f.name || '')) || all.find(f => /^project\.json$/i.test(f.name || ''));
+  if (isWork) { askReplace('작업 파일을 불러올까요?', () => loadWork(all)); return; }
   const audio = all.find(isAudioFile);
   if (audio) { getCtx(); await loadAudioFile(audio); }
   const files = all.filter(isMediaFile);
