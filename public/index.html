@@ -6,7 +6,7 @@
 <title>식전영상 에디터 – 클래식 모던</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&family=Pinyon+Script&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600&family=Nanum+Pen+Script&family=Great+Vibes&family=VT323&family=Jua&family=Gaegu:wght@400;700&family=Pacifico&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@400;700&family=Pinyon+Script&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Hahmlet:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;600&family=Nanum+Pen+Script&family=Great+Vibes&family=VT323&family=Jua&family=Gaegu:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,700&display=swap" rel="stylesheet">
 <style>
 :root{
   box-sizing:border-box;
@@ -291,7 +291,7 @@ const ease = x => 1 - Math.pow(1 - x, 3);
 const fade = (t, s, len = 0.9) => ease(clamp((t - s) / len));
 const uid = () => Math.random().toString(36).slice(2, 10);
 const $ = id => document.getElementById(id);
-const FONTS = [['', '기본'], ['Nanum Myeongjo', '나눔명조'], ['Gowun Batang', '고운바탕'], ['Hahmlet', '함렛'], ['Gowun Dodum', '고운돋움'], ['Noto Sans KR', '노토 산스'], ['Nanum Pen Script', '나눔펜 손글씨'], ['Cormorant Garamond', 'Cormorant (영문)'], ['Pinyon Script', 'Pinyon Script (영문 필기체)'], ['Great Vibes', 'Great Vibes (영문 필기체)'], ['VT323', '캠코더 숫자 (영문)'], ['Jua', '주아 (둥근 귀여운 글씨)'], ['Gaegu', '개구 (귀여운 손글씨)'], ['Pacifico', 'Pacifico (영문 귀여운 필기체)']];
+const FONTS = [['', '기본'], ['Nanum Myeongjo', '나눔명조'], ['Gowun Batang', '고운바탕'], ['Hahmlet', '함렛'], ['Gowun Dodum', '고운돋움'], ['Noto Sans KR', '노토 산스'], ['Nanum Pen Script', '나눔펜 손글씨'], ['Cormorant Garamond', 'Cormorant (영문)'], ['Pinyon Script', 'Pinyon Script (영문 필기체)'], ['Great Vibes', 'Great Vibes (영문 필기체)'], ['VT323', '캠코더 숫자 (영문)'], ['Jua', '주아 (둥근 귀여운 글씨)'], ['Gaegu', '개구 (귀여운 손글씨)'], ['Pacifico', 'Pacifico (영문 귀여운 필기체)'], ['Playfair Display', 'Playfair (영문 굵은 세리프)']];
 function withFont(font, fam) {
   if (!fam) return font;
   const px = +(/(\d+(?:\.\d+)?)px/.exec(font) || [0, 40])[1];
@@ -578,31 +578,54 @@ function block(c, s, cx, cy, font, lh, color, t, start, maxDur, typing, key, alp
   }
   return start + dur;
 }
-function caption(c, s, x, y, style, a, key, px = 40, fx = '') {
-  if (!s || a <= 0.001) return;
-  const ls = s.split('\n'), lh = px * 1.45, st = getStyle(key);
+function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub = '') {
+  if ((!s && !sub) || a <= 0.001) return;
+  const ls = (s || '').split('\n'), lh = px * 1.45, st = getStyle(key);
+  const col1 = (cols && cols[0]) || st.c || null, col2 = (cols && cols[1]) || null, subH = sub ? px * 1.05 : 0;
   c.save(); c.translate(x + st.x, y + st.y); c.scale(st.s, st.s);
   c.globalAlpha *= a * (style === 'dark' ? 0.92 : 1);
+  c.save(); c.translate(0, -subH);
   c.font = st.f ? withFont(F.kr(px), st.f) : fx === 'hand' ? PEN(Math.round(px * 1.45)) : fx === 'cute' ? JUA(Math.round(px * 1.2)) : fx === 'movie' ? `600 ${px}px "Noto Sans KR", sans-serif` : fx === 'label' ? UIF(Math.round(px * 0.85), 500) : F.kr(px); c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
-  c.fillStyle = st.c || (style !== 'photo' && curBgLum != null ? (curBgLum > 0.5 ? '#3A3634' : '#F2F0EE') : (style === 'light' ? '#4A4643' : '#FFFFFF'));
+  c.fillStyle = col1 || (style !== 'photo' && curBgLum != null ? (curBgLum > 0.5 ? '#3A3634' : '#F2F0EE') : (style === 'light' ? '#4A4643' : '#FFFFFF'));
   if (style === 'photo' || fx === 'hand') { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14 * R.S * st.s; }
   let mw = 0;
   const drawLines = () => ls.forEach((l, i) => { c.fillText(l, 0, -(ls.length - 1 - i) * lh); mw = Math.max(mw, c.measureText(l).width); });
   if (fx === 'neon') {
-    c.fillStyle = st.c || '#FFE9F0'; c.shadowColor = '#FF4F88';
+    c.fillStyle = col1 || '#FFE9F0'; c.shadowColor = '#FF4F88';
     c.shadowBlur = 30 * R.S * st.s; drawLines(); c.shadowBlur = 10 * R.S * st.s; drawLines();
+  } else if (fx === 'bilingual' || fx === 'gold') {
+    const f1 = st.f ? withFont(F.kr(Math.round(px * 1.2)), st.f) : fx === 'gold' ? PLAYF(Math.round(px * 1.05), 700, true) : PEN(Math.round(px * 1.4));
+    const f2 = fx === 'gold' ? UIF(Math.round(px * 0.8), 700) : UIF(Math.round(px * 0.68), 400);
+    const lightBg = style === 'light' && fx !== 'gold';
+    const c1 = col1 || (fx === 'gold' ? '#EBC46B' : lightBg ? '#2E2A33' : '#FFFFFF'), c2 = col2 || (fx === 'gold' ? '#FFFFFF' : lightBg ? '#6B6460' : 'rgba(255,255,255,.92)');
+    if (!lightBg) { c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = 10 * R.S * st.s; } else c.shadowColor = 'transparent';
+    const lh2 = px * 1.3, y0 = -(ls.length - 1) * lh2;
+    ls.forEach((l, i) => { c.font = i ? f2 : f1; c.fillStyle = i ? c2 : c1; c.fillText(l, 0, y0 + i * lh2); mw = Math.max(mw, c.measureText(l).width); });
   } else if (fx === 'label') {
     c.save(); c.shadowColor = 'transparent'; c.fillStyle = 'rgba(60,52,52,.58)';
     ls.forEach((l, i) => { const w2 = c.measureText(l).width, yy = -(ls.length - 1 - i) * lh; rr(c, -w2 / 2 - 20, yy - px * 0.62, w2 + 40, px * 1.24, 8); c.fill(); }); c.restore();
-    c.fillStyle = st.c || '#FFFFFF'; c.shadowColor = 'transparent'; drawLines();
+    c.fillStyle = col1 || '#FFFFFF'; c.shadowColor = 'transparent'; drawLines();
   } else if (fx === 'cute' || fx === 'movie') {
     c.save(); c.shadowColor = 'transparent'; c.lineJoin = 'round';
     c.strokeStyle = fx === 'cute' ? '#FF7FA3' : 'rgba(0,0,0,.85)'; c.lineWidth = fx === 'cute' ? 11 : 6;
     ls.forEach((l, i) => c.strokeText(l, 0, -(ls.length - 1 - i) * lh)); c.restore();
-    c.fillStyle = st.c || '#FFFFFF'; c.shadowColor = 'transparent'; drawLines();
+    c.fillStyle = col1 || '#FFFFFF'; c.shadowColor = 'transparent'; drawLines();
   } else drawLines();
   c.restore();
-  const hh = (ls.length - 1) * lh + px * 1.4;
+  if (sub) {
+    const sp = Math.round(px * (fx === 'gold' ? 0.8 : 0.72));
+    c.font = st.f ? withFont(UIF(sp, 600), st.f) : UIF(sp, fx === 'gold' ? 700 : 600); c.textAlign = 'center'; c.textBaseline = 'middle';
+    const lightBg = style === 'light' && !['gold', 'neon', 'cute', 'movie', 'label'].includes(fx);
+    const sc = col2 || (lightBg ? '#6B6460' : '#FFFFFF');
+    c.shadowColor = 'transparent';
+    if (fx === 'label') { const w2 = c.measureText(sub).width; c.fillStyle = 'rgba(60,52,52,.58)'; rr(c, -w2 / 2 - 18, -sp * 0.65, w2 + 36, sp * 1.3, 8); c.fill(); }
+    else if (fx === 'cute' || fx === 'movie') { c.save(); c.lineJoin = 'round'; c.strokeStyle = fx === 'cute' ? '#FF7FA3' : 'rgba(0,0,0,.85)'; c.lineWidth = fx === 'cute' ? 8 : 5; c.strokeText(sub, 0, 0); c.restore(); }
+    else if (fx === 'neon') { c.shadowColor = '#FF4F88'; c.shadowBlur = 18 * R.S * st.s; }
+    else if (!lightBg) { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 10 * R.S * st.s; }
+    c.fillStyle = sc; c.fillText(sub, 0, 0); mw = Math.max(mw, c.measureText(sub).width);
+  }
+  c.restore();
+  const hh = (ls.length - 1) * lh + px * 1.4 + subH;
   addHit({ type: 'text', key, x: x + st.x - (mw / 2 + 10) * st.s, y: y + st.y - (hh - px * 0.7) * st.s, w: (mw + 20) * st.s, h: hh * st.s });
 }
 
@@ -1191,8 +1214,8 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       const dk = s.opts.dark, base = dk ? '#000000' : PAPER; bg(c, base);
       const col = dk ? '#EDEBE8' : INK, ls = fill(s.texts.text).split('\n'), lh = 74, titleH = 230;
-      const totalH = titleH + ls.length * lh, p = clamp(t / Math.max(d - 1.2, 1));
-      const y0 = H + 40 - (H + totalH + 80) * p, st = getStyle('text');
+      const totalH = titleH + ls.length * lh, speed = Math.min(60, (totalH + 220) / Math.max(d - 1.5, 1));
+      const y0 = 600 - speed * Math.max(0, t - 0.4), st = getStyle('text');
       c.save(); c.translate(st.x, st.y);
       txt(c, fill(s.texts.title), 960, y0 + 90, F.script(110), dk ? ROSE : WINE, 1, {});
       const font = withFont(F.kr(44), st.f);
@@ -2138,6 +2161,200 @@ CATS[1][1].push('navphoto', 'petalphoto', 'checkprofile', 'centerphoto', 'focusb
 CATS[2][1].push('row3', 'wavyframe', 'doubleexp');
 CATS[4][1].push('memoend');
 ['navphoto', 'doubleexp'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+/* ---------------- G type (modern white + handwriting) & H type (editorial white) ---------------- */
+const PLAYF = (px, w = 800, it = false) => `${it ? 'italic ' : ''}${w} ${px}px "Playfair Display", "Cormorant Garamond", Georgia, serif`;
+function nFilled(s, def) { const n = s.media.filter(m => m.id).length; return n || def; }
+function roundCover(c, s, si, x, y, w, h, t, d, o = {}) {
+  const ho = hitOn; hitOn = false;
+  c.save(); rr(c, x, y, w, h, o.r == null ? 22 : o.r); c.clip(); cover(c, s, si, x, y, w, h, t, { bw: o.bw, dark: o.dark, zoom: o.zoom || kb(t, d, 0.04) }); c.restore();
+  hitOn = ho; addHit({ type: 'media', si, x, y, w, h, oy: 0 });
+}
+function edHead(c, s, t, col) { txt(c, fill(s.texts.head || ''), 960, 38, F.serif(26, 500, false), col || '#2A2A2A', fade(t, 0.2, 0.8), { sp: 3, k: 'head' }); }
+function edSides(c, s, t) {
+  const a = fade(t, 0.3, 0.8); if (a <= 0.001) return;
+  [[70, -1, s.texts.sideL], [W - 70, 1, s.texts.sideR]].forEach(([x, dir, str]) => {
+    const v = fill(str || ''); if (!v) return;
+    c.save(); c.globalAlpha *= a; c.translate(x, 540); c.rotate(dir * Math.PI / 2);
+    c.font = F.serif(22, 400, false); setSpacing(c, 1); c.fillStyle = autoCol('#555'); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(v, 0, 0); c.restore();
+  });
+}
+Object.assign(LAYOUTS, {
+  boldtype: {
+    name: '굵은 고딕 타자', slots: 0, weight: 4,
+    fields: [['text', '문구', '{날짜}', true]],
+    opts: [['dark', '검은 배경', false], ['typewriter', '한 글자씩 나오기', true]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : '#FFFFFF');
+      block(c, fill(s.texts.text), 960, 540, UIF(60, 700), 86, dk ? '#FFFFFF' : '#141414', t, 0.3, d * 0.6, s.opts.typewriter, 'text');
+    }
+  },
+  bigscript: {
+    name: '큰 손글씨 + 사진', slots: 1, weight: 5,
+    fields: [['text', '손글씨', '결혼합니다']],
+    opts: [['bw', '흑백', true]],
+    cap: () => [960, 1005, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.05 * clamp(t / d) });
+      const g = c.createRadialGradient(960, 540, 300, 960, 540, 1100); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      const p = ease(clamp((t - 0.5) / 1.4));
+      if (p > 0) { c.save(); c.beginPath(); c.rect(0, 0, 300 + 1320 * p, H); c.clip(); noBg(() => txt(c, fill(s.texts.text), 960, 560, PEN(280), '#FFFFFF', 1, { k: 'text', shadow: 'rgba(0,0,0,.35)', blur: 12 })); c.restore(); }
+    }
+  },
+  introcard: {
+    name: '소개 카드 (손글씨 이름)', slots: 1, weight: 6,
+    fields: [['label', '작은 글씨', '신랑'], ['name', '손글씨 이름', '{신랑}']],
+    opts: [['flip', '사진 왼쪽', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 1440 : 480, 1012, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA');
+      const f = s.opts.flip, sc = 0.94 + 0.06 * ease(clamp(t / 0.8));
+      c.save(); c.globalAlpha = fade(t, 0, 0.8); const x = f ? 60 : 1160, cx = x + 350;
+      c.translate(cx, 540); c.scale(sc, sc); c.translate(-cx, -540);
+      roundCover(c, s, 0, x, 40, 700, 1000, t, d, { bw: s.opts.bw, r: 26 }); c.restore();
+      const tx = f ? 1000 : 300;
+      txt(c, fill(s.texts.label), tx, 400, UIF(38, 800), '#141414', fade(t, 0.4, 0.6), { align: 'left', k: 'label' });
+      txt(c, fill(s.texts.name), tx - 6, 540, PEN(140), '#141414', fade(t, 1.0, 0.9), { align: 'left', k: 'name', rise: 10 });
+    }
+  },
+  roundphotos: {
+    name: '둥근 사진 1~3장 + 아래 자막', slots: 3, weight: 6, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1010, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA');
+      const filled = filledSlots(s), n = Math.min(3, nFilled(s, 3));
+      const R3 = n === 1 ? [[610, 50, 700, 820]] : n === 2 ? [[370, 50, 560, 820], [990, 50, 560, 820]] : [[40, 50, 600, 790], [660, 50, 600, 790], [1280, 50, 600, 790]];
+      R3.forEach((r, i) => { c.save(); c.globalAlpha = fade(t, i * 0.3, 0.8); roundCover(c, s, n < 3 && s.media.some(m => m.id) ? filled[i] : i, r[0], r[1], r[2], r[3], t, d, { bw: s.opts.bw }); c.restore(); });
+    }
+  },
+  sidephoto: {
+    name: '둥근 사진 + 옆 자막', slots: 1, weight: 6, fields: [],
+    opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 500 : 1420, 580, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA');
+      c.save(); c.globalAlpha = fade(t, 0, 0.8); roundCover(c, s, 0, s.opts.flip ? 980 : 40, 40, 900, 1000, t, d, { bw: s.opts.bw }); c.restore();
+    }
+  },
+  centercap: {
+    name: '풀사진 + 가운데 자막', slots: 1, weight: 5, fields: [],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 600, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.06 * clamp(t / d) });
+      c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(0, 0, W, H);
+    }
+  },
+  edtitle: {
+    name: '에디토리얼 타이틀', slots: 1, weight: 8,
+    fields: [['top', '맨 위 작은 글씨', 'HAPPY WEDDING DAY'], ['n1', '첫 이름', '{GROOM}'], ['and', '가운데 필기체', 'and'], ['n2', '둘째 이름', '{BRIDE}'], ['sub', '아래 글씨', 'The Beginning of Our Forever']],
+    opts: [['bw', '흑백', false], ['bars', '시작할 때 검은 띠 열림', true]],
+    cap: () => [960, 1010, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.05 * clamp(t / d) });
+      const g = c.createLinearGradient(0, H * 0.5, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      noBg(() => {
+        txt(c, fill(s.texts.top), 960, 40, F.serif(24, 500, false), 'rgba(255,255,255,.9)', fade(t, 0.4, 0.8), { sp: 4, k: 'top' });
+        const n1 = fill(s.texts.n1), an = fill(s.texts.and), n2 = fill(s.texts.n2), fN = F.serif(150, 500, false), fA = F.script(120);
+        c.save(); setSpacing(c, 6); c.font = fN; const w1 = c.measureText(n1).width, w2 = c.measureText(n2).width; setSpacing(c, 0); c.font = fA; const wa = an ? c.measureText(an).width + 50 : 30; c.restore();
+        let x = 960 - (w1 + wa + w2) / 2; const a = fade(t, 0.8, 1.4), y = 840;
+        txt(c, n1, x, y, fN, '#FFFFFF', a, { align: 'left', sp: 6, k: 'n1', rise: 14, shadow: 'rgba(0,0,0,.25)', blur: 10 });
+        txt(c, an, x + w1 + 25, y + 8, fA, '#FFFFFF', fade(t, 1.2, 1.2), { align: 'left', k: 'and' });
+        txt(c, n2, x + w1 + wa, y, fN, '#FFFFFF', a, { align: 'left', sp: 6, k: 'n2', rise: 14, shadow: 'rgba(0,0,0,.25)', blur: 10 });
+        txt(c, fill(s.texts.sub), 960, 950, F.serif(36, 400, false), 'rgba(255,255,255,.92)', fade(t, 1.6, 1), { k: 'sub' });
+      });
+      if (s.opts.bars) { const b = 150 * (1 - ease(clamp(t / 1.4))); if (b > 0.5) { c.fillStyle = '#000'; c.fillRect(0, 0, W, b); c.fillRect(0, H - b, W, b); } }
+    }
+  },
+  edphoto: {
+    name: '에디토리얼 사진 (머리말 + 세로 글씨)', slots: 2, weight: 6,
+    fields: [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['sideL', '왼쪽 세로 글씨', 'our love, our moment'], ['sideR', '오른쪽 세로 글씨', 'we’re getting married']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1010, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF');
+      const filled = filledSlots(s), n = nFilled(s, 2), any = s.media.some(m => m.id);
+      const RS = n === 1 ? [[330, 74, 1260, 1006]] : [[140, 74, 815, 1006], [965, 74, 815, 1006]];
+      RS.forEach((r, i) => { c.save(); c.globalAlpha = fade(t, i * 0.25, 0.8); cover(c, s, any ? filled[i] : i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); });
+      edHead(c, s, t); edSides(c, s, t);
+    }
+  },
+  edbooth: {
+    name: '에디토리얼 네 컷', slots: 4, weight: 6,
+    fields: [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['sideL', '왼쪽 세로 글씨', 'our love, our moment'], ['sideR', '오른쪽 세로 글씨', 'we’re getting married']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 940, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF');
+      [[240, 200, 330, 470], [610, 200, 330, 470], [980, 200, 330, 470], [1350, 200, 330, 470]].forEach((r, i) => { c.save(); c.globalAlpha = fade(t, i * 0.25, 0.7); cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: 1.02 }); c.restore(); });
+      edHead(c, s, t); edSides(c, s, t);
+    }
+  },
+  bigword: {
+    name: '큰 영문 키워드 + 사진', slots: 1, weight: 5,
+    fields: [['word', '큰 글씨', 'Will you marry me?'], ['head', '맨 위 이름', '{GROOM} & {BRIDE}']],
+    opts: [['bw', '흑백', true]],
+    cap: () => [960, 1000, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.04 * clamp(t / d) });
+      c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(0, 0, W, H);
+      noBg(() => {
+        edHead(c, s, t, 'rgba(255,255,255,.9)');
+        const a = fade(t, 0.3, 0.35), k = 1.12 - 0.12 * ease(clamp((t - 0.3) / 0.5));
+        if (a > 0) { c.save(); c.translate(960, 520); c.scale(k, k); c.translate(-960, -520); txt(c, fill(s.texts.word), 960, 520, PLAYF(150, 800), '#FFFFFF', a, { k: 'word', shadow: 'rgba(0,0,0,.3)', blur: 14 }); c.restore(); }
+      });
+    }
+  },
+  ednames: {
+    name: '신랑 신부 이름 (나란히 등장)', slots: 2, weight: 7,
+    fields: [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['l1', '왼쪽 작은 글씨', '신랑'], ['n1', '왼쪽 이름', '{신랑}'], ['l2', '오른쪽 작은 글씨', '신부'], ['n2', '오른쪽 이름', '{신부}']],
+    opts: [['bw', '흑백', false]],
+    cap: () => [960, 1010, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF'); edHead(c, s, t);
+      const t2 = d * 0.4;
+      c.save(); c.globalAlpha = fade(t, 0.2, 0.8); cover(c, s, 0, 392, 166, 543, 721, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore();
+      c.save(); c.globalAlpha = fade(t, t2, 0.8); cover(c, s, 1, 978, 166, 543, 721, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore();
+      txt(c, fill(s.texts.l1), 250, 540, UIF(24, 400), '#888', fade(t, 0.5, 0.6), { align: 'right', k: 'l1' });
+      txt(c, fill(s.texts.n1), 362, 540, UIF(36, 600), '#1E1E1E', fade(t, 0.6, 0.6), { align: 'right', k: 'n1' });
+      txt(c, fill(s.texts.l2), 1556, 540, UIF(24, 400), '#888', fade(t, t2 + 0.3, 0.6), { align: 'left', k: 'l2' });
+      txt(c, fill(s.texts.n2), 1612, 540, UIF(36, 600), '#1E1E1E', fade(t, t2 + 0.4, 0.6), { align: 'left', k: 'n2' });
+    }
+  },
+  edtext: {
+    name: '작은 고딕 문구', slots: 0, weight: 5,
+    fields: [['head', '맨 위 이름 (비워두면 없음)', '{GROOM} & {BRIDE}'], ['text', '문구', '저희의 소중한 순간을 함께해 주셔서\n진심으로 감사드립니다.', true]],
+    opts: [['dark', '검은 배경', false]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : '#FFFFFF'); edHead(c, s, t, dk ? 'rgba(255,255,255,.85)' : null);
+      block(c, fill(s.texts.text), 960, 540, UIF(36, 400), 58, dk ? '#F2F2F2' : '#555555', t, 0.4, 1, false, 'text');
+    }
+  },
+  thankyou: {
+    name: 'Thank You 엔딩', slots: 0, weight: 7,
+    fields: [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['title', '큰 글씨', 'Thank You'], ['sub', '아래 글씨', 'for Being Part of Our Story'], ['handle', '맨 아래 작은 글씨', '']],
+    opts: [['dark', '검은 배경', false]],
+    cap: s => [960, 1012, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark; bg(c, dk ? '#000' : '#FFFFFF'); edHead(c, s, t, dk ? 'rgba(255,255,255,.85)' : null);
+      const col = dk ? '#F2F2F2' : '#1E1E1E';
+      txt(c, fill(s.texts.title), 960, 450, F.serif(170, 500, false), col, fade(t, 0.4, 1.6), { k: 'title', rise: 12 });
+      txt(c, fill(s.texts.sub), 960, 585, F.serif(70, 400, false), col, fade(t, 1.0, 1.4), { k: 'sub' });
+      txt(c, fill(s.texts.handle), 960, 980, UIF(26, 400), '#999', fade(t, 1.6, 1), { k: 'handle' });
+    }
+  }
+});
+CATS[0][1].push('boldtype', 'bigscript', 'edtitle', 'edtext');
+CATS[1][1].push('introcard', 'sidephoto', 'centercap', 'bigword');
+CATS[2][1].push('roundphotos', 'edphoto', 'edbooth', 'ednames');
+CATS[4][1].push('thankyou');
+['bigscript', 'centercap', 'edtitle', 'bigword'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 function layoutOptions(selected) {
   const used = new Set(); let h = '';
   const opt = k => `<option value="${k}" ${k === selected ? 'selected' : ''}>${esc(LAYOUTS[k].name)}</option>`;
@@ -2337,13 +2554,191 @@ TEMPLATES.F = {
     makeScene('memoend', { weight: 8, texts: { text: '언제나 서로 아끼며\n알콩달콩 잘 살겠습니다!', sign: '' } })
   ], { lyricFx: 'label' })
 };
+const BIL = { capFx: 'bilingual' }, GOLD = { capFx: 'gold' };
+TEMPLATES.G = {
+  name: '모던 화이트 & 손글씨', desc: '하얀 바탕에 굵은 고딕 타자로 열고, 큰 손글씨 "결혼합니다", 둥근 사진과 영문 손글씨 + 한글 두 줄 자막으로 이어지는 깔끔한 구성',
+  tags: ['굵은 고딕 타자', '큰 손글씨', '둥근 사진', '두 줄 자막'], preview: 2,
+  make: () => baseProj('G', [
+    makeScene('boldtype', { weight: 3.5 }),
+    makeScene('boldtype', { weight: 3.5, texts: { text: '{신랑} & {신부}, 드디어' } }),
+    makeScene('bigscript', { weight: 4.5 }),
+    makeScene('centercap', { weight: 3.5, caption: '저희 결혼식에 오신 것을 환영해요' }),
+    makeScene('introcard', { weight: 5 }),
+    makeScene('introcard', { weight: 5, opts: { flip: true }, texts: { label: '신부', name: '{신부}' } }),
+    makeScene('roundphotos', { weight: 5, ...BIL, caption: 'Our little moments\n우리의 작은 순간들' }),
+    makeScene('roundphotos', { weight: 5, ...BIL, caption: 'Every day with you\n너와 함께한 모든 날' }),
+    makeScene('centercap', { weight: 4, ...BIL, caption: 'You make me smile\n너는 나를 웃게 해' }),
+    makeScene('sidephoto', { weight: 5, ...BIL, caption: 'Still my favorite\n여전히 가장 좋은 사람' }),
+    makeScene('roundphotos', { weight: 5, ...BIL, caption: 'Hand in hand\n두 손 꼭 잡고' }),
+    makeScene('sidephoto', { weight: 5, opts: { flip: true }, ...BIL, caption: 'My sunshine\n너는 나의 햇살' }),
+    makeScene('roundphotos', { weight: 5, ...BIL, caption: 'Side by side\n늘 곁에서' }),
+    makeScene('roundphotos', { weight: 4, opts: { bw: true }, ...BIL, caption: 'Just the two of us\n우리 둘이서' }),
+    makeScene('centercap', { weight: 5, ...BIL, caption: 'I knew it was you\n처음부터 너였어' }),
+    makeScene('centercap', { weight: 5, ...BIL, caption: 'Forever with you\n평생 너와 함께' }),
+    makeScene('centercap', { weight: 5, ...BIL, caption: 'This is our love\n이게 우리의 사랑' }),
+    makeScene('centercap', { weight: 5, caption: '받은 사랑 나누는 예쁜 부부 되겠습니다' }),
+    makeScene('edtext', { weight: 4, opts: { dark: true }, texts: { head: '', text: '받은 사랑 나누는 예쁜 부부 되겠습니다' } })
+  ], { lyricFx: 'bilingual' })
+};
+TEMPLATES.H = {
+  name: '에디토리얼 화이트', desc: '큰 세리프 이름 타이틀로 열고, 머리말과 세로 글씨가 있는 잡지 같은 사진 페이지, 큰 영문 키워드, 골드 자막, Thank You 엔딩으로 이어지는 세련된 구성',
+  tags: ['세리프 타이틀', '세로 글씨', '큰 영문 키워드', '골드 자막'], preview: 0,
+  make: () => baseProj('H', [
+    makeScene('edtitle', { weight: 6 }),
+    makeScene('edtitle', { weight: 5, opts: { bars: false } }),
+    makeScene('edtitle', { weight: 5, opts: { bars: false } }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'A wonderful way to spend a day\n함께라서 더 빛나는 하루' }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'Every little moment\n우리의 모든 작은 순간' }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'You and me\n너와 나' }),
+    makeScene('edbooth', { weight: 6, capFx: 'bilingual', caption: 'Our favorite days\n가장 좋아하는 날들' }),
+    makeScene('bigword', { weight: 5, opts: { bw: false }, texts: { word: 'Hello, my love' } }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'Just to make it right\n함께라면 모든 게 괜찮아' }),
+    makeScene('bigword', { weight: 5 }),
+    makeScene('edphoto', { weight: 6, opts: { bw: true }, ...GOLD, caption: 'One word, one love\n하나의 약속, 하나의 사랑' }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'Arms holding tight\n서로를 꼭 안고' }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'Side by side, every day\n매일 나란히' }),
+    makeScene('bigword', { weight: 5, opts: { bw: false }, texts: { word: 'Just say yes' } }),
+    makeScene('edphoto', { weight: 6, ...GOLD, caption: 'Forever starts today\n오늘부터 영원히' }),
+    makeScene('bigword', { weight: 5, texts: { word: 'Forever & Always' } }),
+    makeScene('edtext', { weight: 5 }),
+    makeScene('edtext', { weight: 4, texts: { text: '오늘의 기억을 오래도록 간직하며' } }),
+    makeScene('edtext', { weight: 4, texts: { text: '예쁘게, 그리고 행복하게 잘 살겠습니다.' } }),
+    makeScene('ednames', { weight: 8 }),
+    makeScene('thankyou', { weight: 8 })
+  ], { lyricFx: 'gold' })
+};
+/* ---------------- fuller default templates: ~40 scenes, 3–6 s each, about 3 minutes ---------------- */
+const FIXED_LONG = ['credits', 'ending', 'thankyou', 'confettiend', 'memoend', 'chat', 'letter'];
+function fitTotal(scenes, target = 180) {
+  const fixed = scenes.filter(s => FIXED_LONG.includes(s.layout)), rest = scenes.filter(s => !FIXED_LONG.includes(s.layout));
+  const fsum = fixed.reduce((n, s) => n + s.weight, 0), rsum = rest.reduce((n, s) => n + s.weight, 0) || 1;
+  const k = Math.max(0.1, (target - fsum) / rsum);
+  rest.forEach(s => { s.weight = Math.round(Math.min(6.5, Math.max(3, s.weight * k)) * 10) / 10; });
+  return scenes;
+}
+function cyc(list, n, w = 4.5, caps) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const it = list[i % list.length], [lay, over] = Array.isArray(it) ? it : [it, {}];
+    const o = JSON.parse(JSON.stringify(over || {}));
+    if (caps && o.capFx && !o.caption) o.caption = caps[i % caps.length];
+    out.push(makeScene(lay, { weight: w, ...o }));
+  }
+  return out;
+}
+const S_ = (lay, w, over = {}) => makeScene(lay, { ...over, weight: w });
+const BIL_CAPS = [['Our little moments', '우리의 작은 순간들'], ['Every day with you', '너와 함께한 모든 날'], ['You make me smile', '너는 나를 웃게 해'], ['Still my favorite', '여전히 가장 좋은 사람'], ['Hand in hand', '두 손 꼭 잡고'], ['My sunshine', '너는 나의 햇살'], ['Side by side', '늘 곁에서'], ['Just the two of us', '우리 둘이서'], ['I knew it was you', '처음부터 너였어'], ['Forever with you', '평생 너와 함께'], ['This is our love', '이게 우리의 사랑'], ['Always you', '언제나 너'], ['Our favorite days', '가장 좋아하는 날들'], ['Happy together', '함께라서 행복해']].map(a => a.join('\n'));
+const NO = { texts: { text: '' } };
+TEMPLATES.A.make = () => baseProj('A', fitTotal([
+  makeScene('title', { weight: 6.5 }),
+  S_('typing', 4, { texts: { footer: 'with love' } }),
+  S_('typing', 4, { texts: { text: '지금부터 저희의 이야기를\n잠시 들려드릴게요', footer: '' } }),
+  S_('vignette2', 5),
+  S_('profile', 6, { texts: { line3: '{신부} 앞에서만 웃음이 많은 사람' } }),
+  S_('profile', 6, { opts: { flip: true }, texts: { eyebrow: 'Bride', title: '신부 {신부}', line1: '밝고 따뜻한 사람', line2: '작은 일에도 크게 웃는 사람', line3: '{신랑}을 가장 잘 아는 사람' } }),
+  S_('typing', 3.5, { opts: { dark: true }, texts: { text: '그렇게 서로를 만나', footer: '' } }),
+  ...cyc(['vignette1', ['duo', { texts: { top: '' } }], 'triptych', ['vignette2', { texts: { label1: '', label2: '' } }], 'filmstrip', 'polaroid', ['vignette1', { opts: { bw: true } }], 'grid4', ['full', NO], 'mosaic5', ['duo', { texts: { top: 'our little moments' } }], ['filmstrip', { opts: { bw: true } }]], 12),
+  S_('typing', 4, { texts: { text: '그리고 이제,\n같은 곳을 바라보려 합니다', footer: '' } }),
+  ...cyc([['full', { opts: { bw: true }, ...NO }], 'polaroid', 'triptych', ['duo', { texts: { top: '' } }], ['vignette1', {}], 'grid4', ['filmstrip', {}], ['vignette2', { texts: { label1: '', label2: '' } }], 'mosaic5', ['full', NO], 'polaroid', ['triptych', { opts: { bw: true } }]], 12),
+  S_('full', 5, { opts: { bw: true } }),
+  S_('ending', 9)
+]));
+TEMPLATES.B.make = () => baseProj('B', fitTotal([
+  S_('lockscreen', 6.5), S_('camrec', 3.5), S_('gallery', 4.5), S_('camrec', 3.5, { tr: 'cut' }), S_('airdrop', 4.5),
+  S_('nameblack', 4, { tr: 'cut' }), S_('handquote', 5),
+  S_('nameblack', 4, { opts: { flip: true }, texts: { label: '신부', name: '{신부}' }, tr: 'cut' }),
+  S_('handquote', 5, { texts: { text: '옆에 있는 것만으로도\n힘이 되는 사람이 될게', sign: '- {신부}' } }),
+  ...cyc(['tri3dark', ['full', { ...NO }], 'camrec', ['half2', { opts: { nogap: true } }], ['fullnote', NO], 'stack2', ['tri3dark', { tr: 'slide' }], ['full', { opts: { bw: true }, ...NO }], 'textpanel', ['wide3', {}]], 10),
+  S_('half2', 5, { opts: { nogap: true }, caption: '오래전 사랑으로 태어난\n두 아이가', capFx: 'neon' }),
+  S_('full', 5, { texts: { text: '' }, caption: '어느덧 어른이 되어\n한 가정을 이룹니다', capFx: 'neon' }),
+  S_('full', 5, { texts: { text: '' }, caption: '사랑하는 부모님,\n건강하게 키워주셔서 감사합니다', capFx: 'neon' }),
+  S_('full', 5, { texts: { text: '' }, caption: '그동안 주신 사랑\n잊지 않겠습니다', capFx: 'neon' }),
+  S_('full', 4.5, { texts: { text: '' }, caption: '늘 웃는 모습 보여드릴게요', capFx: 'neon' }),
+  ...cyc([['tri3dark', { opts: { bw: true } }], ['full', NO], 'camrec', ['half2', { opts: { nogap: true } }], ['fullnote', NO], 'stack2', ['full', { opts: { bw: true }, ...NO }], 'tri3dark'], 10),
+  S_('full', 6, { texts: { text: '{신랑}          {신부}' } }),
+  S_('handquote', 5, { opts: { bw: true, typewriter: true }, texts: { text: '서로의 계절이 되어\n오래 함께할게요', sign: '' } }),
+  S_('full', 5.5, { texts: { text: '' }, caption: '축하해 주신 마음 잊지 않고\n행복하게 잘 살겠습니다', capFx: 'neon' }),
+  S_('full', 7, { texts: { text: '' }, caption: '잠시 후 예식이 시작됩니다', capFx: 'neon', fx: { type: 'none', spark: true } })
+]), { lyricFx: 'neon' });
+TEMPLATES.C.make = () => baseProj('C', fitTotal([
+  S_('magazine', 6), S_('letter', 9),
+  S_('chapter', 3.5, { opts: { dark: false }, texts: { num: 'Chapter 01', title: '우리가 처음 만난 날', sub: '그날의 우리' } }),
+  S_('circle', 4.5, { texts: { title: '{GROOM}', sub: '신랑 {신랑}' } }), S_('circle', 4.5, { texts: { title: '{BRIDE}', sub: '신부 {신부}' } }),
+  ...cyc(['booth', 'polaroid3', ['grid4', { fx: { type: 'line', color: '#FFFFFF' } }], 'offset2', 'diagonal', 'wide3', 'slideshow', 'bigsmall'], 8),
+  S_('timeline', 6),
+  S_('chapter', 3.5, { opts: { dark: false }, texts: { num: 'Chapter 02', title: '함께한 계절', sub: '봄, 여름, 가을, 겨울' } }),
+  ...cyc(['half2', 'mosaic5', ['center', { fx: { type: 'ribbon', color: '#7B2C3A' }, texts: { title: '', sub: '' } }], 'triptych', 'offset2', 'booth', 'diagonal', 'polaroid3', 'wide3', ['grid4', {}]], 10),
+  S_('chapter', 3.5, { opts: { dark: false }, texts: { num: 'Chapter 03', title: '그리고, 우리', sub: '{날짜}' } }),
+  ...cyc(['slideshow', 'bigsmall', 'arch', 'half2', 'offset2', 'triptych'], 6),
+  S_('together', 5, { opts: { dark: false } }), S_('calendar', 5), S_('invite', 6),
+  S_('credits', 14, { opts: { dark: false } })
+]));
+TEMPLATES.D.make = () => baseProj('D', fitTotal([
+  S_('bubbletitle', 6.5), S_('chat', 12),
+  S_('typing', 4, { bgc: '#FFF1E0', texts: { text: '저희 두 사람,\n드디어 결혼해요!', footer: '' }, tstyle: { text: { ...CUTE, c: '#D9486F' } } }),
+  S_('heartframe', 4.5, { bgc: '#E8F4FF', texts: { title: '{GROOM}', sub: '신랑 {신랑}' } }),
+  S_('heartframe', 4.5, { texts: { title: '{BRIDE}', sub: '신부 {신부}' } }),
+  ...cyc(['scrapbook', 'stickerphoto', ['polaroid3', { bgc: '#FFF8D6', texts: { cap1: '', cap2: '', cap3: '' } }], ['booth', { opts: { dark: false }, bgc: '#FFE4EC', texts: { title: '', sub: '' } }], ['grid4', { bgc: '#FFF1E0', fx: { type: 'wave', color: '#FF8FB1', spark: true } }], ['half2', { fx: { type: 'ribbon', color: '#FF8FB1' } }], ['offset2', { bgc: '#FFE4EC', fx: { type: 'none', spark: true } }], ['duo', { bgc: '#E8F4FF', texts: { top: 'our lovely days' }, fx: { type: 'corners', color: '#FF8FB1' } }], ['heartframe', { bgc: '#FFF1E0', texts: { title: '', sub: '' } }], ['triptych', { bgc: '#FFE4EC' }], ['bigsmall', { bgc: '#E8F4FF' }], ['stickerphoto', { bgc: '#FFE4EC', texts: { bubble: 'HAPPY', note: '오늘도 최고의 하루' } }]], 12),
+  S_('typing', 4, { bgc: '#E8F4FF', texts: { text: '같이 웃고, 같이 먹고,\n같이 걷는 게 제일 좋아', footer: '' }, tstyle: { text: { ...CUTE, c: '#4A79B8' } } }),
+  ...cyc([['grid4', { bgc: '#FFE4EC', fx: { type: 'none', spark: true } }], 'scrapbook', ['polaroid3', { bgc: '#E8F4FF', texts: { cap1: '', cap2: '', cap3: '' } }], ['half2', { fx: { type: 'wave', color: '#FF8FB1' } }], ['offset2', { bgc: '#FFF8D6' }], ['duo', { bgc: '#FFE4EC', texts: { top: '' }, fx: { type: 'ribbon', color: '#FF8FB1' } }], ['triptych', { bgc: '#FFF1E0' }], 'stickerphoto', ['bigsmall', { bgc: '#FFE4EC' }], ['heartframe', { bgc: '#E8F4FF', texts: { title: 'Love', sub: '' } }]], 10),
+  S_('timeline', 6, { bgc: '#FFF1E0', tstyle: { title: { f: 'Pacifico', s: 0.9, x: 0, y: 0, c: '#E8557A' } } }),
+  S_('together', 5, { opts: { dark: false }, bgc: '#FFF8D6', tstyle: { num: { ...CUTE, c: '#D9486F' }, sub: { ...CUTE, c: '#8C5A66' } } }),
+  S_('heartframe', 4.5, { bgc: '#E8F4FF', texts: { title: 'Forever', sub: '{날짜}' } }),
+  S_('calendar', 5, { bgc: '#FFE4EC' }),
+  S_('confettiend', 9)
+]), { lyricFx: 'cute' });
+TEMPLATES.E.make = () => baseProj('E', fitTotal([
+  S_('filmleader', 3.5), S_('opencredit', 7, { tr: 'cut' }),
+  S_('cinema', 5, { texts: { label: 'Scene #1', right: '{DATE}' }, caption: '그날, 우리가 처음 만났다', capFx: 'movie' }),
+  ...cyc([['cam', { opts: { bw: true } }], ['vignette1', { opts: { bw: true } }], ['cinema', { texts: { label: '', right: '' } }], 'stack2', ['wide3', { opts: { bw: true } }], ['full', { opts: { bw: true }, ...NO }], 'tri3dark', 'framed'], 8),
+  S_('typing', 4, { opts: { dark: true }, texts: { text: '서로의 이야기가\n하나의 영화가 되기까지', footer: '' } }),
+  ...cyc([['cinema', { opts: { bw: true }, texts: { label: 'Scene #2', right: '' } }], ['filmstrip', { opts: { bw: true } }], ['full', NO], 'stack2', ['vignette1', {}], ['cam', { opts: { bw: false } }], ['wide3', {}], 'tri3dark'], 8),
+  S_('movieposter', 7, { tr: 'black' }),
+  S_('chapter', 3.5, { texts: { num: 'Chapter 02', title: '같은 장면 속의 우리', sub: 'a love story' } }),
+  ...cyc([['cinema', { texts: { label: 'Scene #3', right: '' } }], 'framed', ['full', { opts: { bw: true }, ...NO }], ['filmstrip', {}], ['vignette1', { opts: { bw: true } }], 'stack2', ['cinema', { opts: { bw: true }, texts: { label: '', right: '' } }], ['wide3', { opts: { bw: true } }]], 8),
+  S_('split', 5, { opts: { dark: true }, texts: { big: 'Love Story', sub: '우리가 주인공인 영화', small: '{GROOM} & {BRIDE}' } }),
+  S_('quote', 6),
+  S_('full', 5.5, { texts: { text: '{GROOM}          {BRIDE}' } }),
+  S_('cinema', 5, { opts: { bw: true }, texts: { label: 'The End', right: '' }, tr: 'black', caption: '그리고 이야기는 계속된다', capFx: 'movie' }),
+  S_('credits', 14)
+]), { lyricFx: 'movie' });
+TEMPLATES.F.make = () => baseProj('F', fitTotal([
+  S_('navphoto', 5), S_('navphoto', 4, { opts: { dreamy: true }, texts: { word: '' } }), S_('doubleexp', 4), S_('navphoto', 4, { texts: { word: '' } }),
+  S_('softcard', 5), S_('softcard', 5, { texts: { text: '지금부터 저희의 이야기가 펼쳐져요\n예쁘게 봐주세요' } }),
+  S_('petalphoto', 4.5), S_('birth', 6), S_('duo', 4.5, { bgc: BLUSH, texts: { top: '' } }), S_('announce', 5),
+  S_('checkprofile', 6),
+  S_('checkprofile', 6, { texts: { title: '신부 {신부}', line1: '웃음이 예쁜 사람', line2: '작은 것도 잘 챙기는 꼼꼼이', line3: '{신랑} 한정 사랑꾼' } }),
+  ...cyc([['centerphoto', LBL], ['row3', LBL], ['centerphoto', { opts: { portrait: true }, ...LBL }], ['mosaic5', { bgc: BLUSH }], ['focusbox', LBL], ['wavyframe', LBL], ['duo', { bgc: BLUSH, texts: { top: '' } }], ['full', { texts: { text: '' }, fx: { type: 'leak' }, ...LBL }], ['doubleexp', { texts: { nav: '', mark: '' } }], ['centerphoto', { opts: { bw: true }, ...LBL }], ['petalphoto', { opts: { bw: false } }], ['row3', LBL]], 24),
+  S_('navphoto', 5, { opts: { dreamy: true }, texts: { word: 'Forever', mark: '' } }),
+  S_('memoend', 7),
+  S_('memoend', 8, { texts: { text: '언제나 서로 아끼며\n알콩달콩 잘 살겠습니다!', sign: '' } })
+]), { lyricFx: 'label' });
+TEMPLATES.G.make = () => baseProj('G', fitTotal([
+  S_('boldtype', 3.5), S_('boldtype', 3.5, { texts: { text: '{신랑} & {신부}, 드디어' } }), S_('bigscript', 4.5),
+  S_('centercap', 3.5, { caption: '저희 결혼식에 오신 것을 환영해요' }),
+  S_('introcard', 5), S_('introcard', 5, { opts: { flip: true }, texts: { label: '신부', name: '{신부}' } }),
+  ...cyc([['roundphotos', BIL], ['sidephoto', BIL], ['roundphotos', BIL], ['centercap', BIL], ['sidephoto', { opts: { flip: true }, ...BIL }], ['roundphotos', { opts: { bw: true }, ...BIL }], ['centercap', BIL], ['roundphotos', BIL]], 30, 4.5, BIL_CAPS),
+  S_('centercap', 5, { caption: '받은 사랑 나누는 예쁜 부부 되겠습니다' }),
+  S_('edtext', 4, { opts: { dark: true }, texts: { head: '', text: '받은 사랑 나누는 예쁜 부부 되겠습니다' } })
+]), { lyricFx: 'bilingual' });
+TEMPLATES.H.make = () => {
+  const words = ['Hello, my love', 'Will you marry me?', 'Just say yes', 'You and me', 'Forever & Always', 'Always'];
+  const mid = cyc([['edphoto', GOLD], ['edphoto', GOLD], ['edbooth', { capFx: 'bilingual' }], ['bigword', { opts: { bw: false } }], ['edphoto', { opts: { bw: true }, ...GOLD }], ['edphoto', GOLD], ['bigword', {}]], 30, 4.5, BIL_CAPS);
+  let wi = 0; mid.forEach(s => { if (s.layout === 'bigword') s.texts.word = words[wi++ % words.length]; });
+  return baseProj('H', fitTotal([
+    S_('edtitle', 6), S_('edtitle', 4.5, { opts: { bars: false } }), S_('edtitle', 4.5, { opts: { bars: false } }),
+    ...mid,
+    S_('edtext', 4.5), S_('edtext', 4, { texts: { text: '오늘의 기억을 오래도록 간직하며' } }), S_('edtext', 4, { texts: { text: '예쁘게, 그리고 행복하게 잘 살겠습니다.' } }),
+    S_('ednames', 6.5), S_('thankyou', 8)
+  ]), { lyricFx: 'gold' });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
     v: 2,
     info: Object.assign({ groomKo: '', brideKo: '', groomEn: '', brideEn: '', dateKo: '', dateEn: '' }, tpl.info || {}),
     scenes: tpl.scenes.filter(s => LAYOUTS[s.layout]).map(s => makeScene(s.layout, s)),
-    lyrics: (tpl.lyrics || []).map(l => ({ id: uid(), start: +l.start || 0, end: +l.end || 0, text: l.text || '' })),
+    lyrics: (tpl.lyrics || []).map(l => ({ id: uid(), start: +l.start || 0, end: +l.end || 0, text: l.text || '', sub: l.sub || '' })),
     lyricsOn: tpl.lyricsOn !== false,
     lstyle: tpl.lstyle || { s: 1, x: 0, y: 0 }
   };
@@ -2414,7 +2809,7 @@ function sceneAt(T) {
 const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' ? 1.4 : 0.9, timeline[i].dur * 0.35); };
 function lyricAt(T) {
   if (!project.lyricsOn) return null;
-  for (const l of project.lyrics) if (l.text && T >= l.start && T < l.end) return l;
+  for (const l of project.lyrics) if ((l.text || l.sub) && T >= l.start && T < l.end) return l;
   return null;
 }
 
@@ -2433,8 +2828,8 @@ function drawScene(c, i, t, hit) {
   if (s.caption) {
     const [x, y, st] = L.cap(s);
     let yo = 0;
-    if (activeLyric && Math.abs(x - 960) < 200) yo = -((activeLyric.text.split('\n').length) * 52 + 18) * (project.lstyle.s || 1) * activeLyricA;
-    caption(c, fill(s.caption), x, y + yo, s.capFx && s.capFx !== 'hand' ? 'photo' : st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption', 40, s.capFx);
+    if (activeLyric && Math.abs(x - 960) < 200) yo = -(((activeLyric.text || '').split('\n').length + (activeLyric.sub ? 1 : 0)) * 52 + 18) * (project.lstyle.s || 1) * activeLyricA;
+    caption(c, fill(s.caption), x, y + yo, ['neon', 'cute', 'movie', 'label', 'gold'].includes(s.capFx) ? 'photo' : st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption', 40, s.capFx, [s.capCol, s.capCol2]);
   }
   hitOn = false; curScene = null; curBgLum = null;
 }
@@ -2476,7 +2871,7 @@ function render(r, T, preview) {
     curIdx = i; hitOn = preview;
     curBgLum = (s.bgc && !LAYOUTS[s.layout].bgHidden) ? colorLum(s.bgc) : null;
     const lst = curBgLum != null ? (curBgLum > 0.5 ? 'light' : 'photo') : (st === 'dark' ? 'photo' : st);
-    caption(c, fill(ly.text), x, y, project.lyricFx && project.lyricFx !== 'hand' ? 'photo' : lst, a, 'lyrics', 40, project.lyricFx);
+    caption(c, fill(ly.text), x, y, ['neon', 'cute', 'movie', 'label', 'gold'].includes(project.lyricFx) ? 'photo' : lst, a, 'lyrics', 40, project.lyricFx, [project.lcol, project.lcol2], fill(ly.sub || ''));
     curBgLum = null;
     hitOn = false;
   }
@@ -2790,7 +3185,15 @@ function wireStyle(root, getSt, onChange, onReset) {
     d.querySelector('[data-sreset]').onclick = () => onReset(key);
   });
 }
-const CAPFX = [['', '기본'], ['neon', '네온 핑크'], ['hand', '손글씨'], ['cute', '러블리 (둥근 글씨)'], ['movie', '영화 자막'], ['label', '라벨 (어두운 바탕)']];
+const CAPFX = [['', '기본'], ['neon', '네온 핑크'], ['hand', '손글씨'], ['cute', '러블리 (둥근 글씨)'], ['movie', '영화 자막'], ['label', '라벨 (어두운 바탕)'], ['bilingual', '두 줄 (영문 손글씨 + 한글)'], ['gold', '골드 영문 + 한글']];
+const CAPCOL_SW = ['#FFFFFF', '#222020', '#EBC46B', '#FFE9F0', '#FF8FB1', '#A8C8FF'];
+function colorRow(id, label, val) {
+  return `<div class="bgrow" style="margin-top:8px"><span class="hint" style="margin:0;min-width:76px">${label}</span>${CAPCOL_SW.map(c => `<button type="button" class="swb${val === c ? ' on' : ''}" style="background:${c}" data-cr="${id}" data-v="${c}" aria-label="${label} ${c}"></button>`).join('')}<input type="color" data-crp="${id}" value="${val || '#ffffff'}" aria-label="${label} 직접 고르기"><button type="button" class="x" data-cr="${id}" data-v="">기본</button></div>`;
+}
+function wireColorRows(root, set) {
+  root.querySelectorAll('[data-cr]').forEach(b => b.onclick = () => { set(b.dataset.cr, b.dataset.v || null); root.querySelectorAll(`.swb[data-cr="${b.dataset.cr}"]`).forEach(x => x.classList.toggle('on', !!b.dataset.v && x.dataset.v === b.dataset.v)); });
+  root.querySelectorAll('[data-crp]').forEach(i => i.oninput = () => { set(i.dataset.crp, i.value.toUpperCase()); root.querySelectorAll(`.swb[data-cr="${i.dataset.crp}"]`).forEach(x => x.classList.remove('on')); });
+}
 const BG_SW = ['#F3E2E6', '#EDE6DC', '#DDE2DA', '#D6DCE4', '#2B2F3A', '#3A2B2F'];
 function buildScenePane() {
   const p = $('pane-scene'); const s = project.scenes[sel];
@@ -2822,7 +3225,7 @@ function buildScenePane() {
       ${L.slots ? `<label class="field"><span>이 장면 사진 움직임 한 번에 바꾸기 (사진마다 따로 고르려면 위 사진 칸에서)</span><select id="fMoAll"><option value="">골라주세요</option>${MOTIONS.map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>` : ''}</div>
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
-      <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label><label class="field" style="margin-top:8px"><span>자막 스타일</span><select id="fCapFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(s.capFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${styleCtl('caption', ts('caption'))}</div></div>
+      <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label><label class="field" style="margin-top:8px"><span>자막 스타일</span><select id="fCapFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(s.capFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${colorRow('capCol', '자막 색', s.capCol)}${colorRow('capCol2', '둘째 줄 색', s.capCol2)}${styleCtl('caption', ts('caption'))}</div></div>
     ${CUSTOMER ? '' : `<div class="group"><h3>길이</h3>
       <div class="field len"><input type="number" id="fWeight" min="0.5" max="120" step="0.1" value="${s.weight}" aria-label="장면 길이(초)"><span>초</span></div>
       <p class="hint" id="realLen"></p></div>`}`;
@@ -2855,6 +3258,7 @@ function buildScenePane() {
   const fb = p.querySelector('#fBg'); if (fb) { fb.oninput = e => setBg(e.target.value, false); fb.onchange = e => setBg(e.target.value, true); }
   p.querySelectorAll('[data-opt]').forEach(c => c.onchange = () => { s.opts[c.dataset.opt] = c.checked; sceneChanged(s); });
   p.querySelectorAll('[data-text]').forEach(inp => inp.oninput = () => { s.texts[inp.dataset.text] = inp.value; loadFontsFor(inp.value); sceneChanged(s); });
+  wireColorRows(p, (k, v) => { if (v) s[k] = v; else delete s[k]; sceneChanged(s); });
   p.querySelector('#fCapFx').onchange = e => { if (e.target.value) s.capFx = e.target.value; else delete s.capFx; sceneChanged(s); };
   p.querySelector('#fCaption').oninput = e => { s.caption = e.target.value; loadFontsFor(e.target.value); sceneChanged(s); };
   wireStyle(p, k => ensureStyle(sel, k), k => { editSel = { type: 'text', key: k, idx: sel }; sceneChanged(s); }, k => { if (s.tstyle) delete s.tstyle[k]; sceneChanged(s); buildScenePane(); });
@@ -3007,15 +3411,19 @@ function buildLyricPane() {
     <p class="hint">음원을 틀어 두고 하이라이트가 시작될 때 ‘지금 위치에 추가’를 누르세요. 시작·끝 옆의 ‘지금’ 버튼으로 재생 위치를 바로 찍을 수 있어요.</p>
     <div class="row" style="margin-top:12px"><button class="btn small primary" id="lyAdd">지금 위치에 추가</button></div>
     <label class="field"><span>가사 자막 스타일</span><select id="lyFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(project.lyricFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    ${colorRow('lcol', '가사 색', project.lcol)}${colorRow('lcol2', '아래 줄 색', project.lcol2)}
+    <p class="hint">영문 노래는 가사 칸에 영어를, 그 아래 ‘한글 자막’ 칸에 번역을 적으면 영어 밑에 한글이 함께 나와요.</p>
     <div style="margin-top:12px">${styleCtl('lyrics', project.lstyle)}</div>
     <div id="lyList">${list.length ? '' : '<p class="hint" style="margin-top:14px">아직 넣은 가사가 없어요.</p>'}</div>`;
   const box = $('lyList');
   list.forEach(l => {
     const d = document.createElement('div'); d.className = 'ly-item'; d.dataset.ly = l.id;
-    d.innerHTML = `<textarea rows="2" placeholder="가사를 적어주세요" aria-label="가사">${esc(l.text)}</textarea>
+    d.innerHTML = `<textarea rows="2" placeholder="가사 (영문 노래면 영어 가사)" aria-label="가사">${esc(l.text)}</textarea>
+      <input type="text" class="tin" data-sub style="width:100%;margin-top:6px" placeholder="한글 자막 (영문 가사 아래에 나와요, 선택)" value="${esc(l.sub || '')}" aria-label="한글 자막">
       <div class="ly-times">시작<input class="tin" data-f="start" value="${fmt1(l.start)}" aria-label="시작 시간"><button class="x" data-now="start">지금</button>
       끝<input class="tin" data-f="end" value="${fmt1(l.end)}" aria-label="끝 시간"><button class="x" data-now="end">지금</button>
       <button class="x" data-play>듣기</button><button class="x" data-del>빼기</button></div>`;
+    d.querySelector('[data-sub]').oninput = e => { touch('lyrics'); l.sub = e.target.value; loadFontsFor(l.sub); dirty = true; save(); };
     d.querySelector('textarea').oninput = e => { touch('lyrics'); l.text = e.target.value; loadFontsFor(l.text); dirty = true; save(); buildTimelineSoon(); };
     d.querySelectorAll('.tin').forEach(inp => inp.onchange = () => {
       const v = parseT(inp.value); if (isNaN(v)) { inp.value = fmt1(l[inp.dataset.f]); return; }
@@ -3029,6 +3437,7 @@ function buildLyricPane() {
     d.querySelector('[data-del]').onclick = () => { project.lyrics = project.lyrics.filter(x => x !== l); lyricChanged(); };
     box.appendChild(d);
   });
+  wireColorRows(p, (k, v) => { touch('lyrics'); if (v) project[k] = v; else delete project[k]; dirty = true; save(); });
   $('lyFx').onchange = e => { touch('lyrics'); if (e.target.value) project.lyricFx = e.target.value; else delete project.lyricFx; dirty = true; save(); };
   $('lyOn').onchange = e => { project.lyricsOn = e.target.checked; lyricChanged(); };
   $('lyAdd').onclick = () => {
@@ -3143,7 +3552,7 @@ function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
     scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx })),
-    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text })), lyricsOn: project.lyricsOn, lstyle: project.lstyle
+    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2
   };
 }
 function saveTemplate() { saveFile(new Blob([JSON.stringify(templateData(), null, 2)], { type: 'application/json' }), 'template.json'); }
@@ -3214,7 +3623,7 @@ async function fetchTemplate() {
 }
 
 /* ---------------- fonts ---------------- */
-const FONT_SAMPLES = [F.kr(40), F.kr(62, 700), F.serif(40, 300, true), F.serif(40, 400, true), F.serif(40, 300, false), F.script(80)].concat(FONTS.slice(1).map(([f]) => `400 40px "${f}"`), ['300 200px "Noto Sans KR"', '500 40px "Noto Sans KR"', '700 40px "Noto Sans KR"']);
+const FONT_SAMPLES = [F.kr(40), F.kr(62, 700), F.serif(40, 300, true), F.serif(40, 400, true), F.serif(40, 300, false), F.script(80)].concat(FONTS.slice(1).map(([f]) => `400 40px "${f}"`), ['300 200px "Noto Sans KR"', '500 40px "Noto Sans KR"', '700 40px "Noto Sans KR"', '800 150px "Playfair Display"', 'italic 700 40px "Playfair Display"']);
 function allText() {
   const i = project.info; let s = Object.values(i).join(' ');
   project.scenes.forEach(sc => { s += ' ' + Object.values(sc.texts).join(' ') + ' ' + sc.caption; });
@@ -3665,7 +4074,7 @@ function mergeProjects(local, remote, d) {
   if (d.has('order')) r.scenes = local.scenes.map(s => (d.has(s.id) || !Rm.has(s.id)) ? s : Rm.get(s.id));
   else r.scenes = r.scenes.map(s => (d.has(s.id) && L.has(s.id)) ? L.get(s.id) : s);
   if (d.has('info')) { r.info = local.info; r.title = local.title; }
-  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; }
+  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; r.lyricFx = local.lyricFx; r.lcol = local.lcol; r.lcol2 = local.lcol2; }
   if (d.has('audio')) r.audio = local.audio;
   return JSON.parse(JSON.stringify(r));
 }
@@ -4064,7 +4473,7 @@ function diffKeys(a, b) {
   b.scenes.forEach(s => { if (am.get(s.id) !== J(s)) k.add(s.id); });
   a.scenes.forEach(s => { if (!bIds.has(s.id)) k.add(s.id); });
   if (J(a.info) !== J(b.info) || (a.title || '') !== (b.title || '')) k.add('info');
-  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle)) k.add('lyrics');
+  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle) || a.lyricFx !== b.lyricFx || a.lcol !== b.lcol || a.lcol2 !== b.lcol2) k.add('lyrics');
   if (J(a.audio || null) !== J(b.audio || null)) k.add('audio');
   return k;
 }
