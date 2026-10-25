@@ -4527,7 +4527,7 @@ function drawCut(c, s, si, x, y, w, h, t, o = {}) {
   c.restore(); addHit({ type: 'media', si, x, y, w, h, oy: 0 });
 }
 function matPhoto(c, s, si, cell, t, d, o = {}) {
-  let [x, y, w, h] = slotRect(s, si, ...cell); [x, y, w, h] = fitRect(s, si, x, y, w, h);
+  const [x, y, w, h] = slotRect(s, si, ...cell);
   const e = enter(t, o.at || 0); if (e.a <= 0.001) return;
   const ho = hitOn; hitOn = false;
   c.save(); c.globalAlpha *= e.a; c.translate(0, e.dy);
@@ -4539,7 +4539,7 @@ function matPhoto(c, s, si, cell, t, d, o = {}) {
 const KID_FIELDS = [['head', '맨 위 이름 (작게)', '{GROOM} & {BRIDE}'], ['title', '제목', 'Little Days'], ['gl', '왼쪽 작은 글씨', 'GROOM'], ['gn', '왼쪽 이름', '{신랑}'], ['bl', '오른쪽 작은 글씨', 'BRIDE'], ['bn', '오른쪽 이름', '{신부}']];
 Object.assign(LAYOUTS, {
   edkids: {
-    name: '어린 시절 사진 여러 장 (사진 전체 보이게)', slots: 6, weight: 7, fields: KID_FIELDS,
+    name: '어린 시절 사진 여러 장 (흰 매트 액자)', slots: 6, weight: 7, fields: KID_FIELDS,
     opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       bg(c, '#FFFFFF'); edHead(c, s, t);
