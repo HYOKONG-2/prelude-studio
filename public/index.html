@@ -405,10 +405,10 @@ async function shrinkImage(file) {
   const max = 3200, w = img.naturalWidth, h = img.naturalHeight;
   if (url.startsWith('blob:')) URL.revokeObjectURL(url);
   if (Math.max(w, h) <= max) return file;
-  const k = max / Math.max(w, h), c = document.createElement('canvas');
+  const k = max / Math.max(w, h), c = document.createElement('canvas'), png = /png|webp/i.test(file.type || '');
   c.width = Math.round(w * k); c.height = Math.round(h * k);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-  return await new Promise(r => c.toBlob(b => r(b), 'image/jpeg', 0.92));
+  return await new Promise(r => c.toBlob(b => r(b), png ? 'image/png' : 'image/jpeg', 0.92));
 }
 async function makeMedia(id, blob, type) {
   if (type === 'video') {
@@ -4073,6 +4073,14 @@ TEMPLATES.H.make = () => weaveBuild('H', [
   ['edtext', { texts: { text: '오늘의 기억을 오래도록 간직하며\n예쁘게, 그리고 행복하게 잘 살겠습니다.' } }, 5],
   ['ednames', {}, 6.5], ['thankyou', {}, 8]
 ], { lyricFx: 'gold' }, EXTRA.H, 2, 3);
+(() => {
+  const origH = TEMPLATES.H.make;
+  TEMPLATES.H.make = () => {
+    const p = origH(), sc = p.scenes;
+    sc.splice(2, 0, makeScene('edkids', { weight: 7 }), makeScene('edkidscut', { weight: 7 }));
+    p.scenes = fitTotal(sc); return p;
+  };
+})();
 // D: weave wedding photo scenes into the scrapbook story
 (() => {
   const origD = TEMPLATES.D.make;
@@ -4485,6 +4493,102 @@ LAYOUTS.navphoto.opts = LAYOUTS.navphoto.opts.concat([['wordLeft', '필기체 �
     p.scenes = fitTotal(sc); return p;
   };
 })();
+/* ---------------- H type: childhood photos (whole photos / cut-out figures) ---------------- */
+function fitRect(s, si, x, y, w, h, align) {
+  const slot = s.media[si] || {}, m = slot.id && media[slot.id]; if (!m || !m.w) return [x, y, w, h];
+  const ar = m.w / m.h, cr = w / h; let fw = w, fh = h;
+  if (ar > cr) fh = w / ar; else fw = h * ar;
+  return [x + (w - fw) / 2, align === 'bottom' ? y + h - fh : y + (h - fh) / 2, fw, fh];
+}
+function cutSprite(m, bw) {
+  m._cut = m._cut || {}; const key = bw ? 'bw' : 'c'; if (m._cut[key]) return m._cut[key];
+  const sc = Math.min(1, 900 / Math.max(m.w, m.h)), pad = 16, iw = Math.round(m.w * sc), ih = Math.round(m.h * sc);
+  const cv = document.createElement('canvas'); cv.width = iw + pad * 2; cv.height = ih + pad * 2; const g = cv.getContext('2d');
+  if ('filter' in g) { g.filter = 'brightness(0) invert(1)'; for (let a = 0; a < 16; a++) g.drawImage(m.el, pad + Math.cos(a / 16 * Math.PI * 2) * 9, pad + Math.sin(a / 16 * Math.PI * 2) * 9, iw, ih); g.filter = bw ? 'grayscale(1)' : 'none'; }
+  g.drawImage(m.el, pad, pad, iw, ih);
+  return (m._cut[key] = { cv, pad: pad / sc, sc });
+}
+function drawCut(c, s, si, x, y, w, h, t, o = {}) {
+  [x, y, w, h] = slotRect(s, si, x, y, w, h);
+  const slot = s.media[si] || {}, m = slot.id && media[slot.id];
+  const e = enter(t, o.at || 0); if (e.a <= 0.001) return;
+  c.save(); c.globalAlpha *= e.a; c.translate(0, e.dy * 1.5);
+  if (!m || m.type === 'video') {
+    c.fillStyle = 'rgba(0,0,0,.06)'; c.strokeStyle = 'rgba(0,0,0,.18)'; c.setLineDash([10, 8]); c.lineWidth = 2;
+    const cx = x + w / 2; c.beginPath(); c.arc(cx, y + h * 0.3, w * 0.2, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(cx, y + h * 0.82, w * 0.36, h * 0.26, 0, Math.PI, 0); c.lineTo(cx + w * 0.36, y + h); c.lineTo(cx - w * 0.36, y + h); c.closePath(); c.fill(); c.stroke();
+    c.setLineDash([]); c.font = F.ui(24); c.textAlign = 'center'; c.fillStyle = 'rgba(0,0,0,.4)'; c.fillText('사진 ' + (si + 1), cx, y + h * 0.72);
+    c.restore(); addHit({ type: 'media', si, x, y, w, h, oy: 0 }); return;
+  }
+  const sp = cutSprite(m, o.bw), z = slot.z || 1;
+  const k = Math.min(w / m.w, h / m.h) * z, dw = m.w * k, dh = m.h * k, dx = x + (w - dw) / 2 + (slot.ox || 0) * w, dy = y + h - dh + (slot.oy || 0) * h, pd = sp.pad * k;
+  c.shadowColor = 'rgba(40,30,20,.22)'; c.shadowBlur = 26 * R.S; c.shadowOffsetY = 12 * R.S;
+  c.drawImage(sp.cv, dx - pd, dy - pd, dw + pd * 2, dh + pd * 2);
+  c.restore(); addHit({ type: 'media', si, x, y, w, h, oy: 0 });
+}
+function matPhoto(c, s, si, cell, t, d, o = {}) {
+  let [x, y, w, h] = slotRect(s, si, ...cell); [x, y, w, h] = fitRect(s, si, x, y, w, h);
+  const e = enter(t, o.at || 0); if (e.a <= 0.001) return;
+  const ho = hitOn; hitOn = false;
+  c.save(); c.globalAlpha *= e.a; c.translate(0, e.dy);
+  c.save(); c.shadowColor = 'rgba(0,0,0,.14)'; c.shadowBlur = 18 * R.S; c.shadowOffsetY = 6 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(x - 12, y - 12, w + 24, h + 24); c.restore();
+  c.strokeStyle = 'rgba(0,0,0,.08)'; c.lineWidth = 1.5; c.strokeRect(x - 12, y - 12, w + 24, h + 24);
+  coverIn(c, s, si, x, y, w, h, t, { bw: o.bw, zoom: 1 });
+  c.restore(); hitOn = ho; addHit({ type: 'media', si, x, y, w, h, oy: 0 });
+}
+const KID_FIELDS = [['head', '맨 위 이름 (작게)', '{GROOM} & {BRIDE}'], ['title', '제목', 'Little Days'], ['gl', '왼쪽 작은 글씨', 'GROOM'], ['gn', '왼쪽 이름', '{신랑}'], ['bl', '오른쪽 작은 글씨', 'BRIDE'], ['bn', '오른쪽 이름', '{신부}']];
+Object.assign(LAYOUTS, {
+  edkids: {
+    name: '어린 시절 사진 여러 장 (사진 전체 보이게)', slots: 6, weight: 7, fields: KID_FIELDS,
+    opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF'); edHead(c, s, t);
+      txt(c, fill(s.texts.title), 960, 120, PLAYF(64, 700, true), '#141414', fade(t, 0.2, 0.8), { k: 'title', rise: 10 });
+      const la = fade(t, 0.5, 0.6);
+      if (la > 0) { c.save(); c.globalAlpha *= la; c.fillStyle = '#E2DDD6'; c.fillRect(959, 230, 2, 760); c.restore(); }
+      [[0, 90, 'gl', 'gn'], [3, 1050, 'bl', 'bn']].forEach(([base, x0, kl, kn], side) => {
+        txt(c, fill(s.texts[kl]), x0 + 390, 200, F.serif(24, 600, false), '#9A7B4F', la, { k: kl, sp: 8 });
+        txt(c, fill(s.texts[kn]), x0 + 390, 240, UIF(30, 600), '#2A2A2A', la, { k: kn });
+        const cells = [[x0, 290, 390, 700], [x0 + 420, 290, 360, 330], [x0 + 420, 660, 360, 330]];
+        cells.forEach((cell, i) => matPhoto(c, s, base + i, cell, t, d, { at: 0.5 + side * 0.4 + i * 0.18, bw: s.opts.bw }));
+      });
+    }
+  },
+  edkidscut: {
+    name: '어린 시절 인물 누끼 여러 명', slots: 6, weight: 7, fields: KID_FIELDS.concat([['sub', '제목 아래 작은 글씨', 'once upon a time']]), cutout: true,
+    opts: [['bw', '흑백', false], ['arch', '뒤 배경 아치', true]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FBF9F6'); edHead(c, s, t);
+      txt(c, fill(s.texts.title), 960, 140, PLAYF(84, 700, true), '#141414', fade(t, 0.2, 0.8), { k: 'title', rise: 10 });
+      txt(c, fill(s.texts.sub), 960, 215, F.serif(28, 500, true), '#9A7B4F', fade(t, 0.5, 0.8), { k: 'sub', sp: 4 });
+      const aa = fade(t, 0.3, 1);
+      if (s.opts.arch && aa > 0) { c.save(); c.globalAlpha *= aa; c.fillStyle = '#EFE8DE';
+        [[480], [1440]].forEach(([cx]) => { c.beginPath(); c.moveTo(cx - 360, H); c.lineTo(cx - 360, 560); c.arc(cx, 560, 360, Math.PI, 0); c.lineTo(cx + 360, H); c.closePath(); c.fill(); }); c.restore(); }
+      const la = fade(t, 0.6, 0.6);
+      [[0, 480, 'gl', 'gn'], [3, 1440, 'bl', 'bn']].forEach(([base, cx, kl, kn], side) => {
+        txt(c, fill(s.texts[kl]), cx, 300, F.serif(24, 600, false), '#9A7B4F', la, { k: kl, sp: 8 });
+        txt(c, fill(s.texts[kn]), cx, 345, UIF(32, 600), '#2A2A2A', la, { k: kn });
+        const figs = [[cx - 330, 520, 300, 480], [cx + 30, 520, 300, 480], [cx - 170, 400, 340, 620]];
+        figs.forEach((r, i) => drawCut(c, s, base + i, r[0], r[1], r[2], r[3], t, { at: 0.6 + side * 0.4 + i * 0.2, bw: s.opts.bw }));
+      });
+    }
+  }
+});
+CATS[2][1].push('edkids', 'edkidscut');
+/* automatic background removal for cut-out scenes (runs in the browser; model downloads once) */
+let bgRemover = null;
+async function cutoutSlot(s, i) {
+  const slot = s.media[i], m = slot && slot.id && media[slot.id]; if (!m || m.type !== 'image') return;
+  toast('배경을 지우는 중이에요. 처음 한 번은 1분 정도 걸릴 수 있어요');
+  try {
+    if (!bgRemover) bgRemover = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm');
+    const out = await bgRemover.removeBackground(m.blob, { output: { format: 'image/png' } });
+    const r = await importFile(new File([out], 'cutout.png', { type: 'image/png' }));
+    s.media[i] = { ...slot, id: r.id, t: 'image' }; sceneChanged(s); buildSlots(s); toast('배경을 지웠어요');
+  } catch (e) {
+    toast('자동 누끼를 하지 못했어요. 배경을 지운 PNG 사진을 직접 넣어도 돼요');
+  }
+}
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -5071,7 +5175,8 @@ function buildSlots(s) {
         <label class="ctl"><span>칸 크기</span><input type="range" min="40" max="200" value="${Math.round((slot.fsc || 1) * 100)}" data-fk="fsc"></label>
         <label class="ctl"><span>움직임</span><select data-mo aria-label="사진 움직임" style="min-width:0;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--surface)">${MOTIONS.map(([k, n]) => `<option value="${k}" ${(slot.mo || 'auto') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         ${m.type === 'video' ? vidCtl(slot, m) : ''}
-        <div class="row"><button class="x" data-r>되돌리기</button><button class="x" data-x>빼기</button></div></div>` : '<p class="hint" style="margin:0">눌러서 사진이나 영상을 넣어요.</p>'}`;
+        ${LAYOUTS[s.layout].cutout && m.type === 'image' ? '<button class="btn small" data-cut style="width:100%;margin-top:6px">배경 지우기 (자동 누끼)</button>' : ''}
+        <div class="row"><button class="x" data-r>되돌리기</button><button class="x" data-x>빼기</button></div></div>` : `<p class="hint" style="margin:0">${LAYOUTS[s.layout].cutout ? '사진을 넣은 뒤 ‘배경 지우기’를 누르거나, 배경을 지운 PNG를 넣어주세요.' : '눌러서 사진이나 영상을 넣어요.'}</p>`}`;
     d.querySelector('.slot-btn').onclick = () => pickSlot(s, i);
     d.querySelector('.slot-btn').dataset.si = i;
     if (m) {
@@ -5087,6 +5192,7 @@ function buildSlots(s) {
       d.querySelector('[data-mo]').onchange = e => { if (e.target.value === 'auto') delete slot.mo; else slot.mo = e.target.value; sceneChanged(s); };
       if (m.type === 'video') wireVid(d, s, slot, m);
       d.querySelector('[data-x]').onclick = () => { s.media[i] = { id: null }; sceneChanged(s); buildSlots(s); };
+      const cb = d.querySelector('[data-cut]'); if (cb) cb.onclick = async () => { cb.disabled = true; cb.textContent = '배경 지우는 중…'; await cutoutSlot(s, i); if (cb.isConnected) { cb.disabled = false; cb.textContent = '배경 지우기 (자동 누끼)'; } };
     }
     box.appendChild(d);
   });
