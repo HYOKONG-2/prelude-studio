@@ -2040,7 +2040,7 @@ Object.assign(LAYOUTS, {
       if (s.opts.dreamy) { c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.55; softBg(c, s, 0, s.opts.bw); c.restore(); c.fillStyle = 'rgba(255,255,255,.16)'; c.fillRect(0, 0, W, H); }
       noBg(() => {
         navStrip(c, s, t);
-        txt(c, fill(s.texts.word), 1290, 480, F.script(120), '#FFFFFF', fade(t, 0.8, 1.2), { k: 'word', shadow: 'rgba(0,0,0,.25)', blur: 10, rise: 10 });
+        txt(c, fill(s.texts.word), s.opts.wordLeft ? 630 : 1290, 480, F.script(120), '#FFFFFF', fade(t, 0.8, 1.2), { k: 'word', shadow: 'rgba(0,0,0,.25)', blur: 10, rise: 10 });
         watermark(c, s, t);
       });
     }
@@ -3167,7 +3167,7 @@ Object.assign(LAYOUTS, {
         ls.forEach((l, i) => {
           const p = clamp((t - 0.5 - i * 0.55) / 0.6); if (p <= 0) return;
           c.save(); c.beginPath(); c.rect(0, 0, 140 + st.x + 560 * p * st.s, H); c.clip();
-          txt(c, l, 120 + st.x * 0, 470 + (i - (ls.length - 1) / 2) * 128, GAEGU(150, 700), '#FFFFFF', 1, { align: 'left', k: i ? null : 'title', shadow: 'rgba(0,0,0,.25)', blur: 8 });
+          txt(c, l, 120, 470 + (i - (ls.length - 1) / 2) * 128 * (st.s || 1), GAEGU(150, 700), '#FFFFFF', 1, { align: 'left', k: 'title', shadow: 'rgba(0,0,0,.25)', blur: 8 });
           c.restore();
         });
         const lb = fill(s.texts.label), lg = fill(s.texts.label2);
@@ -4180,6 +4180,259 @@ CATS[1][1].push('gstory', 'introgroom', 'introbride'); CATS[2][1].push('gcouple'
     if (i >= 0) sc.splice(i, 1, makeScene('gcouple', { weight: 5 }), makeScene('gstory', { weight: 5 }));
     p.scenes = fitTotal(sc);
     return p;
+  };
+})();
+/* ---------------- C type v2: "mongle blue" (crumpled paper, clouds, ribbons, tile letters) ---------------- */
+const MGB = '#8FB8E6', MGP = '#F9D5DF';
+let mgPaper = null;
+function mgBg(c, t, o = {}) {
+  if (!mgPaper) {
+    mgPaper = document.createElement('canvas'); mgPaper.width = 960; mgPaper.height = 540;
+    const p = mgPaper.getContext('2d'); const g = p.createLinearGradient(0, 0, 960, 540); g.addColorStop(0, '#F7F9FC'); g.addColorStop(1, '#EEF3F9'); p.fillStyle = g; p.fillRect(0, 0, 960, 540);
+    for (let i = 0; i < 90; i++) { const x = rnd(i, 201) * 960, y = rnd(i, 202) * 540, r = 60 + rnd(i, 203) * 160; p.beginPath(); p.moveTo(x, y); p.lineTo(x + r * (rnd(i, 204) - 0.5) * 2, y + r * (rnd(i, 205) - 0.5)); p.lineTo(x + r * (rnd(i, 206) - 0.5), y + r * (rnd(i, 207) - 0.2)); p.closePath(); p.fillStyle = rnd(i, 208) > 0.5 ? 'rgba(255,255,255,.45)' : 'rgba(170,190,215,.07)'; p.fill(); }
+    p.lineWidth = 1; for (let i = 0; i < 40; i++) { p.strokeStyle = rnd(i, 209) > 0.5 ? 'rgba(255,255,255,.8)' : 'rgba(160,180,205,.12)'; p.beginPath(); const x = rnd(i, 210) * 960, y = rnd(i, 211) * 540; p.moveTo(x, y); p.lineTo(x + (rnd(i, 212) - 0.5) * 300, y + (rnd(i, 213) - 0.5) * 200); p.stroke(); }
+  }
+  if (o.sky) { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#D8E8F7'); g.addColorStop(1, '#F4F8FC'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.globalAlpha = 0.5; c.drawImage(mgPaper, 0, 0, W, H); c.globalAlpha = 1; }
+  else c.drawImage(mgPaper, 0, 0, W, H);
+  if (o.hearts) { c.save(); c.fillStyle = 'rgba(244,170,190,.35)'; for (let y = 40; y < H; y += 90) for (let x = (y / 90 % 2) * 60 + 30; x < W; x += 120) { heartShape(c, x, y, 16); c.fill(); } c.restore(); }
+  if (o.grid) { c.save(); c.strokeStyle = 'rgba(140,175,215,.22)'; c.lineWidth = 1.2; for (let x = 0; x <= W; x += 48) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); } for (let y = 0; y <= H; y += 48) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); } c.restore(); }
+  if (o.glow) { const g = c.createRadialGradient(960, 540, 100, 960, 540, 900); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H); }
+  if (o.clouds) mgClouds(c, t, o.clouds);
+}
+function mgClouds(c, t, where) {
+  c.save(); c.fillStyle = '#FFFFFF'; c.shadowColor = 'rgba(140,165,200,.28)'; c.shadowBlur = 26 * R.S; c.shadowOffsetY = 8 * R.S;
+  const puff = (x, y, s) => { [[0, 0, 1], [-0.9, 0.25, 0.7], [0.9, 0.2, 0.75], [-0.4, -0.45, 0.65], [0.45, -0.35, 0.6]].forEach(([dx, dy, k]) => { c.beginPath(); c.arc(x + dx * s, y + dy * s, s * k, 0, Math.PI * 2); c.fill(); }); };
+  const dr = Math.sin(t * 0.4) * 10;
+  if (where === 'bottom' || where === 'both') for (let i = 0; i < 8; i++) puff(i * 290 - 60 + dr, H + 20 - (i % 2) * 30, 110 + (i % 3) * 20);
+  if (where === 'top' || where === 'both') { puff(80 + dr, 40, 100); puff(1840 - dr, 60, 90); }
+  if (where === 'corner') { puff(90 + dr, 120, 90); puff(1800 - dr, 960, 110); puff(1650 - dr, 1040, 90); }
+  c.restore();
+}
+function mgBow(c, x, y, s, rot, col) {
+  col = col || '#9FC8EF';
+  c.save(); c.translate(x, y); c.rotate(rot || 0); c.fillStyle = col; c.strokeStyle = 'rgba(70,110,160,.35)'; c.lineWidth = 2;
+  [[-1], [1]].forEach(([k]) => { c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(k * s * 0.9, -s * 0.75, k * s * 1.3, s * 0.35, 0, 0); c.fill(); c.stroke(); });
+  [[-1], [1]].forEach(([k]) => { c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(k * s * 0.35, s * 0.6, k * s * 0.7, s * 1.15); c.lineTo(k * s * 0.42, s * 1.05); c.quadraticCurveTo(k * s * 0.18, s * 0.55, 0, 0); c.fill(); c.stroke(); });
+  c.beginPath(); c.arc(0, 0, s * 0.16, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.restore();
+}
+function mgTiles(c, word, cx, cy, sz, t, st, key) {
+  const chars = Array.from(fill(word)); if (!chars.length) return;
+  const stl = getStyle(key), k = stl.s, tw = chars.reduce((n, ch) => n + (ch === ' ' ? sz * 0.45 : sz * 0.92), 0) * k;
+  let x = cx + stl.x - tw / 2;
+  chars.forEach((ch, i) => {
+    if (ch === ' ') { x += sz * 0.45 * k; return; }
+    const p = pop(t, st + i * 0.07, 0.45), w = sz * 0.86 * k;
+    if (p > 0.001) {
+      c.save(); c.translate(x + w / 2, cy + stl.y); c.rotate((i % 2 ? -0.07 : 0.06)); c.scale(p, p);
+      c.shadowColor = 'rgba(120,140,170,.25)'; c.shadowBlur = 10 * R.S; c.fillStyle = MGP; rr(c, -w / 2, -w / 2, w, w, w * 0.18); c.fill(); c.shadowColor = 'transparent';
+      c.font = UIF(sz * 0.64 * k, 800); c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round'; c.lineWidth = 7 * k; c.strokeStyle = '#FFFFFF'; c.strokeText(ch, 0, 3); c.fillStyle = '#7DB0E6'; c.fillText(ch, 0, 3);
+      c.restore();
+    }
+    x += sz * 0.92 * k;
+  });
+  addHit({ type: 'text', key, x: cx + stl.x - tw / 2, y: cy + stl.y - sz * k / 2, w: tw, h: sz * k });
+}
+function whiteBorder(c, s, si, x, y, w, h, t, d, rot, o = {}) {
+  [x, y, w, h] = slotRect(s, si, x, y, w, h);
+  const e = enter(t, o.at || 0); if (e.a <= 0.001) return;
+  const ho = hitOn; hitOn = false;
+  c.save(); c.globalAlpha *= e.a; c.translate(x + w / 2 + (o.dx || 0) * (1 - e.a), y + h / 2 + e.dy); c.rotate((rot || 0) * Math.PI / 180);
+  const b = o.b == null ? 14 : o.b;
+  c.save(); c.shadowColor = 'rgba(90,110,140,.22)'; c.shadowBlur = 22 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(-w / 2 - b, -h / 2 - b, w + 2 * b, h + 2 * b + (o.bottom || 0)); c.restore();
+  if (o.gingham) { c.save(); c.beginPath(); c.rect(-w / 2 - b, -h / 2 - b, w + 2 * b, h + 2 * b + (o.bottom || 0)); c.clip(); c.fillStyle = o.gingham; for (let gx = -w / 2 - b; gx < w / 2 + b; gx += 22) c.fillRect(gx, -h / 2 - b, 11, h + 2 * b + (o.bottom || 0)); for (let gy = -h / 2 - b; gy < h / 2 + b + (o.bottom || 0); gy += 22) c.fillRect(-w / 2 - b, gy, w + 2 * b, 11); c.restore(); }
+  coverIn(c, s, si, -w / 2, -h / 2, w, h, t, { bw: o.bw, zoom: kb(t, d, 0.03) });
+  c.restore(); hitOn = ho; addHit({ type: 'media', si, x, y, w, h, oy: 0 });
+}
+function tornPathOval(c, cx, cy, rx, ry, seed, jag) {
+  c.beginPath(); const N = 90;
+  for (let i = 0; i <= N; i++) { const a = i / N * Math.PI * 2, k = 1 + (rnd(i % N, seed) - 0.5) * jag + Math.sin(a * 3 + seed) * 0.05; const x = cx + Math.cos(a) * rx * k, y = cy + Math.sin(a) * ry * k; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  c.closePath();
+}
+function newsStrip(c, x, y, w, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = '#F4EFE3'; c.shadowColor = 'rgba(0,0,0,.12)'; c.shadowBlur = 8 * R.S; c.fillRect(-w / 2, -40, w, 80); c.shadowColor = 'transparent';
+  c.fillStyle = 'rgba(60,55,50,.55)'; for (let ly = -26; ly < 30; ly += 14) for (let lx = -w / 2 + 14; lx < w / 2 - 14;) { const ww = 14 + rnd(lx + ly * 7, 17) * 40; c.fillRect(lx, ly, Math.min(ww, w / 2 - 14 - lx), 5); lx += ww + 8; }
+  c.restore();
+}
+Object.assign(LAYOUTS, {
+  mgfilm: {
+    name: '몽글 인스탁스 카드 + 필기체', slots: 1, weight: 6,
+    fields: [['script', '필기체 글씨', 'we’re getting married'], ['date', '카드 아래 날짜', '{DATE}']],
+    opts: [['bw', '흑백', true]], cap: () => [960, 1012, 'light'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { glow: true });
+      const e = ease(clamp(t / 1.0)), sc = 0.9 + 0.1 * e, w = 390, h = 480, cx = 960, cy = 500;
+      c.save(); c.globalAlpha *= e; c.translate(cx, cy); c.scale(sc, sc); c.translate(-cx, -cy);
+      c.save(); c.shadowColor = 'rgba(90,110,140,.25)'; c.shadowBlur = 34 * R.S; c.shadowOffsetY = 12 * R.S; c.fillStyle = '#FFFFFF'; rr(c, cx - w / 2 - 34, cy - h / 2 - 50, w + 68, h + 190, 14); c.fill(); c.restore();
+      c.fillStyle = '#E3E8EF'; rr(c, cx - 70, cy - h / 2 - 66, 140, 30, 8); c.fill();
+      const ho = hitOn; hitOn = false; coverIn(c, s, 0, cx - w / 2, cy - h / 2, w, h, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); hitOn = ho;
+      c.restore();
+      addHit({ type: 'media', si: 0, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 });
+      txt(c, fill(s.texts.date), cx, cy + h / 2 + 70, UIF(28, 500), '#7FA9DA', fade(t, 0.6, 0.6), { k: 'date', sp: 4 });
+      const p = clamp((t - 0.7) / 1.6);
+      if (p > 0) { c.save(); c.beginPath(); c.rect(0, 0, 240 + 1440 * p, H); c.clip(); c.globalAlpha *= 0.88; txt(c, fill(s.texts.script), 960, 500, F.script(130), MGB, 1, { k: 'script' }); c.restore(); }
+    }
+  },
+  mgtext: {
+    name: '몽글 큰 글씨 (가운데)', slots: 0, weight: 3.5, fields: [['text', '글씨', 'It’s you']], opts: [], cap: () => [960, 1012, 'light'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { glow: true });
+      const k = pop(t, 0.2, 0.6); if (k > 0) { c.save(); c.translate(960, 540); c.scale(k, k); c.translate(-960, -540); txt(c, fill(s.texts.text), 960, 540, UIF(96, 800), MGB, 1, { k: 'text' }); c.restore(); }
+    }
+  },
+  mgwide: {
+    name: '몽글 와이드 사진 + love 띠', slots: 1, weight: 5, fields: [['word', '위아래 작은 글씨', 'love']], opts: [['bw', '흑백', false], ['doodle', '하트 라인 낙서', true]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, {});
+      const e = ease(clamp(t / 1.0));
+      c.save(); c.globalAlpha *= e; cover(c, s, 0, 230, 150, 1460, 770, t, { bw: s.opts.bw, zoom: 1.06 - 0.04 * e + 0.03 * clamp(t / d) }); c.restore();
+      const w = fill(s.texts.word); if (w) { const a = fade(t, 0.4, 0.8); c.save(); c.globalAlpha *= a; c.font = UIF(20, 500); c.fillStyle = '#9DB7D6'; c.textAlign = 'center'; c.textBaseline = 'middle'; for (let i = 0; i < 7; i++) { c.fillText(w, 700 + i * 86, 110); c.fillText(w, 700 + i * 86, 960); } c.restore(); }
+      if (s.opts.doodle) { const p = ease(clamp((t - 0.6) / 1.2)); if (p > 0) { c.save(); c.strokeStyle = MGB; c.lineWidth = 4; c.lineCap = 'round'; c.setLineDash([2400 * p, 3000]);
+        c.beginPath(); c.moveTo(40, 220); c.bezierCurveTo(160, 140, 260, 210, 220, 160); c.bezierCurveTo(190, 120, 140, 150, 170, 190); c.bezierCurveTo(230, 260, 420, 120, 560, 90); c.stroke();
+        c.beginPath(); c.moveTo(1880, 860); c.bezierCurveTo(1760, 940, 1700, 860, 1730, 830); c.bezierCurveTo(1760, 800, 1800, 840, 1770, 880); c.bezierCurveTo(1700, 960, 1560, 990, 1420, 1000); c.stroke(); c.restore(); } }
+    }
+  },
+  mgtrio: {
+    name: '몽글 Our forever (사진 + 스티커 두 장)', slots: 3, weight: 6,
+    fields: [['s1', '왼쪽 위 필기체', 'Our forever'], ['s2', '오른쪽 아래 필기체', 'begins today']], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'light'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { clouds: 'corner' });
+      whiteBorder(c, s, 0, 560, 250, 800, 540, t, d, 0, { at: 0.1, b: 16, bottom: 60, bw: s.opts.bw });
+      sticker(c, s, 1, 60, 420, 420, 620, t, d, { at: 0.5, rot: -2, bw: s.opts.bw });
+      sticker(c, s, 2, 1440, 180, 420, 660, t, d, { at: 0.8, rot: 2, bw: s.opts.bw });
+      const p1 = clamp((t - 1.0) / 1.0), p2 = clamp((t - 1.5) / 1.0);
+      if (p1 > 0) { c.save(); c.beginPath(); c.rect(0, 0, 60 + 900 * p1, 400); c.clip(); txt(c, fill(s.texts.s1), 360, 150, F.script(140), MGB, 1, { k: 's1' }); c.restore(); }
+      if (p2 > 0) { c.save(); c.beginPath(); c.rect(1100, 760, 100 + 900 * p2, 320); c.clip(); txt(c, fill(s.texts.s2), 1500, 930, F.script(120), MGB, 1, { k: 's2' }); c.restore(); }
+    }
+  },
+  mgname: {
+    name: '몽글 GROOM/BRIDE 소개 (타일 글자 + 이름 라벨)', slots: 2, weight: 6,
+    fields: [['word', '타일 글자', 'GROOM'], ['name', '이름', '{신랑}']], opts: [['flip', '사진 오른쪽 (신부용)', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 560 : 1360, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { clouds: 'bottom' });
+      const f = s.opts.flip, M = x => f ? W - x : x;
+      const px = f ? 1070 : 230, tx = M(1340);
+      if (s.media[1] && s.media[1].id || true) whiteBorder(c, s, 1, f ? 1460 : 20, 30, 380, 290, t, d, f ? 7 : -7, { at: 0.5, b: 14, bw: s.opts.bw });
+      sticker(c, s, 0, px, 250, 620, 900, t, d, { at: 0.1, rot: 0, bw: s.opts.bw });
+      mgTiles(c, s.texts.word, tx, 310, 150, t, 0.8, 'word');
+      const k = pop(t, 1.4, 0.5);
+      if (k > 0.001) {
+        const nm = fill(s.texts.name), stl = getStyle('name'); c.save(); c.font = UIF(124, 800); setSpacing(c, 14); const nw = c.measureText(nm).width * stl.s + 110; c.restore();
+        c.save(); c.translate(tx + stl.x, 510 + stl.y); c.scale(k, k); c.fillStyle = '#8EC0EE'; c.shadowColor = 'rgba(80,120,170,.25)'; c.shadowBlur = 14 * R.S; c.fillRect(-nw / 2, -84 * stl.s, nw, 168 * stl.s); c.restore();
+        txt(c, nm, tx, 510, UIF(124, 800), '#FFFFFF', k, { k: 'name', sp: 14 });
+      }
+      const ba = fade(t, 1.2, 0.6);
+      if (ba > 0) { c.save(); c.globalAlpha *= ba; mgBow(c, M(930), 250, 46, f ? 0.3 : -0.3); mgBow(c, M(140), 870, 50, f ? -0.4 : 0.4);
+        c.strokeStyle = 'rgba(143,184,230,.8)'; c.lineWidth = 3; c.setLineDash([14, 12]); c.beginPath(); c.moveTo(M(860), 640); c.quadraticCurveTo(M(1300), 760, M(1800), 620); c.stroke(); c.restore(); }
+    }
+  },
+  mgrow: {
+    name: '몽글 하늘 + 사진 줄 (1~4장)', slots: 4, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { sky: true, clouds: 'bottom' });
+      const n = Math.min(4, nFilled(s, 3)), any = s.media.some(m => m.id), fl = filledSlots(s);
+      const sets = { 1: [[460, 140, 1000, 700]], 2: [[230, 150, 680, 700], [1010, 150, 680, 700]], 3: [[120, 170, 520, 680], [700, 170, 520, 680], [1280, 170, 520, 680]], 4: [[80, 200, 400, 600], [540, 200, 400, 600], [1000, 200, 400, 600], [1460, 200, 400, 600]] };
+      sets[n].forEach((r, i) => whiteBorder(c, s, any ? fl[i] : i, r[0], r[1], r[2], r[3], t, d, 0, { at: 0.1 + i * 0.22, b: 12, dx: 140, bw: s.opts.bw }));
+    }
+  },
+  mgsingle: {
+    name: '몽글 사진 한 장 (흰 테두리)', slots: 1, weight: 5, fields: [], opts: [['hearts', '하트 무늬 배경', false], ['tilt', '살짝 기울이기', true], ['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, s.opts.hearts ? { hearts: true } : { sky: true, clouds: 'both' });
+      whiteBorder(c, s, 0, 520, 150, 880, 640, t, d, s.opts.tilt ? -3 : 0, { at: 0.1, b: 18, bw: s.opts.bw });
+    }
+  },
+  mgtiles: {
+    name: '몽글 타일 제목 + 와이드 사진 + 리본', slots: 1, weight: 5, fields: [['word', '타일 제목', 'Wedding Day']], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, {});
+      c.save(); c.globalAlpha *= ease(clamp(t / 0.9)); cover(c, s, 0, 380, 190, 1160, 680, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+      mgTiles(c, s.texts.word, 960, 150, 96, t, 0.5, 'word');
+      const ba = fade(t, 1.2, 0.6); if (ba > 0) { c.save(); c.globalAlpha *= ba; mgBow(c, 300, 620, 56, -0.35); mgBow(c, 1640, 560, 56, 0.35); c.restore(); }
+    }
+  },
+  mgtorn: {
+    name: '몽글 찢어진 종이 창 사진', slots: 1, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { grid: true });
+      const e = ease(clamp(t / 1.0)), rx = 560 * (0.85 + 0.15 * e), ry = 340 * (0.85 + 0.15 * e);
+      c.save(); c.globalAlpha *= e; c.shadowColor = 'rgba(80,100,130,.25)'; c.shadowBlur = 18 * R.S; c.fillStyle = '#FFFFFF'; tornPathOval(c, 960, 480, rx + 26, ry + 26, 7, 0.08); c.fill(); c.restore();
+      c.save(); c.globalAlpha *= e; tornPathOval(c, 960, 480, rx, ry, 3, 0.06); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, 0, 960 - rx * 1.1, 480 - ry * 1.1, rx * 2.2, ry * 2.2, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); hitOn = ho; c.restore();
+      addHit({ type: 'media', si: 0, x: 960 - rx, y: 480 - ry, w: rx * 2, h: ry * 2, oy: 0 });
+      const ba = fade(t, 1.0, 0.6); if (ba > 0) { c.save(); c.globalAlpha *= ba; mgBow(c, 330, 150, 48, -0.4, '#F7B6C8'); c.fillStyle = '#F7B6C8'; heartShape(c, 1660, 900, 34); c.fill(); c.restore(); }
+    }
+  },
+  mgheart: {
+    name: '몽글 사진 + 하트 창', slots: 2, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, {});
+      c.save(); c.globalAlpha *= ease(clamp(t / 0.9)); cover(c, s, 0, 0, 0, 920, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+      const k = pop(t, 0.6, 0.7);
+      if (k > 0.001) {
+        c.save(); c.translate(1380, 560); c.scale(k, k); c.rotate(0.05);
+        c.save(); c.shadowColor = 'rgba(80,100,130,.28)'; c.shadowBlur = 24 * R.S; c.fillStyle = '#FFFFFF'; heartShape(c, 0, 0, 600); c.fill(); c.restore();
+        c.save(); heartShape(c, 0, 8, 540); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, s.media[1] && s.media[1].id ? 1 : 0, -330, -330, 660, 660, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho; c.restore();
+        c.restore(); addHit({ type: 'media', si: 1, x: 1100, y: 290, w: 560, h: 540, oy: 0 });
+      }
+      const na = fade(t, 1.0, 0.6); if (na > 0) { c.save(); c.globalAlpha *= na; newsStrip(c, 1700, 960, 380, -0.25); newsStrip(c, 1790, 150, 300, 0.3); c.restore(); }
+    }
+  },
+  mgcollage: {
+    name: '몽글 콜라주 (체크 프레임 + 사진들 + Love)', slots: 4, weight: 6, fields: [['love', '스티커 글씨', 'Love']], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    draw(c, s, t, d) {
+      mgBg(c, t, { clouds: 'top' });
+      whiteBorder(c, s, 0, 120, 360, 420, 560, t, d, -4, { at: 0.1, b: 26, bottom: 40, gingham: 'rgba(244,160,185,.45)', bw: s.opts.bw });
+      [[560, 70], [930, 50], [1300, 70]].forEach(([x, y], i) => whiteBorder(c, s, slotAt(s, 1 + (i % 2)), x, y, 340, 300, t, d, i === 1 ? 2 : -1, { at: 0.4 + i * 0.15, b: 10, bw: s.opts.bw }));
+      whiteBorder(c, s, 3, 1150, 560, 640, 440, t, d, 2, { at: 0.9, b: 12, bw: s.opts.bw });
+      const k = pop(t, 1.3, 0.5);
+      if (k > 0.001) { c.save(); c.translate(760, 800); c.rotate(-0.08); c.scale(k, k); c.fillStyle = '#FFFFFF'; c.shadowColor = 'rgba(0,0,0,.15)'; c.shadowBlur = 10 * R.S; rr(c, -150, -62, 300, 124, 18); c.fill(); c.shadowColor = 'transparent'; c.font = PACI(84); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#E6577A'; c.fillText(fill(s.texts.love), 0, 6); c.restore();
+        c.save(); c.translate(1120, 600); c.scale(k, k); c.fillStyle = '#F7A6BD'; c.beginPath(); c.arc(0, 0, 46, 0, Math.PI * 2); c.fill(); c.fillStyle = '#FFFFFF'; heartShape(c, 0, 4, 44); c.fill(); c.restore(); }
+    }
+  },
+  mgblack: {
+    name: '몽글 블랙 엔딩 (둥근 창 사진 + 문구)', slots: 1, weight: 5, fields: [['text', '문구', '함께했던 소중한 하루들이 모여', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      frame(c, s, 0, 540, 150, 840, 520, t, d, { bw: s.opts.bw, alpha: fade(t, 0, 1) });
+      block(c, fill(s.texts.text), 960, 770, UIF(40, 500), 60, '#F2F2F2', t, 0.6, 1, false, 'text');
+    }
+  }
+});
+['mgblack'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+CATS[0][1].push('mgfilm', 'mgtext');
+CATS[1][1].push('mgwide', 'mgsingle', 'mgtiles', 'mgtorn', 'mgname');
+CATS[2][1].push('mgtrio', 'mgrow', 'mgheart', 'mgcollage');
+CATS[4][1].push('mgblack');
+TEMPLATES.C.name = '몽글 블루';
+TEMPLATES.C.desc = '구김 종이와 구름, 하늘색 리본, 타일 글자로 꾸민 밝고 사랑스러운 구성. 인스탁스 카드 오프닝, GROOM·BRIDE 소개, 찢어진 종이 창, 하트 창, 블랙 엔딩까지';
+TEMPLATES.C.tags = ['타일 글자', '구름·리본', '노랑 두 줄 자막', '밝은 홀 추천'];
+TEMPLATES.C.preview = 0;
+TEMPLATES.C.make = () => {
+  const Y2 = { capFx: 'yellow' };
+  const list = [
+    ['mgfilm', {}, 6], ['mgtext', {}, 3.5], ['mgwide', { ...Y2 }], ['mgtrio', {}, 6],
+    ['mgname', { ...Y2 }, 6], ['mgname', { opts: { flip: true }, texts: { word: 'BRIDE', name: '{신부}' }, ...Y2 }, 6],
+    ['mgrow', { ...Y2 }], ['mgsingle', { ...Y2 }], ['mgrow', { ...Y2 }], ['mgtiles', { ...Y2 }],
+    ['full', { texts: { text: '' }, ...Y2 }], ['mgsingle', { opts: { hearts: true, tilt: false } }], ['mgtorn', { ...Y2 }], ['mgcollage', { ...Y2 }, 6],
+    ['mgwide', { opts: { doodle: false }, ...Y2 }], ['mgheart', { ...Y2 }], ['mgrow', { ...Y2 }], ['mgsingle', { opts: { tilt: true }, ...Y2 }],
+    ['mgtiles', { texts: { word: 'Happy Day' }, ...Y2 }], ['full', { texts: { text: '' }, ...Y2 }], ['mgtorn', { ...Y2 }], ['mgrow', { ...Y2 }],
+    ['mgheart', { ...Y2 }], ['mgcollage', { texts: { love: 'Happy' }, ...Y2 }, 6], ['mgwide', { ...Y2 }], ['mgsingle', { opts: { hearts: true }, ...Y2 }],
+    ['mgblack', {}, 4.5], ['mgblack', { texts: { text: '앞으로 서로의 모든 날들에' } }, 4.5], ['mgblack', { texts: { text: '늘 웃음이 가득하도록 노력하겠습니다.' } }, 4.5], ['mgblack', { texts: { text: '모든 분들께 감사 인사드립니다.' } }, 4.5],
+    ['full', { texts: { text: '' }, ...Y2 }], ['mgwide', { texts: { word: 'love' }, ...Y2 }], ['mgcollage', { texts: { love: 'Wedding' }, ...Y2 }, 6],
+    ['mgfilm', { texts: { script: 'Our Wedding Day' } }, 7]
+  ];
+  const sc = mkScenes(list); let ci = 0; sc.forEach(s => { if (s.capFx === 'yellow' && !s.caption) s.caption = BIL_CAPS[ci++ % BIL_CAPS.length]; });
+  return baseProj('C', fitTotal(sc), { lyricFx: 'yellow' });
+};
+/* F type: add the groom title next to the bride one */
+LAYOUTS.navphoto.opts = LAYOUTS.navphoto.opts.concat([['wordLeft', '필기체 글씨 왼쪽', false]]);
+(() => {
+  const origF = TEMPLATES.F.make;
+  TEMPLATES.F.make = () => {
+    const p = origF(), sc = p.scenes, i = sc.findIndex(s => s.layout === 'navphoto' && fill(s.texts.word || '') === 'Bride');
+    if (i >= 0) sc.splice(i + 1, 0, makeScene('navphoto', { weight: 5, texts: { word: 'Groom' }, opts: { wordLeft: true } }));
+    p.scenes = fitTotal(sc); return p;
   };
 })();
 let BASE_TPL = null; // customer page: template.json from the same folder
