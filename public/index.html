@@ -649,6 +649,17 @@ function styleLum(v) {
   m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/.exec(v); if (m) return (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255;
   return 0.5;
 }
+const outlineCache = {};
+function outlineText(str, font, col, scale) {
+  const key = [str, font, col, scale.toFixed(3)].join('|'); if (outlineCache[key]) return outlineCache[key];
+  const w = 1600, h = 220, cv = document.createElement('canvas'); cv.width = Math.ceil(w * scale); cv.height = Math.ceil(h * scale);
+  const o = cv.getContext('2d'); o.scale(scale, scale); o.font = font; setSpacing(o, 4); o.textAlign = 'center'; o.textBaseline = 'middle'; o.lineJoin = 'round';
+  o.lineWidth = 8; o.strokeStyle = col; o.strokeText(str, w / 2, h / 2);
+  o.globalCompositeOperation = 'destination-out'; o.fillStyle = '#000'; o.fillText(str, w / 2, h / 2);
+  const keys = Object.keys(outlineCache); if (keys.length > 40) delete outlineCache[keys[0]];
+  let ready = true; try { ready = document.fonts.check(font); } catch (e) { }
+  return ready ? (outlineCache[key] = { cv, w, h }) : { cv, w, h };
+}
 function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub = '') {
   if ((!s && !sub) || a <= 0.001) return;
   const ls = (s || '').split('\n'), lh = px * 1.45, st = getStyle(key);
@@ -3013,8 +3024,9 @@ Object.assign(LAYOUTS, {
       const a1 = fade(t, 0.2, 0.6), a2 = fade(t, 0.6, 0.6);
       noBg(() => {
         const st = getStyle('l1');
-        c.save(); c.globalAlpha *= a1; c.translate(960 + st.x, 440 + st.y); c.scale(st.s, st.s); c.font = UIF(96, 800); setSpacing(c, 4); c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.lineWidth = 4; c.strokeStyle = '#2B2B2B'; c.strokeText(fill(s.texts.l1), 0, 0); c.restore();
+        // clean outline text: stroke, then punch the fill out so overlapping glyph contours (A, R...) leave no inner lines
+        const ot = fill(s.texts.l1), oc = outlineText(ot, withFont(UIF(96, 800), st.f), st.c || '#2B2B2B', R.S * (st.s || 1));
+        c.save(); c.globalAlpha *= a1; c.translate(960 + st.x, 440 + st.y); c.scale(st.s, st.s); c.drawImage(oc.cv, -oc.w / 2, -oc.h / 2, oc.w, oc.h); c.restore();
         addHit({ type: 'text', key: 'l1', x: 960 + st.x - 260, y: 390 + st.y, w: 520, h: 100 });
         txt(c, fill(s.texts.l2), 960, 580, UIF(116, 800), '#2B2B2B', a2, { k: 'l2', sp: 4, rise: 12 });
       });
