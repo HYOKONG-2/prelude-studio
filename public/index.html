@@ -628,12 +628,46 @@ function block(c, s, cx, cy, font, lh, color, t, start, maxDur, typing, key, alp
   }
   return start + dur;
 }
+/* readability: look at what is actually behind the caption and add an outline or a soft band when the text would blend in */
+const READ_MODES = [['auto', '자동 (묻힐 때만 외곽선)'], ['outline', '항상 외곽선'], ['box', '반투명 배경 띠'], ['none', '끄기']];
+let lumCv = null;
+function regionLum(c, x, y, w, h) {
+  try {
+    const m = c.getTransform(), cv = c.canvas;
+    const sx = Math.max(0, x * m.a + m.e), sy = Math.max(0, y * m.d + m.f), sw = Math.min(cv.width - sx, w * m.a), sh = Math.min(cv.height - sy, h * m.d);
+    if (sw < 2 || sh < 2) return null;
+    if (!lumCv) { lumCv = document.createElement('canvas'); lumCv.width = 24; lumCv.height = 6; }
+    const g = lumCv.getContext('2d', { willReadFrequently: true }); g.clearRect(0, 0, 24, 6); g.drawImage(cv, sx, sy, sw, sh, 0, 0, 24, 6);
+    const d = g.getImageData(0, 0, 24, 6).data; let sum = 0, mx = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) { const l = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; sum += l; mx = Math.max(mx, l); n++; }
+    return { avg: sum / n, max: mx };
+  } catch (e) { return null; }
+}
+function styleLum(v) {
+  if (typeof v !== 'string') return 0.5;
+  let m = /^#([0-9a-f]{6})$/i.exec(v); if (m) { const n = parseInt(m[1], 16); return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255; }
+  m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/.exec(v); if (m) return (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255;
+  return 0.5;
+}
 function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub = '') {
   if ((!s && !sub) || a <= 0.001) return;
   const ls = (s || '').split('\n'), lh = px * 1.45, st = getStyle(key);
   const col1 = (cols && cols[0]) || st.c || null, col2 = (cols && cols[1]) || null, subH = sub ? px * 1.05 : 0;
+  const rmode = project.capRead || 'auto', sk = st.s || 1;
+  const bh = ((ls.length - 1) * lh + px * 1.5 + subH) * sk, bw = Math.min(1700, Math.max(...ls.map(l => l.length), (sub || '').length) * px * 0.62 * sk + 80);
+  const bx = x + st.x - bw / 2, by = y + st.y - bh + px * 0.75 * sk;
+  const bgL = (rmode === 'auto' && fx !== 'label') ? regionLum(c, bx, by, bw, bh) : null;
   c.save(); c.translate(x + st.x, y + st.y); c.scale(st.s, st.s);
   c.globalAlpha *= a * (style === 'dark' ? 0.92 : 1);
+  if (rmode === 'box' && fx !== 'label') { c.save(); c.shadowColor = 'transparent'; c.fillStyle = 'rgba(20,18,18,.42)'; rr(c, -bw / sk / 2, -(bh / sk) + px * 0.75, bw / sk, bh / sk, 16); c.fill(); c.restore(); }
+  const wantOutline = fx !== 'label' && fx !== 'cute' && fx !== 'movie' && (rmode === 'outline' || (rmode === 'auto' && bgL));
+  if (wantOutline) {
+    c.fillText = function (t2, x2, y2) {
+      const fl = styleLum(this.fillStyle), need = rmode === 'outline' || Math.abs(fl - bgL.avg) < 0.42 || (fl > 0.6 && bgL.max > 0.85 && bgL.avg > 0.55);
+      if (need) { this.save(); this.shadowColor = 'transparent'; this.lineJoin = 'round'; const fpx = +((/(\d+(?:\.\d+)?)px/.exec(this.font) || [0, 40])[1]); this.lineWidth = Math.max(4, fpx * 0.17); this.strokeStyle = fl > 0.5 ? 'rgba(30,26,26,.78)' : 'rgba(255,255,255,.88)'; this.strokeText(t2, x2, y2); this.restore(); }
+      CanvasRenderingContext2D.prototype.fillText.call(this, t2, x2, y2);
+    };
+  }
   c.save(); c.translate(0, -subH);
   c.font = st.f ? withFont(F.kr(px), st.f) : fx === 'hand' ? PEN(Math.round(px * 1.45)) : fx === 'cute' ? JUA(Math.round(px * 1.2)) : fx === 'movie' ? `600 ${px}px "Noto Sans KR", sans-serif` : fx === 'label' ? UIF(Math.round(px * 0.85), 500) : F.kr(px); c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
   c.fillStyle = col1 || (style !== 'photo' && curBgLum != null ? (curBgLum > 0.5 ? '#3A3634' : '#F2F0EE') : (style === 'light' ? '#4A4643' : '#FFFFFF'));
@@ -674,6 +708,7 @@ function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub =
     else if (!lightBg) { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 10 * R.S * st.s; }
     c.fillStyle = sc; c.fillText(sub, 0, 0); mw = Math.max(mw, c.measureText(sub).width);
   }
+  if (wantOutline) delete c.fillText;
   c.restore();
   const hh = (ls.length - 1) * lh + px * 1.4 + subH;
   addHit({ type: 'text', key, x: x + st.x - (mw / 2 + 10) * st.s, y: y + st.y - (hh - px * 0.7) * st.s, w: (mw + 20) * st.s, h: hh * st.s });
@@ -5313,6 +5348,7 @@ function buildLyricPane() {
     <p class="hint">음원을 틀어 두고 하이라이트가 시작될 때 맨 아래 ‘지금 위치에 가사 추가’를 누르세요. 가사마다 ‘기본 위치 따르기’를 끄면 그 가사만 따로 옮길 수 있어요. 시작·끝 옆의 ‘지금’ 버튼으로 재생 위치를 바로 찍을 수 있어요.</p>
     <label class="field"><span>가사 자막 스타일</span><select id="lyFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(project.lyricFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
     ${colorRow('lcol', '가사 색', project.lcol)}${colorRow('lcol2', '아래 줄 색', project.lcol2)}
+    <label class="field"><span>자막이 배경에 묻힐 때 (가사·장면 자막 모두)</span><select id="lyRead">${READ_MODES.map(([k, n]) => `<option value="${k}" ${(project.capRead || 'auto') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
     <p class="hint">영문 노래는 가사 칸에 영어를, 그 아래 ‘한글 자막’ 칸에 번역을 적으면 영어 밑에 한글이 함께 나와요.</p>
     <div style="margin-top:12px">${styleCtl('lyrics', project.lstyle)}</div>
     <div id="lyList">${list.length ? '' : '<p class="hint" style="margin-top:14px">아직 넣은 가사가 없어요.</p>'}</div>
@@ -5349,6 +5385,7 @@ function buildLyricPane() {
     box.appendChild(d);
   });
   wireColorRows(p, (k, v) => { touch('lyrics'); if (v) project[k] = v; else delete project[k]; dirty = true; save(); });
+  $('lyRead').onchange = e => { touch('lyrics'); if (e.target.value === 'auto') delete project.capRead; else project.capRead = e.target.value; dirty = true; save(); project.scenes.forEach(sc => queueThumb(sc.id)); };
   $('lyFx').onchange = e => { touch('lyrics'); if (e.target.value) project.lyricFx = e.target.value; else delete project.lyricFx; dirty = true; save(); };
   $('lyOn').onchange = e => { project.lyricsOn = e.target.checked; lyricChanged(); };
   wireAutoLyrics(p);
@@ -5464,7 +5501,7 @@ function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
     scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim })),
-    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2
+    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2, capRead: project.capRead
   };
 }
 function saveTemplate() { saveFile(new Blob([JSON.stringify(templateData(), null, 2)], { type: 'application/json' }), 'template.json'); }
@@ -5986,7 +6023,7 @@ function mergeProjects(local, remote, d) {
   if (d.has('order')) r.scenes = local.scenes.map(s => (d.has(s.id) || !Rm.has(s.id)) ? s : Rm.get(s.id));
   else r.scenes = r.scenes.map(s => (d.has(s.id) && L.has(s.id)) ? L.get(s.id) : s);
   if (d.has('info')) { r.info = local.info; r.title = local.title; }
-  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; r.lyricFx = local.lyricFx; r.lcol = local.lcol; r.lcol2 = local.lcol2; }
+  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; r.lyricFx = local.lyricFx; r.lcol = local.lcol; r.lcol2 = local.lcol2; r.capRead = local.capRead; }
   if (d.has('audio')) r.audio = local.audio;
   return JSON.parse(JSON.stringify(r));
 }
@@ -6385,7 +6422,7 @@ function diffKeys(a, b) {
   b.scenes.forEach(s => { if (am.get(s.id) !== J(s)) k.add(s.id); });
   a.scenes.forEach(s => { if (!bIds.has(s.id)) k.add(s.id); });
   if (J(a.info) !== J(b.info) || (a.title || '') !== (b.title || '')) k.add('info');
-  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle) || a.lyricFx !== b.lyricFx || a.lcol !== b.lcol || a.lcol2 !== b.lcol2) k.add('lyrics');
+  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle) || a.lyricFx !== b.lyricFx || a.lcol !== b.lcol || a.lcol2 !== b.lcol2 || a.capRead !== b.capRead) k.add('lyrics');
   if (J(a.audio || null) !== J(b.audio || null)) k.add('audio');
   return k;
 }
