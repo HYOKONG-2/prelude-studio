@@ -4036,7 +4036,7 @@ Object.assign(LAYOUTS, {
   },
   sbduo: {
     name: '스크랩북 큰 폴라로이드 두 장', slots: 2, weight: 5,
-    fields: [['cap1', '왼쪽 사진 아래', 'Bride & Groom'], ['cap2', '오른쪽 사진 아래', 'Forever']], opts: [['bw', '흑백', false]],
+    fields: [['cap1', '왼쪽 사진 아래', '{GROOM} & {BRIDE}'], ['cap2', '오른쪽 사진 아래', 'Forever']], opts: [['bw', '흑백', false]],
     cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       paperBg(c);
@@ -4085,7 +4085,7 @@ const WED = {
   A: [['full', nt], ['vignette1', {}], ['duo', { texts: { top: '' } }], ['framed', {}], ['full', { opts: { bw: true }, ...nt }], ['polaroid', { texts: { top: '', bottom: '' } }], ['feather2x', {}], ['triptych', {}], ['full', nt], ['vignette1', { opts: { bw: true } }]],
   B: [['full', nt], ['half2', { opts: { nogap: true } }], ['tri3dark', {}], ['fullnote', nt], ['stack2', {}], ['full', { opts: { bw: true }, ...nt }], ['camrec', {}], ['full', nt], ['tri3dark', { opts: { bw: true } }], ['half2', { opts: { nogap: true } }]],
   C: [['arch', { texts: { left: '', right: '', rsub: '' } }], ['offset2', {}], ['half2', {}], ['center', { texts: { title: '', sub: '' } }], ['bigsmall', {}], ['diagonal', {}], ['polaroid', { texts: { top: '', bottom: '' } }], ['full', nt], ['triptych', {}], ['slideshow', {}]],
-  D: [['sbphoto', {}], ['sbduo', {}], ['sbbig', { texts: { text: '', script: '' } }], ['sbphoto', { texts: { cap: 'Bride & Groom' } }], ['sbduo', { texts: { cap1: 'Love', cap2: 'Always' } }], ['sbbig', { texts: { text: '', script: 'happily ever after' } }], ['sbphoto', { texts: { cap: '{GROOM} & {BRIDE}' } }], ['sbduo', { texts: { cap1: 'Just married', cap2: '{DATE}' } }], ['sbphoto', { texts: { cap: 'With love' } }], ['sbsky', { texts: { cap1: '', cap2: '' } }]],
+  D: [['sbphoto', {}], ['sbduo', {}], ['sbbig', { texts: { text: '', script: '' } }], ['sbphoto', { texts: { cap: '{GROOM} & {BRIDE}' } }], ['sbduo', { texts: { cap1: 'Love', cap2: 'Always' } }], ['sbbig', { texts: { text: '', script: 'happily ever after' } }], ['sbphoto', { texts: { cap: '{GROOM} & {BRIDE}' } }], ['sbduo', { texts: { cap1: 'Just married', cap2: '{DATE}' } }], ['sbphoto', { texts: { cap: 'With love' } }], ['sbsky', { texts: { cap1: '', cap2: '' } }]],
   E: [['scope', {}], ['full', { opts: { bw: true }, ...nt }], ['cinema', { texts: { label: '', right: '' } }], ['framed', {}], ['vignette1', { opts: { bw: true } }], ['filmburn', {}], ['full', nt], ['scope', { opts: { bw: true } }], ['stack2', {}], ['cinema', { opts: { bw: true }, texts: { label: '', right: '' } }]],
   F: [['navphoto', { texts: { word: '', mark: '', nav: '' } }], ['centerphoto', LBL], ['centerphoto', { opts: { portrait: true }, ...LBL }], ['petalphoto', { opts: { bw: false } }], ['dreamcircle', { texts: { word: '' } }], ['duo', { bgc: BLUSH, texts: { top: '' } }], ['navphoto', { opts: { dreamy: true }, texts: { word: '', mark: '', nav: '' } }], ['wavyframe', LBL], ['centerphoto', LBL], ['full', { texts: { text: '' }, ...LBL }]],
   G: [['centercap', BIL], ['sidephoto', BIL], ['roundphotos', BIL], ['half2', { bgc: OFFW, ...BIL }], ['centercap', BIL], ['sidephoto', { opts: { flip: true }, ...BIL }], ['offset2', { bgc: OFFW, ...BIL }], ['centercap', BIL], ['roundphotos', { opts: { bw: true }, ...BIL }], ['bigscript', { texts: { text: '' }, opts: { bw: false } }]],
