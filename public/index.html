@@ -1583,7 +1583,7 @@ Object.assign(LAYOUTS, {
       noBg(() => {
         txt(c, fill(s.texts.time), 960, 180, `300 210px "Noto Sans KR", sans-serif`, '#FFFFFF', fade(t, 0.2, 0.8), { k: 'time', shadow: 'rgba(0,0,0,.3)', blur: 10 });
         txt(c, fill(s.texts.date), 960, 305, UIF(34, 500), 'rgba(255,255,255,.92)', fade(t, 0.4, 0.8), { k: 'date' });
-        const pa = fade(t, 0.6, 0.8);
+        const pa = fade(t, tv(s, 'ui', d), 0.8);
         if (pa > 0.001) {
           c.save(); c.globalAlpha = pa;
           const y = 600, x0 = 210, x1 = 1710, pr = clamp(renderT / Math.max(total, 1));
@@ -1595,11 +1595,12 @@ Object.assign(LAYOUTS, {
           const cy = 720; c.fillStyle = '#FFFFFF';
           const tri = (x, dir, sz) => { c.beginPath(); c.moveTo(x, cy - sz); c.lineTo(x + dir * sz * 1.4, cy); c.lineTo(x, cy + sz); c.closePath(); c.fill(); };
           tri(740, -1, 20); tri(712, -1, 20); tri(1180, 1, 20); tri(1208, 1, 20);
-          if (t > d * 0.15) { c.fillRect(938, cy - 26, 14, 52); c.fillRect(968, cy - 26, 14, 52); } else tri(944, 1, 28);
+          const tp = tv(s, 'press', d); if (t > tp) { c.fillRect(938, cy - 26, 14, 52); c.fillRect(968, cy - 26, 14, 52); } else tri(944, 1, 28);
+          tapRing(c, 960, cy, t, tp);
           c.restore();
         }
         if (s.opts.notify) {
-          const na = ease(clamp((t - d * 0.3) / 0.6));
+          const na = ease(clamp((t - tv(s, 'notify', d)) / 0.6));
           if (na > 0.001) {
             const yy = 370 - (1 - na) * 50;
             c.save(); c.globalAlpha = na;
@@ -1673,18 +1674,20 @@ Object.assign(LAYOUTS, {
   airdrop: {
     name: '에어드롭 알림', slots: 2, weight: 5,
     fields: [['title', '제목', 'AirDrop'], ['msg', '내용', '{신랑}님이 ‘Love Story’를\n공유하려고 합니다.', true], ['no', '왼쪽 버튼', '거절'], ['yes', '오른쪽 버튼', '수락']],
-    opts: [],
+    opts: [['open', '수락하면 사진이 크게 열리기', false]],
     cap: () => [960, 1012, 'photo'],
     draw(c, s, t, d) {
       bg(c, '#000'); softBg(c, s, 0, false);
       c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(0, 0, W, H);
-      const a = ease(clamp((t - 0.4) / 0.5)); if (a <= 0.001) return;
+      const tp = tv(s, 'pop', d), ty = tv(s, 'yes', d), openP = s.opts.open ? ease(clamp((t - ty - 0.35) / 0.7)) : 0;
+      const a = ease(clamp((t - tp) / 0.5)) * (1 - openP); if (a <= 0.001 && !openP) return;
       const sc = 0.86 + 0.14 * a, thumb = s.media[1] && s.media[1].id ? 1 : 0;
       c.save(); c.globalAlpha = a; c.translate(960, 540); c.scale(sc, sc); c.translate(-960, -540);
       c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 40 * R.S; c.fillStyle = 'rgba(242,242,247,.97)'; rr(c, 680, 230, 560, 620, 36); c.fill(); c.restore();
       c.save(); rr(c, 790, 440, 340, 260, 16); c.clip(); cover(c, s, thumb, 790, 440, 340, 260, t, { zoom: 1.02 }); c.restore();
       c.fillStyle = 'rgba(60,60,67,.29)'; c.fillRect(680, 740, 560, 2); c.fillRect(959, 740, 2, 110);
-      if (t > d * 0.7) { c.fillStyle = 'rgba(0,0,0,.08)'; c.save(); rr(c, 961, 742, 279, 108, 0); c.clip(); rr(c, 961, 742, 279, 140, 36); c.fill(); c.restore(); }
+      if (t > ty) { c.fillStyle = 'rgba(0,0,0,.1)'; c.save(); rr(c, 961, 742, 279, 108, 0); c.clip(); rr(c, 961, 742, 279, 140, 36); c.fill(); c.restore(); }
+      tapRing(c, 1100, 796, t, ty, '#0A84FF');
       noBg(() => {
         txt(c, fill(s.texts.title), 960, 288, UIF(38, 700), '#111111', 1, { k: 'title' });
         block(c, fill(s.texts.msg), 960, 372, UIF(26, 400), 38, '#3A3A3C', t, 0, 1, false, 'msg', 1);
@@ -1692,6 +1695,10 @@ Object.assign(LAYOUTS, {
         txt(c, fill(s.texts.yes), 1100, 796, UIF(34, 700), '#0A84FF', 1, { k: 'yes' });
       });
       c.restore();
+      if (openP > 0) { // after accepting: the shared photo opens to full screen
+        const x = 790 + (0 - 790) * openP, y = 440 + (0 - 440) * openP, w = 340 + (W - 340) * openP, h = 260 + (H - 260) * openP;
+        c.save(); rr(c, x, y, w, h, 16 * (1 - openP)); c.clip(); cover(c, s, thumb, x, y, w, h, t, { zoom: 1.02 }); c.restore();
+      }
     }
   },
   nameblack: {
@@ -2236,8 +2243,9 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       bg(c, BLUSH); headNames(c, s, t);
       c.save(); c.globalAlpha = fade(t, 0, 1); cover(c, s, 0, 560, 80, 800, 900, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore();
-      if (t > 0.8) {
-        const k = 1 + 0.35 * (1 - ease(clamp((t - 0.8) / 0.5))), on = t > 1.3 || (Math.floor(t * 8) % 2 === 0);
+      const tf = tv(s, 'focus', d);
+      if (t > tf) {
+        const k = 1 + 0.35 * (1 - ease(clamp((t - tf) / 0.5))), on = t > tf + 0.5 || (Math.floor(t * 8) % 2 === 0);
         if (on) {
           const bw = 300 * k, bh = 340 * k, x = 900 - bw / 2, y = 470 - bh / 2;
           c.save(); c.strokeStyle = '#F7A8C0'; c.lineWidth = 3; c.strokeRect(x, y, bw, bh);
@@ -2551,7 +2559,7 @@ Object.assign(LAYOUTS, {
       bg(c, '#000');
       cover(c, s, 0, 0, 0, W, H, t, { dark: true, zoom: 1.03 + Math.sin(t * 1.3) * 0.006 });
       const g = c.createLinearGradient(0, 0, 0, 260); g.addColorStop(0, 'rgba(0,0,0,.5)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 260);
-      const pa = pop(t, 0.5, 0.5);
+      const pa = pop(t, tv(s, 'pip', d), 0.5);
       if (pa > 0.001) {
         c.save(); c.translate(1700, 270); c.scale(pa, pa); c.translate(-1700, -270);
         c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 20 * R.S; c.fillStyle = '#222'; rr(c, 1540, 50, 320, 440, 28); c.fill(); c.restore();
@@ -2589,14 +2597,14 @@ Object.assign(LAYOUTS, {
       c.save(); c.beginPath(); c.arc(X + 52, Y + 52, 25, 0, Math.PI * 2); c.clip(); cover(c, s, s.media[1] && s.media[1].id ? 1 : 0, X + 27, Y + 27, 50, 50, t, { zoom: 1.02 }); c.restore();
       cover(c, s, 0, X, Y + 104, CW, CW, t, { zoom: kb(t, d, 0.04) });
       hitOn = ho; addHit({ type: 'media', si: 0, x: X, y: Y + 104, w: CW, h: CW, oy: 0 });
-      const liked = t > d * 0.35, hp = pop(t, d * 0.35, 0.5);
+      const tl = tv(s, 'like', d), liked = t > tl, hp = pop(t, tl, 0.5);
       icon(c, liked ? 'heartfill' : 'heart', X + 46, Y + 900, 20, liked ? '#FF3040' : fg);
       icon(c, 'comment', X + 112, Y + 900, 20, fg); icon(c, 'send', X + 176, Y + 900, 18, fg); icon(c, 'save', X + CW - 46, Y + 900, 18, fg);
-      if (hp > 0 && t < d * 0.35 + 0.9) { c.save(); c.globalAlpha = clamp(1 - (t - d * 0.35 - 0.5) / 0.4); c.fillStyle = '#FFFFFF'; heartShape(c, X + CW / 2, Y + 104 + CW / 2, 140 * hp); c.fill(); c.restore(); }
+      if (hp > 0 && t < tl + 0.9) { c.save(); c.globalAlpha = clamp(1 - (t - tl - 0.5) / 0.4); c.fillStyle = '#FFFFFF'; heartShape(c, X + CW / 2, Y + 104 + CW / 2, 140 * hp); c.fill(); c.restore(); }
       c.restore();
       noBg(() => {
         txt(c, fill(s.texts.user), X + 100, Y + 52, UIF(28, 700), fg, a, { align: 'left', k: 'user' });
-        txt(c, fill(s.texts.likes), X + 26, Y + 960, UIF(27, 700), fg, fade(t, d * 0.35 + 0.2, 0.5), { align: 'left', k: 'likes' });
+        txt(c, fill(s.texts.likes), X + 26, Y + 960, UIF(27, 700), fg, fade(t, tl + 0.2, 0.5), { align: 'left', k: 'likes' });
         txt(c, fill(s.texts.text), X + 26, Y + 1004, UIF(27, 400), fg, fade(t, 0.6, 0.6), { align: 'left', k: 'text' });
       });
     }
@@ -2660,9 +2668,9 @@ Object.assign(LAYOUTS, {
         cover(c, s, slotAt(s, i), x, y, fw, fh, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore();
         c.font = F.ui(20, 600); c.fillStyle = '#E8A33C'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(`${12 + i}A  ▶`, x, y + fh + 26);
       }
-      const p = ease(clamp((t - 1.2) / 0.9)), mx = x0 + fw + gx + fw / 2, my = y0 + fh / 2;
+      const tmk = tv(s, 'mark', d), p = ease(clamp((t - tmk) / 0.9)), mx = x0 + fw + gx + fw / 2, my = y0 + fh / 2;
       if (p > 0) { c.save(); c.strokeStyle = '#E2342D'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.ellipse(mx, my, fw * 0.58, fh * 0.62, -0.05, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2.05 * p); c.stroke(); c.restore(); }
-      noBg(() => txt(c, fill(s.texts.mark), mx + fw * 0.62, my - fh * 0.62, PEN(70), '#E2342D', fade(t, 2.0, 0.5), { k: 'mark', align: 'left' }));
+      noBg(() => txt(c, fill(s.texts.mark), mx + fw * 0.62, my - fh * 0.62, PEN(70), '#E2342D', fade(t, tmk + 0.8, 0.5), { k: 'mark', align: 'left' }));
     }
   },
   tornpaper: {
@@ -2705,7 +2713,7 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       bg(c, '#FFF1E0'); floatHearts(c, t, 8, '#FFC4D2', 23);
       const ex = 960, ey = 760, ew = 760, eh = 420;
-      const open = ease(clamp((t - 0.4) / 0.6)), rise = ease(clamp((t - 0.9) / 1.0));
+      const to = tv(s, 'open', d), open = ease(clamp((t - to) / 0.6)), rise = ease(clamp((t - to - 0.5) / 1.0));
       const cy = ey - 40 - 360 * rise;
       c.save(); c.beginPath(); c.rect(0, 0, W, ey + 10); c.clip();
       c.save(); c.shadowColor = 'rgba(0,0,0,.15)'; c.shadowBlur = 20 * R.S; c.fillStyle = '#FFFFFF'; rr(c, ex - 300, cy - 260, 600, 560, 14); c.fill(); c.restore();
@@ -2743,7 +2751,7 @@ Object.assign(LAYOUTS, {
     cap: () => [960, 1010, 'photo'],
     draw(c, s, t, d) {
       bg(c, '#0D0D0D');
-      const cut = Math.max(2.2, d * 0.5);
+      const cut = tv(s, 'cut', d);
       if (t > cut - 0.3) { c.save(); c.globalAlpha = fade(t, cut - 0.3, 0.6); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.05 * clamp(t / d) }); c.restore(); }
       const sa = 1 - fade(t, cut, 0.5); if (sa <= 0.001) return;
       c.save(); c.globalAlpha = sa;
@@ -3449,6 +3457,7 @@ function makeScene(layout, over = {}) {
   if (over.capFx) s.capFx = over.capFx;
   if (over.anim) s.anim = over.anim;
   if (over.count) s.count = over.count;
+  if (over.tm) s.tm = over.tm;
   if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
   return s;
 }
@@ -4802,6 +4811,29 @@ function buildSfxPane() {
   p.querySelector('#sfxFile').onchange = e => { const f = e.target.files[0]; if (f) addSfxFile(f); };
 }
 
+/* per-scene timing of graphic events (button presses, pop-ups...) */
+function layoutTimes(k) { const L = LAYOUTS[k]; if (L && !L.times && TIMES[k]) L.times = TIMES[k]; return L && L.times; }
+function tv(s, k, d) {
+  if (s) layoutTimes(s.layout);
+  const v = s && s.tm && s.tm[k]; if (v != null && isFinite(v)) return +v;
+  const L = s && LAYOUTS[s.layout], it = L && L.times && L.times.find(x => x[0] === k), df = it ? it[2] : 0;
+  return typeof df === 'function' ? df(d) : df;
+}
+function tapRing(c, x, y, t, t0, col) {
+  const p = (t - t0) / 0.45; if (p < 0 || p > 1) return;
+  c.save(); c.globalAlpha *= (1 - p) * 0.8; c.strokeStyle = col || '#FFFFFF'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, 20 + 46 * ease(p), 0, Math.PI * 2); c.stroke();
+  c.fillStyle = col || '#FFFFFF'; c.globalAlpha *= 0.35; c.beginPath(); c.arc(x, y, 18 * (1 - p) + 6, 0, Math.PI * 2); c.fill(); c.restore();
+}
+const TIMES = {
+  lockscreen: [['ui', '재생바·버튼이 나타나는 시간', 0.6], ['press', '재생 버튼이 눌리는 시간', d => d * 0.15], ['notify', '알림이 뜨는 시간', d => d * 0.3]],
+  airdrop: [['pop', '에어드롭 창이 뜨는 시간', 0.4], ['yes', '수락이 눌리는 시간', d => d * 0.7]],
+  facetime: [['pip', '작은 화면이 나타나는 시간', 0.5]],
+  instapost: [['like', '하트(좋아요)가 눌리는 시간', d => d * 0.35]],
+  slate: [['cut', '슬레이트가 사라지고 사진으로 바뀌는 시간', d => Math.max(2.2, d * 0.5)]],
+  envelope: [['open', '봉투가 열리는 시간', 0.4]],
+  focusbox: [['focus', '초점 박스가 나타나는 시간', 0.8]],
+  contactsheet: [['mark', '빨간 마커가 그려지는 시간', 1.2]]
+};
 /* ---------------- timeline ---------------- */
 let timeline = [], total = 0, scale = 1, span = 1;
 function computeTimeline() {
@@ -5232,6 +5264,7 @@ function buildScenePane() {
       <button class="btn small ghost" data-act="dup">복제</button>
       <button class="btn small ghost" data-act="del">삭제</button>`}</div>
     ${CUSTOMER ? '' : `<div class="field"><span>장면 구성</span><button type="button" class="btn small" id="fLayout" style="width:100%;justify-content:space-between;display:flex">${esc(L.name)}<span style="opacity:.7">바꾸기 ›</span></button></div>`}
+    ${layoutTimes(s.layout) ? `<div class="field"><span>장면 속 효과 타이밍</span>${layoutTimes(s.layout).map(([k, n]) => { const dd = timeline[sel] ? timeline[sel].dur : 5, v = Math.min(tv(s, k, dd), dd); return `<div class="tmrow" style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${n}</span><b data-tmv="${k}">${v.toFixed(1)}초</b></div><div style="display:flex;gap:6px;align-items:center"><input type="range" min="0" max="${dd.toFixed(1)}" step="0.1" value="${v.toFixed(1)}" data-tm="${k}" style="flex:1" aria-label="${n}"><button type="button" class="x" data-tmnow="${k}">지금</button></div></div>`; }).join('')}<p class="hint" style="margin:6px 0 0">‘지금’을 누르면 재생 위치에 맞춰요. 타이밍을 바꾸면 그 순간부터 0.6초 앞에서 다시 보여줘요.${s.tm ? ' <button type="button" class="x" data-tmreset>기본 타이밍으로</button>' : ''}</p></div>` : ''}
     ${L.countOpts ? `<label class="field"><span>사진 칸 수</span><select id="fCount">${L.countOpts.map(n => `<option value="${n}" ${photoCount(s, COUNT_DEF[s.layout] || 3) === n ? 'selected' : ''}>${n}장</option>`).join('')}</select></label>` : ''}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
@@ -5262,6 +5295,15 @@ function buildScenePane() {
     p.querySelectorAll('[data-act]').forEach(b => b.onclick = () => sceneAction(b.dataset.act));
     p.querySelector('#fLayout').onclick = () => openPicker('change');
   const fc = p.querySelector('#fCount'); if (fc) fc.onchange = e => { s.count = +e.target.value; sceneChanged(s); buildSlots(s); };
+  const tmPreview = v => { const st = timeline[sel] ? timeline[sel].start : 0; if (!playing) seek(st + Math.max(0, v - 0.6)); };
+  p.querySelectorAll('[data-tm]').forEach(r => {
+    r.oninput = () => { s.tm = s.tm || {}; s.tm[r.dataset.tm] = +r.value; p.querySelector(`[data-tmv="${r.dataset.tm}"]`).textContent = (+r.value).toFixed(1) + '초'; tmPreview(+r.value); sceneChanged(s); };
+  });
+  p.querySelectorAll('[data-tmnow]').forEach(b => b.onclick = () => {
+    const st = timeline[sel] ? timeline[sel].start : 0, dd = timeline[sel] ? timeline[sel].dur : 5, v = +clamp(curT - st, 0, dd).toFixed(1);
+    s.tm = s.tm || {}; s.tm[b.dataset.tmnow] = v; sceneChanged(s); buildScenePane();
+  });
+  const tr0 = p.querySelector('[data-tmreset]'); if (tr0) tr0.onclick = () => { delete s.tm; sceneChanged(s); buildScenePane(); };
     p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = Math.round(clamp(+e.target.value || 1, 0.5, 120) * 10) / 10; changed(true); select(sel); };
   }
   const setBg = (v, rebuild) => {
@@ -5781,7 +5823,7 @@ async function saveFile(blob, filename) {
 function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
-    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim, count: s.count })),
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim, count: s.count, tm: s.tm })),
     lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2, capRead: project.capRead
   };
 }
