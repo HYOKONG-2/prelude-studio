@@ -5572,9 +5572,9 @@ async function lrcSearch(artist, title) {
   let first = true;
   const get = async u => { try { const r = await fetch(u); first = false; return r.ok ? await r.json() : []; } catch (e) { if (first) throw e; return []; } };
   const nt = lyNorm(title), na = lyNorm(artist), found = new Map();
-  const titleScore = x => { const n = lyNorm(x.trackName); return !nt ? 1 : n === nt ? 3 : (n.includes(nt) || nt.includes(n)) && n.length > 1 ? 2 : 0; };
+  const titleScore = x => { const n = lyNorm(x.trackName); if (!nt) return 1; if (n === nt) return 3; const sh = Math.min(n.length, nt.length), lg = Math.max(n.length, nt.length); return (n.includes(nt) || nt.includes(n)) && sh >= 2 && sh / lg >= 0.6 ? 2 : 0; };
   const artistScore = x => { const n = lyNorm(x.artistName); return !na ? 1 : (n.includes(na) || na.includes(n)) && n.length > 1 ? 2 : 0; };
-  const good = () => [...found.values()].some(x => x.syncedLyrics && titleScore(x) >= 2 && artistScore(x) >= 1);
+  const good = () => [...found.values()].some(x => x.syncedLyrics && titleScore(x) === 3 && artistScore(x) >= 2);
   const add = a => (Array.isArray(a) ? a : []).forEach(x => x && x.id != null && found.set(x.id, x));
   const S = 'https://lrclib.net/api/search?';
   const titles = [...new Set([title, spaceKo(title)].filter(Boolean))];
@@ -5584,6 +5584,7 @@ async function lrcSearch(artist, title) {
   if (!good() && artist) add(await get(S + 'q=' + encodeURIComponent(artist)));
   return [...found.values()]
     .filter(x => (x.syncedLyrics || x.plainLyrics) && titleScore(x) > 0)
+    .map(x => Object.assign(x, { _exact: titleScore(x) === 3 && artistScore(x) >= (na ? 2 : 1) }))
     .sort((a, b) => (titleScore(b) + artistScore(b) + (b.syncedLyrics ? 1.5 : 0)) - (titleScore(a) + artistScore(a) + (a.syncedLyrics ? 1.5 : 0)));
 }
 function parseLRC(txt) {
@@ -5671,12 +5672,14 @@ function wireAutoLyrics(p) {
     try {
       const list = await lrcSearch(ia.value.trim(), it.value.trim());
       if (!list.length) { res.innerHTML = '<p class="hint" style="margin:0">가사를 찾지 못했어요. 제목을 원곡 표기대로 띄어쓰기까지 맞춰 보거나(예: 우리의 이야기), 가수 이름을 영문으로도 넣어 다시 눌러주세요. 그래도 없으면 가사 데이터베이스에 아직 없는 곡이에요.</p>'; return; }
-      const dur = abuf ? abuf.duration : total, synced = list.filter(x => x.syncedLyrics), pool = synced.length ? synced : list;
+      // only apply automatically when the title AND artist match exactly; otherwise let the person check the lyrics first
+      const dur = abuf ? abuf.duration : total, exact = list.filter(x => x._exact), pool = exact.filter(x => x.syncedLyrics).length ? exact.filter(x => x.syncedLyrics) : exact;
       const best = pool.slice().sort((a, b) => Math.abs((a.duration || 0) - dur) - Math.abs((b.duration || 0) - dur))[0];
-      alCands = list.slice(0, 6);
-      if (Math.abs((best.duration || 0) - dur) <= 4 || pool.length === 1) { await choose(best); }
+      alCands = (exact.length ? exact : list).slice(0, 6);
+      if (best && best.syncedLyrics && (Math.abs((best.duration || 0) - dur) <= 4 || pool.length === 1)) { await choose(best); }
       else {
-        res.innerHTML = '<p class="hint" style="margin:0 0 6px">여러 버전이 있어요. 맞는 곡을 골라주세요.</p>' + alCands.map((x, i) => `<button type="button" class="btn small" data-pick="${i}" style="width:100%;margin-top:4px;justify-content:space-between;display:flex"><span>${esc(x.trackName)} · ${esc(x.artistName)}${x.syncedLyrics ? '' : ' (시간 정보 없음)'}</span><span>${fmt(x.duration || 0)}</span></button>`).join('');
+        const firstLine = x => { const t = (x.syncedLyrics ? parseLRC(x.syncedLyrics).map(l => l.text) : (x.plainLyrics || '').split('\n')).map(v => v.trim()).filter(Boolean); return t.slice(0, 2).join(' / '); };
+        res.innerHTML = `<p class="hint" style="margin:0 0 6px">${exact.length ? '여러 버전이 있어요.' : '제목과 가수가 정확히 같은 곡을 찾지 못했어요.'} 첫 가사를 보고 맞는 곡만 골라주세요. 맞는 곡이 없으면 고르지 마세요.</p>` + alCands.map((x, i) => `<button type="button" class="btn small" data-pick="${i}" style="width:100%;margin-top:6px;display:block;text-align:left;white-space:normal;height:auto;padding:8px 10px"><span style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.trackName)} · ${esc(x.artistName)}</b><span>${fmt(x.duration || 0)}</span></span><span style="display:block;font-size:12px;opacity:.75;margin-top:3px">${esc(firstLine(x))}${x.syncedLyrics ? '' : ' (시간 정보 없음)'}</span></button>`).join('');
         res.querySelectorAll('[data-pick]').forEach(btn => btn.onclick = () => choose(alCands[+btn.dataset.pick]));
       }
     } catch (e) {
