@@ -4733,6 +4733,191 @@ TEMPLATES.D.make = () => {
   ];
   return baseProj('D', fitTotal(mkScenes(list)), { lyricFx: 'hand' });
 };
+/* ---------------- D type: more scrapbook variety (torn paper, stickers, film, calendar, ticket, doodle, letter) ---------------- */
+function tornStrip(c, y0, y1, edgeY, seed, fromTop) {
+  c.beginPath();
+  if (fromTop) { c.moveTo(0, y0); c.lineTo(W, y0); for (let x = W; x >= -24; x -= 22) c.lineTo(x, edgeY + (rnd(x, seed) - 0.5) * 16 + Math.sin(x * 0.01 + seed) * 6); }
+  else { c.moveTo(0, y1); c.lineTo(W, y1); for (let x = W; x >= -24; x -= 22) c.lineTo(x, edgeY + (rnd(x, seed) - 0.5) * 16 + Math.sin(x * 0.01 + seed) * 6); }
+  c.closePath();
+}
+function paperFill(c) { if (paperCv) { const pt = c.createPattern(paperCv, 'repeat'); c.fillStyle = pt || '#F3F2EF'; } else c.fillStyle = '#F3F2EF'; }
+Object.assign(LAYOUTS, {
+  sbtornfull: {
+    name: '스크랩북 찢은 종이 + 풀사진', slots: 1, weight: 5, fields: [['text', '아래 종이 손글씨', '그날의 우리, 오래 기억할게']], opts: [['bw', '흑백', false]],
+    cap: () => [960, 820, 'photo'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) });
+      const e = ease(clamp(t / 0.9));
+      c.save(); c.translate(0, -(1 - e) * 180); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 16 * R.S; c.shadowOffsetY = 6 * R.S; paperFill(c); tornStrip(c, 0, 0, 120, 3, true); c.fill(); c.restore();
+      c.save(); c.translate(0, (1 - e) * 220); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 16 * R.S; c.shadowOffsetY = -6 * R.S; paperFill(c); tornStrip(c, 0, H, 900, 9, false); c.fill(); c.restore();
+      const a = fade(t, 0.6, 0.6);
+      if (a > 0) { c.save(); c.globalAlpha *= a; tape(c, 300, 128, 160, -0.08); tape(c, 1640, 116, 150, 0.06); inkHeart(c, 1720, 990, 16); inkStar(c, 200, 990, 16, '#BFD0E6'); c.restore(); }
+      txt(c, fill(s.texts.text), 960, 995, PEN(64), '#2E2E2E', fade(t, 0.8, 0.6), { k: 'text' });
+    }
+  },
+  sbcutout: {
+    name: '스크랩북 큰 스티커 사진 + 손글씨', slots: 1, weight: 5,
+    fields: [['word', '필기체 한 단어', 'my love'], ['text', '손글씨 문구', '너와 함께라면\n어디든 좋아', true]], opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]],
+    cap: s => [s.opts.flip ? 520 : 1400, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c); const f = s.opts.flip, px = f ? 1000 : 140;
+      sticker(c, s, 0, px, 90, 780, 900, t, d, { at: 0.05, rot: f ? 2 : -2, bw: s.opts.bw });
+      const tx = f ? 520 : 1400;
+      txt(c, fill(s.texts.word), tx, 300, F.script(110), '#C25B6E', fade(t, 0.6, 0.7), { k: 'word', rise: 10 });
+      block(c, fill(s.texts.text), tx, 520, PEN(76), 90, '#2E2E2E', t, 1.0, d * 0.45, true, 'text');
+      const p = ease(clamp((t - 1.4) / 0.6));
+      if (p > 0) { c.save(); c.strokeStyle = '#2E2E2E'; c.lineWidth = 4; c.lineCap = 'round'; c.setLineDash([400 * p, 600]); c.beginPath();
+        if (f) { c.moveTo(700, 760); c.quadraticCurveTo(850, 860, 980, 760); c.moveTo(980, 760); c.lineTo(950, 745); c.moveTo(980, 760); c.lineTo(960, 790); }
+        else { c.moveTo(1220, 760); c.quadraticCurveTo(1070, 860, 940, 760); c.moveTo(940, 760); c.lineTo(970, 745); c.moveTo(940, 760); c.lineTo(960, 790); }
+        c.stroke(); c.restore();
+        c.save(); c.globalAlpha *= p; inkStar(c, tx + 260, 190, 22, '#BFD0E6'); inkHeart(c, tx - 250, 850, 20); c.restore(); }
+    }
+  },
+  sbfilm: {
+    name: '스크랩북 필름 세 컷', slots: 3, weight: 5, fields: [['text', '아래 손글씨', '우리의 장면들']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      const e = ease(clamp(t / 1.0));
+      c.save(); c.translate(960 + (1 - e) * 900, 500); c.rotate(-0.04);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 22 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#1D1B1A'; c.fillRect(-900, -270, 1800, 540); c.restore();
+      c.fillStyle = '#F3F2EF'; for (let x = -880; x < 880; x += 56) { rr(c, x, -250, 30, 22, 5); c.fill(); rr(c, x, 228, 30, 22, 5); c.fill(); }
+      const ho = hitOn; hitOn = false;
+      [-590, 0, 590].forEach((fx, i) => { coverIn(c, s, i, fx - 270, -195, 540, 390, t, { bw: s.opts.bw, zoom: 1.03 }); });
+      hitOn = ho;
+      c.font = F.ui(18, 600); c.fillStyle = '#E8A33C'; c.textAlign = 'left'; ['12A', '13A', '14A'].forEach((n, i) => c.fillText(n + '  ▶', -860 + i * 590, 262));
+      c.restore();
+      if (e > 0.99) [-590, 0, 590].forEach((fx, i) => addHit({ type: 'media', si: i, x: 960 + fx - 270, y: 305, w: 540, h: 390, oy: 0 }));
+      const a = fade(t, 1.0, 0.6); if (a > 0) { c.save(); c.globalAlpha *= a; tape(c, 120, 330, 170, -0.5); tape(c, 1810, 640, 170, -0.5); c.restore(); }
+      txt(c, fill(s.texts.text), 960, 900, PEN(70), '#2E2E2E', fade(t, 1.2, 0.6), { k: 'text' });
+    }
+  },
+  sbcalendar: {
+    name: '스크랩북 달력 + 사진 (예식일 동그라미)', slots: 1, weight: 6,
+    fields: [['title', '달력 위 손글씨', '우리의 날'], ['note', '사진 아래 손글씨', 'D-DAY']], opts: [['bw', '흑백', false]], cap: () => [1380, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      const pd = parseKoDate(project.info.dateKo) || { y: 2026, mo: 5, d: 23 }, e = enter(t, 0.05);
+      c.save(); c.globalAlpha *= e.a; c.translate(540, 540 + e.dy); c.rotate(-0.025);
+      c.save(); c.shadowColor = 'rgba(60,50,40,.2)'; c.shadowBlur = 20 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FFFEFB'; c.fillRect(-380, -400, 760, 820); c.restore();
+      c.fillStyle = '#D9D4CC'; for (let i = 0; i < 8; i++) { c.beginPath(); c.arc(-300 + i * 86, -372, 9, 0, Math.PI * 2); c.fill(); }
+      c.font = PEN(70); c.fillStyle = '#2E2E2E'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(`${pd.mo}월`, 0, -290);
+      c.font = UIF(22, 700); ['일', '월', '화', '수', '목', '금', '토'].forEach((w, i) => { c.fillStyle = i === 0 ? '#C25B6E' : '#8A8580'; c.fillText(w, -300 + i * 100, -200); });
+      const first = new Date(pd.y, pd.mo - 1, 1).getDay(), days = new Date(pd.y, pd.mo, 0).getDate();
+      c.font = UIF(28, 500);
+      for (let n = 1; n <= days; n++) { const k = first + n - 1, cx = -300 + (k % 7) * 100, cy = -130 + Math.floor(k / 7) * 92; c.fillStyle = k % 7 === 0 ? '#C25B6E' : '#3A3634'; c.fillText(String(n), cx, cy);
+        if (n === pd.d) { const p = ease(clamp((t - 0.9) / 0.7)); if (p > 0) { c.save(); c.strokeStyle = '#D9364E'; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.ellipse(cx, cy, 44, 36, -0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2.1 * p); c.stroke(); c.restore(); if (p > 0.95) inkHeart(c, cx + 44, cy - 38, 16, '#D9364E'); } } }
+      c.restore();
+      txt(c, fill(s.texts.title), 540, 80, PEN(64), '#2E2E2E', fade(t, 0.5, 0.6), { k: 'title' });
+      instant(c, s, 0, 1040, 130, 720, 720, t, d, { at: 0.4, rot: 3, tape: true, cap: fill(s.texts.note), bw: s.opts.bw });
+    }
+  },
+  sbticket: {
+    name: '스크랩북 티켓 (사진 + ADMIT TWO)', slots: 1, weight: 5,
+    fields: [['title', '티켓 제목', 'LOVE STORY'], ['sub', '작은 글씨', 'ADMIT TWO'], ['date', '날짜 줄', '{DATE}'], ['names', '오른쪽 이름', '{GROOM} & {BRIDE}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      const e = enter(t, 0.05);
+      c.save(); c.globalAlpha *= e.a; c.translate(960, 520 + e.dy); c.rotate(-0.03);
+      const TW = 1560, TH = 600;
+      c.save(); c.shadowColor = 'rgba(60,50,40,.22)'; c.shadowBlur = 24 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FBF5EA'; rr(c, -TW / 2, -TH / 2, TW, TH, 26); c.fill(); c.restore();
+      c.fillStyle = '#F3F2EF'; [[-TW / 2, 0], [TW / 2, 0], [TW / 2 - 360, -TH / 2], [TW / 2 - 360, TH / 2]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 26, 0, Math.PI * 2); c.fill(); });
+      c.strokeStyle = 'rgba(80,70,60,.35)'; c.setLineDash([10, 10]); c.lineWidth = 2; c.beginPath(); c.moveTo(TW / 2 - 360, -TH / 2 + 30); c.lineTo(TW / 2 - 360, TH / 2 - 30); c.stroke(); c.setLineDash([]);
+      const ho = hitOn; hitOn = false; c.save(); rr(c, -TW / 2 + 40, -TH / 2 + 40, 560, TH - 80, 14); c.clip(); coverIn(c, s, 0, -TW / 2 + 40, -TH / 2 + 40, 560, TH - 80, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore(); hitOn = ho;
+      c.fillStyle = '#2E2E2E'; for (let i = 0; i < 34; i++) { const w2 = rnd(i, 31) > 0.6 ? 6 : 3; c.fillRect(TW / 2 - 300 + i * 7.5, 90, w2, 120); }
+      c.restore();
+      addHit({ type: 'media', si: 0, x: 960 - TW / 2 + 40, y: 520 - TH / 2 + 40, w: 560, h: TH - 80, oy: 0 });
+      const a = fade(t, 0.5, 0.6), lx = 960 - TW / 2 + 660;
+      txt(c, fill(s.texts.sub), lx, 330, F.serif(28, 600, false), '#9A7B4F', a, { align: 'left', k: 'sub', sp: 8 });
+      txt(c, fill(s.texts.title), lx, 440, PLAYF(84, 700), '#2E2A27', fade(t, 0.7, 0.7), { align: 'left', k: 'title' });
+      txt(c, fill(s.texts.date), lx, 560, F.serif(34, 500, true), '#5A524C', fade(t, 0.9, 0.6), { align: 'left', k: 'date' });
+      txt(c, '♥  SEAT 1 & 2', lx, 630, UIF(26, 700), '#C25B6E', fade(t, 1.0, 0.6), { align: 'left' });
+      txt(c, fill(s.texts.names), 960 + TW / 2 - 180, 380, F.serif(30, 600, true), '#2E2A27', fade(t, 1.0, 0.6), { k: 'names' });
+      const ta = fade(t, 0.8, 0.5); if (ta > 0) { c.save(); c.globalAlpha *= ta; tape(c, 240, 230, 170, -0.6); tape(c, 1690, 820, 170, -0.5); c.restore(); }
+    }
+  },
+  sbdoodle: {
+    name: '스크랩북 펜으로 그린 동그라미·하트 사진', slots: 1, weight: 5,
+    fields: [['word', '옆 손글씨', 'love you'], ['text', '작은 손글씨', '내 사랑, 내 편']], opts: [['heart', '하트 모양', false], ['bw', '흑백', false]], cap: () => [1420, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      const cx = 720, cy = 540, R0 = 430, e = ease(clamp(t / 0.9)), hs = s.opts.heart;
+      const shape = k => { if (hs) heartShape(c, cx, cy + 20, 900 * k); else { c.beginPath(); c.ellipse(cx, cy, R0 * k, R0 * 1.02 * k, 0, 0, Math.PI * 2); } };
+      c.save(); c.globalAlpha *= e; shape(1); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, 0, cx - R0 - 20, cy - R0 - 20, R0 * 2 + 40, R0 * 2 + 40, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); hitOn = ho; c.restore();
+      addHit({ type: 'media', si: 0, x: cx - R0, y: cy - R0, w: R0 * 2, h: R0 * 2, oy: 0 });
+      const p = ease(clamp((t - 0.5) / 1.0));
+      if (p > 0) { c.save(); c.strokeStyle = '#2E2E2E'; c.lineWidth = 5; c.lineCap = 'round'; c.setLineDash([3200 * p, 4000]);
+        if (hs) { heartShape(c, cx + 6, cy + 24, 940); c.stroke(); } else { c.beginPath(); for (let i = 0; i <= 120; i++) { const a = -1.4 + i / 120 * Math.PI * 2.08, rr2 = R0 + 22 + Math.sin(i * 0.3) * 6; const x = cx + Math.cos(a) * rr2, y = cy + Math.sin(a) * rr2 * 1.02; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+        c.restore(); }
+      txt(c, fill(s.texts.word), 1480, 430, F.script(130), '#C25B6E', fade(t, 1.2, 0.7), { k: 'word', rise: 10 });
+      txt(c, fill(s.texts.text), 1480, 590, PEN(64), '#2E2E2E', fade(t, 1.5, 0.6), { k: 'text' });
+      const a = fade(t, 1.6, 0.6); if (a > 0) { c.save(); c.globalAlpha *= a; inkStar(c, 1250, 250, 22, '#BFD0E6'); inkHeart(c, 1700, 760, 22); inkStar(c, 1760, 300, 14); c.restore(); }
+    }
+  },
+  sbletter: {
+    name: '스크랩북 손편지 + 집게 사진', slots: 1, weight: 7,
+    fields: [['to', '받는 사람', 'To. 우리에게'], ['text', '편지 내용', '처음 만난 날의 설렘도,\n함께 웃고 울었던 날들도\n모두 소중한 추억이 되었어요.\n앞으로의 모든 날도\n지금처럼 서로의 편이 되어줄게요.', true], ['from', '보내는 사람', 'From. {신랑} & {신부}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      const e = enter(t, 0.05);
+      c.save(); c.globalAlpha *= e.a; c.translate(0, e.dy);
+      c.save(); c.translate(820, 540); c.rotate(-0.02); c.shadowColor = 'rgba(60,50,40,.18)'; c.shadowBlur = 20 * R.S; c.shadowOffsetY = 6 * R.S; c.fillStyle = '#FFFEFA'; tornPath(c, -620, -460, 1240, 920, 23); c.fill(); c.shadowColor = 'transparent';
+      c.strokeStyle = 'rgba(120,150,190,.25)'; c.lineWidth = 1.5; for (let y = -330; y < 420; y += 70) { c.beginPath(); c.moveTo(-560, y); c.lineTo(560, y); c.stroke(); }
+      c.strokeStyle = 'rgba(230,140,150,.45)'; c.beginPath(); c.moveTo(-500, -440); c.lineTo(-500, 440); c.stroke(); c.restore();
+      c.restore();
+      txt(c, fill(s.texts.to), 380, 150, PEN(64), '#2E2E2E', fade(t, 0.4, 0.6), { align: 'left', k: 'to' });
+      const done = block(c, fill(s.texts.text), 820, 560, PEN(56), 70, '#2E2E2E', t, 0.8, d * 0.6, true, 'text');
+      txt(c, fill(s.texts.from), 1300, 930, PEN(56), '#2E2E2E', fade(t, done + 0.2, 0.6), { align: 'right', k: 'from' });
+      whiteBorder(c, s, 0, 1420, 130, 400, 500, t, d, 6, { at: 0.5, b: 14, bw: s.opts.bw });
+      const ca = fade(t, 0.9, 0.4); if (ca > 0) { c.save(); c.globalAlpha *= ca; clip(c, 1620, 130); c.restore(); }
+    }
+  }
+});
+CATS[1][1].push('sbtornfull', 'sbcutout', 'sbdoodle', 'sbticket');
+CATS[2][1].push('sbfilm');
+CATS[3][1].push('sbcalendar', 'sbletter');
+FIXED_LONG.push('sbletter');
+TEMPLATES.D.make = () => {
+  const N = (text, o = {}) => ['sbnote2', { texts: { text, ...(o.texts || {}) }, opts: o.opts || {} }];
+  const list = [
+    ['sbheart', {}, 6], ['sbtitle', {}, 4],
+    ['sbprofile', {}, 6], ['sbprofile', { opts: { flip: true, pink: true }, texts: { tag: 'Today’s Bride', name: '{신부}', birth: '1996.11.06', info: '귀여운 고양이' } }, 6],
+    ['sbbleed', { texts: { cap: 'our story' } }],
+    ['sbcollage3', {}],
+    N('어느 평범한 날, 우연처럼\n서로를 처음 마주했어요.'),
+    ['sbtornfull', { texts: { text: '그날의 공기는 아직도 기억나요' } }],
+    ['sbportrait', { texts: { text: '서두르지 않고 천천히,\n서로의 하루에\n스며들었어요.' } }],
+    ['sbfilm', {}],
+    ['sbcutout', {}],
+    ['sbgrid4', {}],
+    ['sbdoodle', {}],
+    ['sbstack', {}],
+    ['sbstrip', {}],
+    ['sbtornfull', { texts: { text: '맛있는 걸 먹으면 제일 먼저 생각나는 사람' } }],
+    ['sbduo2', {}],
+    N('가끔은 다투기도 했지만\n결국 서로의 편이었어요.', { opts: { mirror: true }, texts: { cap1: 'Happy' } }),
+    ['sbticket', {}],
+    ['sbcutout', { opts: { flip: true }, texts: { word: 'with you', text: '같은 곳을 바라보며\n걸어온 날들' } }],
+    ['sbcollage3', { texts: { title: '함께 걸어온 길' } }],
+    ['sbfilm', { texts: { text: '사계절을 몇 번이나 지나' } }],
+    ['sbdoodle', { opts: { heart: true }, texts: { word: 'forever', text: '여기까지 왔어요' } }],
+    ['sbtitle', { texts: { l1: 'FROM DATING', l2: 'TO FOREVER' } }, 4],
+    ['sbbleed', { texts: { cap: 'wedding day' } }],
+    ['sbtriobig', {}],
+    ['sbtornfull', { texts: { text: '서로의 가장 예쁜 날' } }],
+    ['sbcalendar', {}, 6],
+    ['sbduo2', { texts: { cap1: 'Bride', cap2: 'Groom' } }],
+    ['sbcutout', { texts: { word: 'my person', text: '평생 내 편,\n내 사람' } }],
+    ['sbstack', { texts: { cap: 'forever' } }],
+    ['sbletter', {}, 9],
+    ['sbbleed', {}],
+    ['sbskytext', {}, 5],
+    ['sbdoodle', { texts: { word: 'thank you', text: '와주셔서 고마워요' } }],
+    ['sbskytext', { texts: { text: '지금의 설렘과 사랑을 잊지 않고\n평생 이 마음 간직하며 살아갈게요.' } }, 5.5],
+    ['sbskytext', { texts: { text: '이제, 저희의 결혼식이 시작됩니다!' } }, 5]
+  ];
+  return baseProj('D', fitTotal(mkScenes(list)), { lyricFx: 'hand' });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
