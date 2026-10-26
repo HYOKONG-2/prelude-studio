@@ -896,14 +896,26 @@ const softCache = new Map();
 function softBg(c, s, si, bw) {
   const slot = s.media[si] || {}, m = slot.id && media[slot.id];
   if (!m || (m.type === 'video' && m.el.readyState < 2)) return;
+  // smooth gaussian-style blur (no blocky mosaic): blur once into a mid-size canvas and cache it
   let k = softCache.get(slot.id);
   if (!k || m.type === 'video') {
-    k = k || document.createElement('canvas'); k.width = 64; k.height = 36;
-    const x = k.getContext('2d'), sw = m.type === 'video' ? m.el.videoWidth : m.w, sh = m.type === 'video' ? m.el.videoHeight : m.h;
-    const sc = Math.max(64 / sw, 36 / sh); x.drawImage(m.el, (64 - sw * sc) / 2, (36 - sh * sc) / 2, sw * sc, sh * sc);
+    const vid = m.type === 'video', KW = vid ? 320 : 640, KH = vid ? 180 : 360;
+    if (!k) { k = document.createElement('canvas'); k.width = KW; k.height = KH; }
+    const x = k.getContext('2d'), sw = vid ? m.el.videoWidth : m.w, sh = vid ? m.el.videoHeight : m.h;
+    const ov = 1.18, sc = Math.max(KW / sw, KH / sh) * ov, dw = sw * sc, dh = sh * sc;
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    if ('filter' in x) { x.filter = `blur(${Math.round(KW / 34)}px)`; x.drawImage(m.el, (KW - dw) / 2, (KH - dh) / 2, dw, dh); x.filter = 'none'; }
+    else {
+      // fallback: step down then step up with smoothing (softer than a single big jump)
+      const t1 = document.createElement('canvas'); t1.width = 80; t1.height = 45; const a = t1.getContext('2d'); a.imageSmoothingQuality = 'high';
+      const s1 = Math.max(80 / sw, 45 / sh) * ov; a.drawImage(m.el, (80 - sw * s1) / 2, (45 - sh * s1) / 2, sw * s1, sh * s1);
+      const t2 = document.createElement('canvas'); t2.width = 20; t2.height = 12; t2.getContext('2d').drawImage(t1, 0, 0, 20, 12);
+      const t3 = document.createElement('canvas'); t3.width = 160; t3.height = 90; t3.getContext('2d').drawImage(t2, 0, 0, 160, 90);
+      x.drawImage(t3, 0, 0, KW, KH);
+    }
     softCache.set(slot.id, k);
   }
-  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(k, -60, -60, W + 120, H + 120);
+  c.save(); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(k, 0, 0, W, H);
   if (bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(0, 0, W, H); }
   c.restore();
 }
@@ -3171,6 +3183,8 @@ CATS[0][1].push('sbheart', 'sbtitle', 'sbskytext');
 CATS[1][1].push('sbprofile', 'sbbig');
 CATS[2][1].push('sbcollage3', 'sbnote2', 'sbgrid4', 'sbstrip', 'sbsky');
 /* ---------------- I type: bright highlight film (grid paper, photo entrance animations) ---------------- */
+const COUNT_DEF = { gridrow: 3, datestamp: 2, mgrow: 3 };
+function photoCount(s, def) { const L = LAYOUTS[s.layout]; return clamp(Math.round(s.count || def), 1, L ? L.slots : 4); }
 function gridBg(c, plain) {
   bg(c, '#FFFFFF');
   if (plain) return;
@@ -3232,9 +3246,9 @@ Object.assign(LAYOUTS, {
     opts: [['plain', '모눈 없이 흰 배경', false], ['bw', '흑백', false]], cap: () => [960, 1015, 'light'],
     draw(c, s, t, d) {
       gridBg(c, s.opts.plain);
-      const n = Math.min(4, nFilled(s, 3)), any = s.media.some(m => m.id), f = filledSlots(s);
-      const sets = { 1: [[360, 110, 1200, 820]], 2: [[200, 90, 720, 880], [1000, 90, 720, 880]], 3: [[110, 140, 540, 780], [690, 140, 540, 780], [1270, 140, 540, 780]], 4: [[90, 220, 400, 600], [530, 220, 400, 600], [970, 220, 400, 600], [1410, 220, 400, 600]] };
-      sets[n].forEach((r, i) => { c.save(); c.globalAlpha *= iFade(s, t, i); cover(c, s, any ? f[i] : i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore(); });
+      const n = photoCount(s, 3);
+      const sets = { 1: [[360, 110, 1200, 820]], 2: [[200, 90, 720, 880], [1000, 90, 720, 880]], 3: [[110, 140, 540, 780], [690, 140, 540, 780], [1270, 140, 540, 780]], 4: [[90, 180, 400, 680], [530, 180, 400, 680], [970, 180, 400, 680], [1410, 180, 400, 680]] };
+      sets[n].forEach((r, i) => { c.save(); c.globalAlpha *= iFade(s, t, i); cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore(); });
     }
   },
   datestamp: {
@@ -3251,9 +3265,9 @@ Object.assign(LAYOUTS, {
       if (s.opts.hearts !== false) { c.lineWidth = 4; c.strokeStyle = st.c || '#F59AB0'; heartShape(c, cx - tw / 2 - 50 * (st.s || 1), cy + 2, 30 * (st.s || 1)); c.stroke(); heartShape(c, cx + tw / 2 + 50 * (st.s || 1), cy + 2, 30 * (st.s || 1)); c.stroke(); }
       c.restore();
       addHit({ type: 'text', key: 'date', x: cx - tw / 2 - 70, y: cy - sz * 0.6, w: tw + 140, h: sz * 1.2 });
-      const n = Math.min(3, nFilled(s, 2)), any = s.media.some(m => m.id), f = filledSlots(s);
+      const n = photoCount(s, 2);
       const sets = { 1: [[360, 140, 1200, 860]], 2: [[150, 150, 790, 860], [980, 150, 790, 860]], 3: [[90, 170, 560, 820], [680, 170, 560, 820], [1270, 170, 560, 820]] };
-      sets[n].forEach((r, i) => { c.save(); c.globalAlpha *= iFade(s, t, i); cover(c, s, any ? f[i] : i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore(); });
+      sets[n].forEach((r, i) => { c.save(); c.globalAlpha *= iFade(s, t, i); cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); c.restore(); });
     }
   },
   instapair: {
@@ -3330,6 +3344,7 @@ LAYOUTS.iending = {
   }
 };
 ['handtitle', 'iending'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+LAYOUTS.gridrow.countOpts = [1, 2, 3, 4]; LAYOUTS.datestamp.countOpts = [1, 2, 3];
 CATS[4][1].push('iending');
 CATS[0][1].push('handtitle');
 CATS[2][1].push('gridrow', 'datestamp', 'instapair', 'marquee', 'heartgrid', 'tiltcards');
@@ -3425,6 +3440,7 @@ function makeScene(layout, over = {}) {
   if (over.fx) s.fx = JSON.parse(JSON.stringify(over.fx));
   if (over.capFx) s.capFx = over.capFx;
   if (over.anim) s.anim = over.anim;
+  if (over.count) s.count = over.count;
   if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
   return s;
 }
@@ -4389,9 +4405,9 @@ Object.assign(LAYOUTS, {
     name: '몽글 하늘 + 사진 줄 (1~4장)', slots: 4, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
     draw(c, s, t, d) {
       mgBg(c, t, { sky: true, clouds: 'bottom' });
-      const n = Math.min(4, nFilled(s, 3)), any = s.media.some(m => m.id), fl = filledSlots(s);
+      const n = photoCount(s, 3);
       const sets = { 1: [[460, 140, 1000, 700]], 2: [[230, 150, 680, 700], [1010, 150, 680, 700]], 3: [[120, 170, 520, 680], [700, 170, 520, 680], [1280, 170, 520, 680]], 4: [[80, 200, 400, 600], [540, 200, 400, 600], [1000, 200, 400, 600], [1460, 200, 400, 600]] };
-      sets[n].forEach((r, i) => whiteBorder(c, s, any ? fl[i] : i, r[0], r[1], r[2], r[3], t, d, 0, { at: 0.1 + i * 0.22, b: 12, dx: 140, bw: s.opts.bw }));
+      sets[n].forEach((r, i) => whiteBorder(c, s, i, r[0], r[1], r[2], r[3], t, d, 0, { at: 0.1 + i * 0.22, b: 12, dx: 140, bw: s.opts.bw }));
     }
   },
   mgsingle: {
@@ -4458,6 +4474,7 @@ Object.assign(LAYOUTS, {
   }
 });
 ['mgblack'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+LAYOUTS.mgrow.countOpts = [1, 2, 3, 4];
 CATS[0][1].push('mgfilm', 'mgtext');
 CATS[1][1].push('mgwide', 'mgsingle', 'mgtiles', 'mgtorn', 'mgname');
 CATS[2][1].push('mgtrio', 'mgrow', 'mgheart', 'mgcollage');
@@ -4606,7 +4623,8 @@ function defaultProject() {
 }
 function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
-  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null }); });
+  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
+    if (LAYOUTS[s.layout].countOpts && !s.count) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
   p.title = p.title || ''; p.audio = p.audio || null;
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
   return p;
@@ -5073,6 +5091,7 @@ function buildScenePane() {
       <button class="btn small ghost" data-act="dup">복제</button>
       <button class="btn small ghost" data-act="del">삭제</button>`}</div>
     ${CUSTOMER ? '' : `<div class="field"><span>장면 구성</span><button type="button" class="btn small" id="fLayout" style="width:100%;justify-content:space-between;display:flex">${esc(L.name)}<span style="opacity:.7">바꾸기 ›</span></button></div>`}
+    ${L.countOpts ? `<label class="field"><span>사진 칸 수</span><select id="fCount">${L.countOpts.map(n => `<option value="${n}" ${photoCount(s, COUNT_DEF[s.layout] || 3) === n ? 'selected' : ''}>${n}장</option>`).join('')}</select></label>` : ''}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
     ${L.bgHidden ? '' : `<div class="group"><h3>배경</h3><div class="bgrow">
@@ -5101,6 +5120,7 @@ function buildScenePane() {
     p.querySelector('#realLen').textContent = `영상에서 ${fmt1(timeline[sel].start)}부터 ${fmt1(timeline[sel].start + timeline[sel].dur)}까지 나와요`;
     p.querySelectorAll('[data-act]').forEach(b => b.onclick = () => sceneAction(b.dataset.act));
     p.querySelector('#fLayout').onclick = () => openPicker('change');
+  const fc = p.querySelector('#fCount'); if (fc) fc.onchange = e => { s.count = +e.target.value; sceneChanged(s); buildSlots(s); };
     p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = Math.round(clamp(+e.target.value || 1, 0.5, 120) * 10) / 10; changed(true); select(sel); };
   }
   const setBg = (v, rebuild) => {
@@ -5160,9 +5180,11 @@ function wireVid(d, s, slot, m) {
     changed(true); select(sel); toast(`장면 길이를 ${s.weight}초로 맞췄어요`);
   };
 }
+function visibleSlots(s) { const L = LAYOUTS[s.layout]; return L && L.countOpts ? photoCount(s, COUNT_DEF[s.layout] || 3) : s.media.length; }
 function buildSlots(s) {
   const box = $('slots'); box.innerHTML = '';
   s.media.forEach((slot, i) => {
+    if (i >= visibleSlots(s)) return;
     const m = slot.id && media[slot.id];
     const d = document.createElement('div'); d.className = 'slot';
     d.innerHTML = `<button class="slot-btn" aria-label="사진 ${i + 1} ${m ? '바꾸기' : '넣기'}">${m ? (m.type === 'video' ? `<video src="${m.url}" muted playsinline></video>` : `<img src="${m.url}" alt="">`) : '사진 ' + (i + 1) + '<br>넣기'}${m ? `<span class="badge">${i + 1}${m.type === 'video' ? ' 영상' : ''}</span>` : ''}</button>
@@ -5336,7 +5358,7 @@ function buildInfoPane() {
 $('bulkInput').onchange = e => bulkFill([...e.target.files]);
 async function bulkFill(files, scenes) {
   if (!files.length) return;
-  const empty = []; (scenes || project.scenes).forEach(s => s.media.forEach((m, k) => { if (!m.id) empty.push([s, k]); }));
+  const empty = []; (scenes || project.scenes).forEach(s => s.media.forEach((m, k) => { if (!m.id && k < visibleSlots(s)) empty.push([s, k]); }));
   if (!empty.length) { toast('비어 있는 사진 칸이 없어요. 바꿀 칸 위에 놓아주세요.'); return; }
   let n = 0, bad = 0;
   toast(`${files.length}개 파일을 넣는 중이에요`);
@@ -5618,7 +5640,7 @@ async function saveFile(blob, filename) {
 function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
-    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim })),
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim, count: s.count })),
     lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2, capRead: project.capRead
   };
 }
@@ -6284,7 +6306,8 @@ async function saveWork() {
     const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
     const ext = (window.claude && typeof window.claude.use === 'function') ? 'zip' : 'prelude';
     const name = `식전영상_${project.info.groomKo || ''}_${project.info.brideKo || ''}_${stamp}.${ext}`.replace(/[\\/:*?"<>|]/g, '').replace(/__+/g, '_');
-    const ok = await saveFile(zip, name);
+    // a generic binary type keeps iPad/iPhone Safari from renaming the file to .zip and unpacking it into a folder
+    const ok = await saveFile(ext === 'prelude' ? new Blob([zip], { type: 'application/octet-stream' }) : zip, name);
     if (ok) setTimeout(() => toast(`저장했어요: ${name}`), 50);
     if (ok && skipped.length) setTimeout(() => toast(`저장했어요. 다시 읽을 수 없는 파일 ${skipped.length}개는 빠졌어요. 그 칸만 다시 넣어주세요.`), 300);
     return ok;
