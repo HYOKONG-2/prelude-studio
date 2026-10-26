@@ -5640,6 +5640,50 @@ async function applyAutoLyrics(pick, off) {
   toast(`가사 ${items.length}줄을 넣었어요${subs.some(Boolean) ? ' (한글 해석 포함)' : ''}`);
   return true;
 }
+/* tap-to-sync: paste lyrics, play the song, tap at the start of each line */
+let tapSync = null;
+function renderTap() {
+  const box = $('tapBox'); if (!box) return;
+  if (!tapSync) { box.innerHTML = ''; return; }
+  const { lines, i } = tapSync, cur = lines[i - 1], nx = lines[i];
+  box.innerHTML = `<div style="margin-top:10px;padding:12px;border-radius:12px;background:rgba(0,0,0,.05)">
+    <p class="hint" style="margin:0">${i}/${lines.length}줄 · 지금 나오는 줄</p><p style="margin:2px 0 8px;font-weight:600">${cur ? esc(cur.text) : '(아직 시작 전)'}</p>
+    <p class="hint" style="margin:0">다음 줄 — 부르기 시작할 때 누르세요</p><p style="margin:2px 0 10px;font-weight:700;font-size:16px">${nx ? esc(nx.text) : '마지막 줄이 끝날 때 한 번 더 누르면 끝나요'}</p>
+    <button type="button" class="btn primary" id="tapNext" style="width:100%;padding:14px;font-size:16px">${nx ? '다음 줄 시작 (스페이스바)' : '끝 (스페이스바)'}</button>
+    <div class="row" style="margin-top:8px"><button type="button" class="x" id="tapUndo">한 줄 되돌리기</button><button type="button" class="x" id="tapEnd">여기까지 넣고 끝내기</button><button type="button" class="x" id="tapCancel">취소</button></div></div>`;
+  $('tapNext').onclick = tapNext; $('tapEnd').onclick = finishTap; $('tapCancel').onclick = () => { tapSync = null; pause(); renderTap(); toast('탭 맞추기를 취소했어요'); };
+  $('tapUndo').onclick = () => { if (!tapSync.items.length) return; tapSync.items.pop(); tapSync.i--; const last = tapSync.items[tapSync.items.length - 1]; if (last) last.end = last.start + 4; seek(Math.max(0, (last ? last.start : clock()) - 1)); renderTap(); };
+}
+function startTapSync(text) {
+  const lines = text.split('\n').map(x => x.trim()).filter(Boolean).map(l => { const m = l.split(/\s+\/\s+/); return { text: m[0], sub: m[1] || '' }; });
+  if (!lines.length) { toast('가사를 먼저 붙여 넣어주세요'); return; }
+  tapSync = { lines, i: 0, items: [] };
+  if (!playing) play();
+  renderTap();
+}
+function tapNext() {
+  if (!tapSync) return;
+  const T = +Math.min(clock(), total).toFixed(2), k = tapSync.i;
+  if (k > 0) { const pv = tapSync.items[k - 1]; pv.end = Math.max(pv.start + 0.3, T - 0.05); }
+  if (k < tapSync.lines.length) { tapSync.items.push({ ...tapSync.lines[k], start: T, end: Math.min(total, T + 4) }); tapSync.i++; renderTap(); }
+  else finishTap();
+}
+function finishTap() {
+  if (!tapSync) return;
+  const items = tapSync.items; tapSync = null; pause();
+  if (!items.length) { renderTap(); return; }
+  touch('lyrics');
+  project.lyrics = items.map(x => ({ id: uid(), start: x.start, end: x.end, text: x.text, sub: x.sub }));
+  project.lyricsOn = true; items.forEach(x => { loadFontsFor(x.text); loadFontsFor(x.sub); });
+  lyricChanged(); toast(`가사 ${items.length}줄의 시간을 맞췄어요. 줄마다 ‘지금’ 버튼으로 미세하게 고칠 수 있어요`);
+}
+document.addEventListener('keydown', e => {
+  if (!tapSync) return;
+  const tg = e.target, typing = tg && (tg.tagName === 'TEXTAREA' || (tg.tagName === 'INPUT' && tg.type !== 'checkbox' && tg.type !== 'range'));
+  if (typing) return;
+  if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); tapNext(); }
+  else if (e.key === 'Escape') { e.preventDefault(); finishTap(); }
+}, true);
 function autoLyricsHtml() {
   const g = guessTrack(audioName);
   const ar = alArtist != null ? alArtist : g.artist, ti = alTitle != null ? alTitle : g.title;
@@ -5652,6 +5696,13 @@ function autoLyricsHtml() {
     <div class="checks"><label><input type="checkbox" id="alTr" checked>영어 노래면 한글 해석 두 줄로 넣기</label></div>
     <button type="button" class="btn primary" id="alGo" style="width:100%;margin-top:8px"${abuf ? '' : ' disabled'}>${abuf ? '가사 찾아서 자동으로 넣기' : '먼저 음원을 넣어주세요'}</button>
     <div id="alRes" style="margin-top:8px"></div>
+    <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      <h3 style="margin-top:0">가사 붙여넣고 탭으로 맞추기</h3>
+      <p class="hint" style="margin-top:0">가사를 못 찾는 곡(국내 곡 등)은 멜론·지니 등에서 가사를 복사해 붙여 넣으세요. 한 줄이 자막 한 줄이 돼요. 영어 노래는 <b>영어 / 한글</b>처럼 ‘ / ’로 나누면 두 줄 자막이 돼요. 재생 위치를 노래 시작 쪽에 두고 시작한 뒤, 각 줄을 부르기 시작할 때마다 <b>스페이스바</b>(또는 아래 버튼)를 누르면 시간이 자동으로 들어가요.</p>
+      <textarea id="tapText" rows="5" style="width:100%" placeholder="가사를 한 줄씩 붙여 넣어주세요"></textarea>
+      <button type="button" class="btn primary" id="tapGo" style="width:100%;margin-top:8px"${abuf ? '' : ' disabled'}>${abuf ? '재생하며 탭으로 맞추기' : '먼저 음원을 넣어주세요'}</button>
+      <div id="tapBox"></div>
+    </div>
     ${project.lyrics.length ? `<div class="row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap"><span class="hint" style="margin:0">전체 가사 시간 맞추기</span><button type="button" class="x" data-sh="-1">-1초</button><button type="button" class="x" data-sh="-0.3">-0.3초</button><button type="button" class="x" data-sh="0.3">+0.3초</button><button type="button" class="x" data-sh="1">+1초</button></div>` : ''}
   </div>`;
 }
@@ -5659,6 +5710,8 @@ function wireAutoLyrics(p) {
   const ia = $('alArtist'), it = $('alTitle'); if (!ia) return;
   ia.oninput = () => alArtist = ia.value; it.oninput = () => alTitle = it.value;
   p.querySelectorAll('[data-sh]').forEach(b => b.onclick = () => { const d = +b.dataset.sh; touch('lyrics'); project.lyrics.forEach(l => { l.start = +clamp(l.start + d, 0, total).toFixed(1); l.end = +clamp(l.end + d, 0, total).toFixed(1); }); lyricChanged(); toast(`가사를 ${d > 0 ? '+' : ''}${d}초 옮겼어요`); });
+  const tg = $('tapGo'); if (tg) tg.onclick = () => { if (project.lyrics.length && !confirm('지금 넣어 둔 가사를 새로 맞춘 가사로 바꿀까요?')) return; tg.blur(); startTapSync($('tapText').value); };
+  renderTap();
   const res = $('alRes');
   const choose = async pick => {
     const dur = abuf ? abuf.duration : total;
