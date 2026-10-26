@@ -4623,6 +4623,116 @@ async function cutoutSlot(s, i) {
     toast('자동 누끼를 하지 못했어요. 배경을 지운 PNG 사진을 직접 넣어도 돼요');
   }
 }
+/* ---------------- D type: bigger photo layouts + calmer ending backgrounds ---------------- */
+LAYOUTS.sbsky = {
+  name: '폴라로이드 네 장 (큰 사진)', slots: 4, weight: 5,
+  fields: [['cap1', '사진 아래 글씨 1', 'Better with you, always'], ['cap2', '사진 아래 글씨 2', '{GROOM} , {BRIDE}']],
+  opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+  draw(c, s, t, d) {
+    paperBg(c);
+    instant(c, s, 0, 70, 50, 820, 470, t, d, { at: 0.1, rot: -2, cap: fill(s.texts.cap1), bw: s.opts.bw });
+    instant(c, s, 1, 1010, 40, 840, 470, t, d, { at: 0.35, rot: 2.5, clip: true, bw: s.opts.bw });
+    instant(c, s, 2, 120, 570, 780, 420, t, d, { at: 0.6, rot: 1.5, tape: true, bw: s.opts.bw });
+    instant(c, s, 3, 1010, 590, 800, 400, t, d, { at: 0.85, rot: -2, cap: fill(s.texts.cap2), bw: s.opts.bw });
+  }
+};
+LAYOUTS.sbskytext = {
+  name: '손글씨 엔딩 문구 (흐린 사진 배경)', slots: 1, weight: 5,
+  fields: [['text', '문구', '수많은 계절을 함께 지나\n오늘에 도착했어요.', true]],
+  opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'light'],
+  draw(c, s, t, d) {
+    paperBg(c);
+    const has = s.media[0] && s.media[0].id;
+    if (has) { c.save(); c.globalAlpha = 0.9; softBg(c, s, 0, s.opts.bw); c.restore(); c.fillStyle = 'rgba(246,242,236,.58)'; c.fillRect(0, 0, W, H); }
+    else { const g = c.createRadialGradient(960, 540, 200, 960, 540, 1100); g.addColorStop(0, 'rgba(255,248,240,.6)'); g.addColorStop(1, 'rgba(214,196,178,.35)'); c.fillStyle = g; c.fillRect(0, 0, W, H); }
+    addHit({ type: 'media', si: 0, x: 0, y: 0, w: W, h: H, oy: 0 });
+    const la = fade(t, 0.3, 0.8); if (la > 0) { c.save(); c.globalAlpha *= la * 0.6; c.strokeStyle = '#8C7B70'; c.lineWidth = 2; c.beginPath(); c.moveTo(860, 380); c.lineTo(1060, 380); c.stroke(); inkHeart(c, 960, 720, 16, '#C98B8B'); c.restore(); }
+    block(c, fill(s.texts.text), 960, 540, PEN(78), 92, '#3E3430', t, 0.5, d * 0.5, true, 'text');
+  }
+};
+Object.assign(LAYOUTS, {
+  sbbleed: {
+    name: '스크랩북 화면 가득 큰 사진', slots: 1, weight: 5, fields: [['cap', '사진 위 손글씨', '']], opts: [['bw', '흑백', false]],
+    cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      instant(c, s, 0, 110, 60, 1700, 900, t, d, { at: 0.05, rot: -1, tape: true, tapeRot: 8, bw: s.opts.bw });
+      txt(c, fill(s.texts.cap), 1650, 880, PEN(70), '#FFFFFF', fade(t, 0.8, 0.6), { align: 'right', k: 'cap', shadow: 'rgba(0,0,0,.45)', blur: 8 });
+    }
+  },
+  sbduo2: {
+    name: '스크랩북 큰 세로 사진 두 장', slots: 2, weight: 5,
+    fields: [['cap1', '왼쪽 사진 아래', 'You'], ['cap2', '오른쪽 사진 아래', 'Me']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      instant(c, s, 0, 120, 40, 790, 880, t, d, { at: 0.05, rot: -2.5, cap: fill(s.texts.cap1), tape: true, bw: s.opts.bw });
+      instant(c, s, 1, 1010, 50, 790, 880, t, d, { at: 0.4, rot: 2, cap: fill(s.texts.cap2), clip: true, bw: s.opts.bw });
+    }
+  },
+  sbportrait: {
+    name: '스크랩북 큰 세로 사진 + 메모', slots: 1, weight: 5,
+    fields: [['text', '메모 손글씨', '함께라서\n더 빛나는 날들', true]], opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 520 : 1400, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c); const f = s.opts.flip;
+      instant(c, s, 0, f ? 1010 : 120, 40, 780, 940, t, d, { at: 0.05, rot: f ? 2 : -2, tape: true, bw: s.opts.bw });
+      memo(c, f ? 140 : 1000, 330, 760, 360, f ? -2 : 2, s.texts.text, t, 0.6, d, 'text');
+      const a = fade(t, 1.2, 0.6); if (a > 0) { c.save(); c.globalAlpha *= a; inkStar(c, f ? 820 : 1780, 250, 22, '#BFD0E6'); inkHeart(c, f ? 220 : 1100, 800, 18); c.restore(); }
+    }
+  },
+  sbstack: {
+    name: '스크랩북 큰 사진 + 겹친 작은 사진', slots: 2, weight: 5,
+    fields: [['cap', '작은 사진 아래 손글씨', 'with you']], opts: [['bw', '흑백', false]], cap: () => [700, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      instant(c, s, 0, 90, 60, 1380, 860, t, d, { at: 0.05, rot: -1.5, tape: true, bw: s.opts.bw });
+      instant(c, s, 1, 1330, 520, 500, 380, t, d, { at: 0.6, rot: 5, cap: fill(s.texts.cap), clip: true, bw: s.opts.bw });
+    }
+  },
+  sbtriobig: {
+    name: '스크랩북 큰 세로 사진 세 장', slots: 3, weight: 5,
+    fields: [['cap', '가운데 사진 아래', 'Our days']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      paperBg(c);
+      instant(c, s, 0, 70, 110, 560, 800, t, d, { at: 0.05, rot: -3, tape: true, bw: s.opts.bw });
+      instant(c, s, 2, 1290, 110, 560, 800, t, d, { at: 0.5, rot: 3, clip: true, bw: s.opts.bw });
+      instant(c, s, 1, 680, 60, 560, 820, t, d, { at: 0.3, rot: 0.5, cap: fill(s.texts.cap), bw: s.opts.bw });
+    }
+  }
+});
+CATS[1][1].push('sbbleed', 'sbportrait'); CATS[2][1].push('sbduo2', 'sbstack', 'sbtriobig');
+TEMPLATES.D.make = () => {
+  const N = (text, o = {}) => ['sbnote2', { texts: { text, ...(o.texts || {}) }, opts: o.opts || {} }];
+  const list = [
+    ['sbheart', {}, 6], ['sbtitle', {}, 4],
+    ['sbprofile', {}, 6], ['sbprofile', { opts: { flip: true, pink: true }, texts: { tag: 'Today’s Bride', name: '{신부}', birth: '1996.11.06', info: '귀여운 고양이' } }, 6],
+    ['sbbleed', { texts: { cap: 'our story' } }],
+    ['sbcollage3', {}],
+    N('어느 평범한 날, 우연처럼\n서로를 처음 마주했어요.'),
+    ['sbportrait', { texts: { text: '특별한 말은 없었지만\n그날의 공기는\n아직도 기억나요.' } }],
+    ['sbstack', {}], ['sbduo2', {}], ['sbgrid4', {}],
+    ['sbbleed', {}],
+    ['sbportrait', { opts: { flip: true }, texts: { text: '서두르지 않고 천천히,\n서로의 하루에\n스며들었어요.' } }],
+    ['sbtriobig', {}], ['sbstrip', {}],
+    ['sbbig', { texts: { text: '맛있는 걸 먹으면\n제일 먼저 생각나는 사람.', script: 'my favorite person' } }],
+    ['sbstack', { texts: { cap: 'always' } }],
+    N('가끔은 다투기도 했지만\n결국 서로의 편이었어요.', { opts: { mirror: true }, texts: { cap1: 'Happy' } }),
+    ['sbbleed', { texts: { cap: 'you & me' } }], ['sbduo2', { texts: { cap1: 'Bride', cap2: 'Groom' } }],
+    ['sbcollage3', { texts: { title: '함께 걸어온 길' } }],
+    ['sbportrait', { texts: { text: '같은 노래를 들으며\n같은 곳을\n바라봤어요.' } }],
+    ['sbtriobig', { texts: { cap: 'love' } }], ['sbgrid4', { texts: { text: '사계절을 몇 번이나 지나\n여기까지 왔어요.', w1: 'SPRING', w2: 'WINTER' } }],
+    ['sbbleed', {}], ['sbstack', { texts: { cap: 'forever' } }],
+    ['sbportrait', { opts: { flip: true }, texts: { text: '언제나 내 편이\n되어주는\n고마운 사람.' } }],
+    ['sbduo2', { texts: { cap1: 'Just', cap2: 'married' } }], ['sbphoto', {}],
+    ['sbcollage3', { texts: { title: '우리의 약속' } }],
+    ['sbbig', { texts: { text: '그리고 이제, 우리라는 이름으로\n새로운 시작을 하려 해요.' } }],
+    ['sbsky', {}],
+    ['sbskytext', {}, 5], ['sbbleed', {}],
+    ['sbskytext', { texts: { text: '지금의 설렘과 사랑을 잊지 않고\n평생 이 마음 간직하며 살아갈게요.' } }, 5.5],
+    ['sbskytext', { texts: { text: '와주신 모든 분들께\n진심으로 감사드립니다.' } }, 5],
+    ['sbskytext', { texts: { text: '이제, 저희의 결혼식이 시작됩니다!' } }, 5]
+  ];
+  return baseProj('D', fitTotal(mkScenes(list)), { lyricFx: 'hand' });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
