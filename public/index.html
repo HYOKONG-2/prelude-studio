@@ -488,7 +488,7 @@ function autoCol(col) {
   if (l == null || Math.abs(l - curBgLum) >= 0.35) return col;
   return curBgLum > 0.5 ? '#2A2725' : '#F2F0EE';
 }
-function bg(c, col) { c.fillStyle = (curScene && curScene.bgc && !LAYOUTS[curScene.layout].bgHidden) ? curScene.bgc : col; c.fillRect(0, 0, W, H); }
+function bg(c, col) { const L = curScene && LAYOUTS[curScene.layout]; c.fillStyle = (curScene && curScene.bgc && !L.bgHidden) ? curScene.bgc : (curScene && curScene.pbg && L && L.bgHidden) ? curScene.pbg : col; c.fillRect(0, 0, W, H); }
 function setSpacing(c, px) { if ('letterSpacing' in c) c.letterSpacing = px + 'px'; }
 function txt(c, s, x, y, font, color, a, o = {}) {
   if (!s || a <= 0.001) return;
@@ -545,7 +545,7 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const oy = slot.oy == null ? (vertical ? (dh - h) / h * 0.12 : 0) : slot.oy;
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
-  if (z < 1 || ox || slot.oy != null) { c.fillStyle = o.dark ? '#000' : PAPER; c.fillRect(x, y, w, h); }
+  if (z < 1 || ox || slot.oy != null) { c.fillStyle = scene.pbg || (o.dark ? '#000' : PAPER); c.fillRect(x, y, w, h); }
   c.drawImage(m.el, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
   if (o.bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(x, y, w, h); }
   c.restore();
@@ -3459,6 +3459,7 @@ function makeScene(layout, over = {}) {
   if (over.anim) s.anim = over.anim;
   if (over.count) s.count = over.count;
   if (over.tm) s.tm = over.tm;
+  if (over.pbg) s.pbg = over.pbg;
   if (over.tstyle) s.tstyle = JSON.parse(JSON.stringify(over.tstyle));
   return s;
 }
@@ -6508,7 +6509,7 @@ function buildScenePane() {
     ${L.countOpts ? `<label class="field"><span>사진 칸 수</span><select id="fCount">${L.countOpts.map(n => `<option value="${n}" ${photoCount(s, COUNT_DEF[s.layout] || 3) === n ? 'selected' : ''}>${n}장</option>`).join('')}</select></label>` : ''}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
-    ${L.bgHidden ? '' : `<div class="group"><h3>배경</h3><div class="bgrow">
+    ${L.bgHidden ? `<div class="group"><h3>사진 뒤 배경색</h3><p class="hint" style="margin-top:0">사진을 줄이거나 옮겼을 때 빈 곳에 보이는 색이에요.</p><div class="bgrow">${[['', '기본'], ['#000000', '블랙'], ['#FFFFFF', '화이트'], ['#F3EEE7', ''], ['#F2E4E4', ''], ['#E6E2EF', ''], ['#E1E8E1', ''], ['#2B2B30', '']].map(([v, n]) => n ? `<button type="button" class="x${(s.pbg || '') === v ? ' on' : ''}" data-pbg="${v}" style="border:1px solid var(--line);border-radius:999px;padding:6px 14px">${n}</button>` : `<button type="button" class="swb${s.pbg === v ? ' on' : ''}" data-pbg="${v}" style="background:${v}" aria-label="사진 뒤 배경 ${v}"></button>`).join('')}<input type="color" id="fPbg" value="${s.pbg || '#000000'}" aria-label="사진 뒤 배경색 직접 고르기"></div></div>` : `<div class="group"><h3>배경</h3><div class="bgrow">
       <button class="btn small${!s.bgc ? ' on' : ''}" data-bg="">기본</button>
       <button class="btn small${s.bgc === '#000000' ? ' on' : ''}" data-bg="#000000">블랙</button>
       <button class="btn small${s.bgc === '#FFFFFF' ? ' on' : ''}" data-bg="#FFFFFF">화이트</button>
@@ -6568,6 +6569,8 @@ function buildScenePane() {
     toast('이 장면 사진 움직임을 모두 바꿨어요');
   };
   p.querySelectorAll('[data-bg]').forEach(b => b.onclick = () => setBg(b.dataset.bg, true));
+  p.querySelectorAll('[data-pbg]').forEach(b => b.onclick = () => { if (b.dataset.pbg) s.pbg = b.dataset.pbg; else delete s.pbg; sceneChanged(s); buildScenePane(); });
+  const fpb = p.querySelector('#fPbg'); if (fpb) { fpb.oninput = e => { s.pbg = e.target.value.toUpperCase(); sceneChanged(s); }; fpb.onchange = () => buildScenePane(); }
   const fb = p.querySelector('#fBg'); if (fb) { fb.oninput = e => setBg(e.target.value, false); fb.onchange = e => setBg(e.target.value, true); }
   p.querySelectorAll('[data-opt]').forEach(c => c.onchange = () => { s.opts[c.dataset.opt] = c.checked; sceneChanged(s); });
   p.querySelectorAll('[data-text]').forEach(inp => inp.oninput = () => { s.texts[inp.dataset.text] = inp.value; loadFontsFor(inp.value); sceneChanged(s); });
@@ -6579,24 +6582,40 @@ function buildScenePane() {
 }
 function vidCtl(slot, m) {
   const g = vidSeg(slot, m.el), D = Math.max(0.1, m.el.duration || g.b);
-  return `<div class="hint" style="margin:6px 0 0">영상 구간 (원본 ${D.toFixed(1)}초)</div>
+  return `<div class="vidcut" style="margin:4px 0 10px;padding:10px;border:1px solid var(--accent);border-radius:12px">
+    <b style="font-size:13.5px">영상 컷 정하기</b> <span class="hint" style="margin:0">원본 ${fmt1(D)}</span>
+    <video data-vprev src="${m.url}" muted playsinline controls preload="metadata" style="width:100%;border-radius:8px;margin-top:8px;background:#000"></video>
+    <p class="hint" style="margin:4px 0 6px">아래 영상에서 원하는 지점으로 옮긴 뒤 버튼을 누르세요.</p>
+    <div class="row" style="gap:6px"><button type="button" class="btn small" data-vset="vs" style="flex:1">여기서 시작</button><button type="button" class="btn small" data-vset="ve" style="flex:1">여기서 끝</button></div>
+    <div class="row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap"><span class="hint" style="margin:0">시작</span><input class="tin" data-vin="vs" value="${fmt1(g.a)}" aria-label="영상 시작 시간"><span class="hint" style="margin:0">끝</span><input class="tin" data-vin="ve" value="${fmt1(g.b)}" aria-label="영상 끝 시간"></div>
     <label class="ctl"><span>시작</span><input type="range" min="0" max="${Math.round(D * 10)}" value="${Math.round(g.a * 10)}" data-v="vs" aria-label="영상 시작 지점"></label>
     <label class="ctl"><span>끝</span><input type="range" min="0" max="${Math.round(D * 10)}" value="${Math.round(g.b * 10)}" data-v="ve" aria-label="영상 끝 지점"></label>
-    <div class="hint" style="margin:0"><span class="vt" data-vt>${g.a.toFixed(1)}초 ~ ${g.b.toFixed(1)}초 (${g.len.toFixed(1)}초)</span></div>
-    <label class="ctl-row" style="margin-top:2px"><input type="checkbox" data-hold ${slot.hold ? 'checked' : ''}>끝나면 마지막 화면에서 멈춤 (끄면 반복)</label>
-    <button class="x" data-fitlen style="text-align:left;padding-left:0">장면 길이를 이 구간에 맞추기</button>`;
+    <div class="hint" style="margin:0">쓰는 구간: <b data-vt>${fmt1(g.a)} ~ ${fmt1(g.b)} (${g.len.toFixed(1)}초)</b></div>
+    <label class="ctl-row" style="margin-top:4px"><input type="checkbox" data-hold ${slot.hold ? 'checked' : ''}>끝나면 마지막 화면에서 멈춤 (끄면 반복)</label>
+    <button class="x" data-fitlen style="text-align:left;padding-left:0">장면 길이를 이 구간에 맞추기</button>
+  </div>`;
 }
 function wireVid(d, s, slot, m) {
-  const idx = () => project.scenes.indexOf(s);
-  const upd = () => { const g = vidSeg(slot, m.el); d.querySelector('[data-vt]').textContent = `${g.a.toFixed(1)}초 ~ ${g.b.toFixed(1)}초 (${g.len.toFixed(1)}초)`; };
-  d.querySelectorAll('[data-v]').forEach(r => r.oninput = () => {
-    const v = r.value / 10, D = m.el.duration || 0;
-    if (r.dataset.v === 'vs') { slot.vs = v; if ((slot.ve || D) < v + 0.2) slot.ve = Math.min(D, v + 0.2); }
-    else { slot.ve = Math.max(v, (slot.vs || 0) + 0.2); if (D && slot.ve >= D - 0.05) delete slot.ve; }
-    upd(); sceneChanged(s);
+  const idx = () => project.scenes.indexOf(s), D = () => m.el.duration || 0;
+  const pv = d.querySelector('[data-vprev]');
+  if (pv) pv.addEventListener('loadedmetadata', () => { try { pv.currentTime = vidSeg(slot, m.el).a; } catch (e) { } }, { once: true });
+  const refresh = () => {
+    const g = vidSeg(slot, m.el);
+    d.querySelector('[data-vt]').textContent = `${fmt1(g.a)} ~ ${fmt1(g.b)} (${g.len.toFixed(1)}초)`;
+    d.querySelector('[data-vin="vs"]').value = fmt1(g.a); d.querySelector('[data-vin="ve"]').value = fmt1(g.b);
+    d.querySelector('[data-v="vs"]').value = Math.round(g.a * 10); d.querySelector('[data-v="ve"]').value = Math.round(g.b * 10);
+  };
+  const setV = (k, v, show) => {
+    const dur = D(); v = clamp(v, 0, dur || v);
+    if (k === 'vs') { slot.vs = +v.toFixed(2); if ((slot.ve || dur) < slot.vs + 0.2) slot.ve = Math.min(dur, slot.vs + 0.2); if (!slot.vs) delete slot.vs; }
+    else { slot.ve = Math.max(+v.toFixed(2), (slot.vs || 0) + 0.2); if (dur && slot.ve >= dur - 0.05) delete slot.ve; }
+    refresh(); sceneChanged(s);
     const i = idx(), g = vidSeg(slot, m.el);
-    if (i >= 0) seek(timeline[i].start + (r.dataset.v === 'vs' ? Math.min(0.95, timeline[i].dur * 0.3) : Math.min(timeline[i].dur - 0.05, g.len - 0.05)));
-  });
+    if (show !== false && i >= 0) seek(timeline[i].start + (k === 'vs' ? Math.min(0.95, timeline[i].dur * 0.3) : Math.min(timeline[i].dur - 0.05, g.len - 0.05)));
+  };
+  d.querySelectorAll('[data-v]').forEach(r => r.oninput = () => setV(r.dataset.v, r.value / 10));
+  d.querySelectorAll('[data-vin]').forEach(inp => inp.onchange = () => { const v = parseT(inp.value); if (!isNaN(v)) setV(inp.dataset.vin, v); else refresh(); });
+  d.querySelectorAll('[data-vset]').forEach(b => b.onclick = () => { if (!pv) return; pv.pause(); setV(b.dataset.vset, pv.currentTime); toast(b.dataset.vset === 'vs' ? `영상 ${fmt1(pv.currentTime)}부터 나와요` : `영상 ${fmt1(pv.currentTime)}까지 나와요`); });
   d.querySelector('[data-hold]').onchange = e => { slot.hold = e.target.checked; sceneChanged(s); };
   d.querySelector('[data-fitlen]').onclick = () => {
     const g = vidSeg(slot, m.el); touch(s.id); s.weight = Math.max(0.5, Math.round(g.len * 10) / 10);
@@ -6612,6 +6631,7 @@ function buildSlots(s) {
     const d = document.createElement('div'); d.className = 'slot';
     d.innerHTML = `<button class="slot-btn" aria-label="사진 ${i + 1} ${m ? '바꾸기' : '넣기'}">${m ? (m.type === 'video' ? `<video src="${m.url}" muted playsinline></video>` : `<img src="${m.url}" alt="">`) : '사진 ' + (i + 1) + '<br>넣기'}${m ? `<span class="badge">${i + 1}${m.type === 'video' ? ' 영상' : ''}</span>` : ''}</button>
       ${m ? `<div class="mini">
+        ${m.type === 'video' ? vidCtl(slot, m) : ''}
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
@@ -6619,7 +6639,6 @@ function buildSlots(s) {
         <label class="ctl"><span>칸 세로</span><input type="range" min="-500" max="500" value="${Math.round(slot.fdy || 0)}" data-fk="fdy"></label>
         <label class="ctl"><span>칸 크기</span><input type="range" min="40" max="200" value="${Math.round((slot.fsc || 1) * 100)}" data-fk="fsc"></label>
         <label class="ctl"><span>움직임</span><select data-mo aria-label="사진 움직임" style="min-width:0;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--surface)">${MOTIONS.map(([k, n]) => `<option value="${k}" ${(slot.mo || 'auto') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-        ${m.type === 'video' ? vidCtl(slot, m) : ''}
         ${LAYOUTS[s.layout].cutout && m.type === 'image' ? '<button class="btn small" data-cut style="width:100%;margin-top:6px">배경 지우기 (자동 누끼)</button>' : ''}
         <div class="row"><button class="x" data-r>되돌리기</button><button class="x" data-x>빼기</button></div></div>` : `<p class="hint" style="margin:0">${LAYOUTS[s.layout].cutout ? '사진을 넣은 뒤 ‘배경 지우기’를 누르거나, 배경을 지운 PNG를 넣어주세요.' : '눌러서 사진이나 영상을 넣어요.'}</p>`}`;
     d.querySelector('.slot-btn').onclick = () => pickSlot(s, i);
@@ -7141,7 +7160,7 @@ async function saveFile(blob, filename) {
 function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
-    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim, count: s.count, tm: s.tm })),
+    scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim, count: s.count, tm: s.tm, pbg: s.pbg })),
     lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2, capRead: project.capRead
   };
 }
