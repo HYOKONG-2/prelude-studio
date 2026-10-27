@@ -5866,6 +5866,143 @@ TEMPLATES.C.make = () => {
   const sc = mkScenes([...dating, ...wedding, ...ending]); let ci = 0; sc.forEach(s => { if (s.capFx === 'yellow' && !s.caption) s.caption = BIL_CAPS[ci++ % BIL_CAPS.length]; });
   return baseProj('C', fitTotal(sc), { lyricFx: 'yellow' });
 };
+/* ================= single-photo scenes for clients with few photos (scene picker only) ================= */
+Object.assign(LAYOUTS, {
+  o1caption: {
+    name: '사진 1장 · 가운데 사진 + 위아래 글씨', slots: 1, weight: 5, fields: [['top', '위 작은 글씨', 'OUR STORY'], ['bottom', '아래 문장', '함께라서 더 빛나는 날들']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#F6F2EC');
+      txt(c, fill(s.texts.top), 960, 90, F.serif(26, 600, false), '#8C7B6E', fade(t, 0.2, 0.6), { k: 'top', sp: 10 });
+      c.save(); c.globalAlpha *= fade(t, 0, 0.9); c.save(); c.shadowColor = 'rgba(0,0,0,.14)'; c.shadowBlur = 28 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFF'; c.fillRect(470, 140, 980, 700); c.restore(); cover(c, s, 0, 470, 140, 980, 700, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore();
+      txt(c, fill(s.texts.bottom), 960, 920, F.serif(46, 500, true), '#3E3530', fade(t, 0.8, 0.8), { k: 'bottom', rise: 8 });
+    }
+  },
+  o1card: {
+    name: '사진 1장 · 기울어진 카드 + 손글씨', slots: 1, weight: 5, fields: [['note', '손글씨', 'my favorite day']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#EFE6E3');
+      whiteBorder(c, s, 0, 520, 110, 880, 700, t, d, -3, { at: 0.05, b: 22, bottom: 110, bw: s.opts.bw });
+      txt(c, fill(s.texts.note), 980, 890, PEN(70), '#4A403B', fade(t, 0.8, 0.6), { k: 'note' });
+    }
+  },
+  o1ring: {
+    name: '사진 1장 · 원형 사진 + 도는 글씨 링', slots: 1, weight: 5, fields: [['ring', '링 글씨', 'FOREVER AND ALWAYS · OUR WEDDING DAY · ']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#F3EFE9');
+      const cx = 960, cy = 520, r = 330, e = ease(clamp(t / 0.9));
+      c.save(); c.globalAlpha *= e; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, 0, cx - r, cy - r, 2 * r, 2 * r, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); hitOn = ho; c.restore();
+      addHit({ type: 'media', si: 0, x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, oy: 0 });
+      const str = fill(s.texts.ring); if (str) { const chars = Array.from(str), step = Math.PI * 2 / chars.length, rot = t * 0.18;
+        c.save(); c.globalAlpha *= fade(t, 0.5, 0.8); c.fillStyle = '#5A4C44'; c.font = F.serif(30, 600, false); c.textAlign = 'center'; c.textBaseline = 'middle';
+        chars.forEach((ch, i) => { const a = rot + i * step; c.save(); c.translate(cx + Math.cos(a) * (r + 54), cy + Math.sin(a) * (r + 54)); c.rotate(a + Math.PI / 2); c.fillText(ch, 0, 0); c.restore(); }); c.restore(); }
+    }
+  },
+  o1panel: {
+    name: '사진 1장 · 사진 + 색 패널 큰 글씨', slots: 1, weight: 5, fields: [['big', '큰 글씨', 'Love'], ['small', '작은 글씨', '서로의 가장 좋은 친구']], opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 380 : 1540, 1045, 'light'],
+    draw(c, s, t, d) {
+      const f = s.opts.flip; bg(c, '#E9DFD6');
+      c.save(); c.globalAlpha *= fade(t, 0, 0.8); cover(c, s, 0, f ? 760 : 0, 0, 1160, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore();
+      const tx = f ? 380 : 1540;
+      txt(c, fill(s.texts.big), tx, 470, PLAYF(150, 700, true), '#3A302B', fade(t, 0.5, 0.8), { k: 'big', rise: 12 });
+      const la = ease(clamp((t - 0.9) / 0.5)); if (la > 0) { c.fillStyle = '#3A302B'; c.fillRect(tx - 60 * la, 580, 120 * la, 2); }
+      txt(c, fill(s.texts.small), tx, 640, UIF(32, 500), '#5C514B', fade(t, 1.1, 0.6), { k: 'small' });
+    }
+  },
+  o1museum: {
+    name: '사진 1장 · 갤러리 액자 + 작품 라벨', slots: 1, weight: 5, fields: [['title', '라벨 제목', 'Us, 2026'], ['sub', '라벨 설명', 'Photograph · Love on paper']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#ECE8E2');
+      const e = ease(clamp(t / 0.9));
+      c.save(); c.globalAlpha *= e; c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 34 * R.S; c.shadowOffsetY = 18 * R.S; c.fillStyle = '#2A2522'; c.fillRect(470, 60, 980, 800); c.restore();
+      c.fillStyle = '#FBFAF7'; c.fillRect(500, 90, 920, 740); c.strokeStyle = 'rgba(0,0,0,.12)'; c.lineWidth = 2; c.strokeRect(588, 178, 744, 564); c.restore();
+      c.save(); c.globalAlpha *= e; cover(c, s, 0, 590, 180, 740, 560, t, { bw: s.opts.bw, zoom: 1.02 }); c.restore();
+      const la = fade(t, 0.9, 0.6); if (la > 0) { c.save(); c.globalAlpha *= la; c.fillStyle = '#FFFFFF'; c.shadowColor = 'rgba(0,0,0,.12)'; c.shadowBlur = 10 * R.S; c.fillRect(1500, 760, 320, 120); c.restore(); }
+      txt(c, fill(s.texts.title), 1525, 800, F.serif(34, 600, true), '#2A2522', la, { align: 'left', k: 'title' });
+      txt(c, fill(s.texts.sub), 1525, 845, UIF(20, 500), '#7A716B', la, { align: 'left', k: 'sub' });
+    }
+  },
+  o1blurframe: {
+    name: '사진 1장 · 흐린 배경 + 같은 사진 액자', slots: 1, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#222'); c.save(); c.globalAlpha = 0.95; softBg(c, s, 0, s.opts.bw); c.restore(); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(0, 0, W, H);
+      const e = ease(clamp(t / 1.0)), sc = 0.92 + 0.08 * e;
+      c.save(); c.globalAlpha *= e; c.translate(960, 540); c.scale(sc, sc); c.translate(-960, -540);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#FFF'; c.fillRect(560, 120, 800, 840); c.restore();
+      const ho = hitOn; hitOn = false; coverIn(c, s, 0, 580, 140, 760, 800, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); hitOn = ho; c.restore();
+      addHit({ type: 'media', si: 0, x: 580, y: 140, w: 760, h: 800, oy: 0 });
+    }
+  },
+  o1slices: {
+    name: '사진 1장 · 세 조각으로 밀려오는 사진', slots: 1, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#F4F0EA');
+      const X = 160, Y = 90, Wd = 1600, Ht = 900, g = 18, sw = (Wd - 2 * g) / 3, ho = hitOn; hitOn = false;
+      for (let i = 0; i < 3; i++) { const e = ease(clamp((t - i * 0.18) / 0.8)), dy = (1 - e) * (i % 2 ? -260 : 260), x = X + i * (sw + g);
+        c.save(); c.globalAlpha *= e; c.beginPath(); c.rect(x, Y + dy, sw, Ht); c.clip(); c.translate(0, dy); coverIn(c, s, 0, X, Y, Wd, Ht, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); }
+      hitOn = ho; addHit({ type: 'media', si: 0, x: X, y: Y, w: Wd, h: Ht, oy: 0 });
+    }
+  },
+  o1tiles: {
+    name: '사진 1장 · 네 칸 (컬러·흑백 번갈아)', slots: 1, weight: 5, fields: [], opts: [], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FFFFFF');
+      const X = 180, Y = 70, w = 770, h = 460, g = 20, ho = hitOn; hitOn = false;
+      for (let i = 0; i < 4; i++) { const x = X + (i % 2) * (w + g), y = Y + Math.floor(i / 2) * (h + g), a = fade(t, i * 0.2, 0.6);
+        c.save(); c.globalAlpha *= a; c.beginPath(); c.rect(x, y, w, h); c.clip(); coverIn(c, s, 0, x, y, w, h, t, { bw: i === 1 || i === 2, zoom: [1.0, 1.35, 1.6, 1.15][i] + 0.03 * clamp(t / d) }); c.restore(); }
+      hitOn = ho; addHit({ type: 'media', si: 0, x: X, y: Y, w: 2 * w + g, h: 2 * h + g, oy: 0 });
+    }
+  },
+  o1film: {
+    name: '사진 1장 · 필름 한 컷 (검은 바탕)', slots: 1, weight: 5, fields: [['num', '컷 번호', '24A']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#0E0E0E');
+      const e = ease(clamp(t / 0.9));
+      c.save(); c.globalAlpha *= e; c.fillStyle = '#1C1A18'; c.fillRect(260, 110, 1400, 860);
+      c.fillStyle = '#0E0E0E'; for (let x = 290; x < 1640; x += 62) { rr(c, x, 132, 34, 26, 5); c.fill(); rr(c, x, 922, 34, 26, 5); c.fill(); }
+      c.restore();
+      c.save(); c.globalAlpha *= e; cover(c, s, 0, 320, 190, 1280, 700, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+      txt(c, fill(s.texts.num) + '  ▶', 330, 905, F.ui(24, 700), '#E8A33C', fade(t, 0.6, 0.5), { align: 'left', k: 'num' });
+    }
+  },
+  o1arch: {
+    name: '사진 1장 · 큰 아치 창 + 필기체', slots: 1, weight: 5, fields: [['word', '필기체', 'together']], opts: [['flip', '아치 오른쪽', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 560 : 1360, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#F1ECE6'); const f = s.opts.flip, x = f ? 1000 : 300;
+      const e = ease(clamp(t / 0.9));
+      c.save(); c.globalAlpha *= e; c.translate(0, (1 - e) * 40);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.14)'; c.shadowBlur = 26 * R.S; c.fillStyle = '#FFF'; archPath(c, x - 16, 54, 652, 1000); c.fill(); c.restore();
+      c.save(); archPath(c, x, 70, 620, 980); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, 0, x, 70, 620, 980, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); hitOn = ho; c.restore();
+      c.restore(); addHit({ type: 'media', si: 0, x, y: 70, w: 620, h: 980, oy: 0 });
+      txt(c, fill(s.texts.word), f ? 560 : 1360, 540, F.script(140), '#6E5A50', fade(t, 0.8, 0.8), { k: 'word', rise: 10 });
+    }
+  },
+  o1magnify: {
+    name: '사진 1장 · 돋보기로 살펴보는 사진', slots: 1, weight: 6, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#111');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.02 });
+      c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H);
+      const p = ease(clamp((t - 0.4) / Math.max(1, d - 1))), mx = 520 + 880 * p, my = 420 + Math.sin(p * Math.PI) * 220, r = 230;
+      c.save(); c.beginPath(); c.arc(mx, my, r, 0, Math.PI * 2); c.clip(); const ho = hitOn; hitOn = false;
+      c.translate(mx, my); c.scale(1.7, 1.7); c.translate(-mx, -my); coverIn(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: 1.02 }); hitOn = ho; c.restore();
+      c.save(); c.strokeStyle = '#FFFFFF'; c.lineWidth = 10; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 20 * R.S; c.beginPath(); c.arc(mx, my, r, 0, Math.PI * 2); c.stroke();
+      c.lineCap = 'round'; c.lineWidth = 26; c.beginPath(); c.moveTo(mx + r * 0.72, my + r * 0.72); c.lineTo(mx + r * 1.15, my + r * 1.15); c.stroke(); c.restore();
+    }
+  },
+  o1blinds: {
+    name: '사진 1장 · 블라인드처럼 열리는 사진', slots: 1, weight: 5, fields: [['word', '아래 작은 글씨', '']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#F4F0EA');
+      const n = 9, bh = H / n, ho = hitOn; hitOn = false;
+      for (let i = 0; i < n; i++) { const e = ease(clamp((t - i * 0.07) / 0.6)); if (e <= 0) continue;
+        c.save(); c.beginPath(); c.rect(0, i * bh + bh / 2 * (1 - e), W, bh * e + 1); c.clip(); coverIn(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore(); }
+      hitOn = ho; addHit({ type: 'media', si: 0, x: 0, y: 0, w: W, h: H, oy: 0 });
+      txt(c, fill(s.texts.word), 960, 960, F.serif(44, 500, true), '#FFFFFF', fade(t, 1.0, 0.6), { k: 'word', shadow: 'rgba(0,0,0,.45)', blur: 10 });
+    }
+  }
+});
+['o1blurframe', 'o1magnify', 'o1blinds', 'o1slices'].forEach(k => { /* photo fills most of the frame; still allow a background tint */ });
+CATS[1][1].push('o1caption', 'o1card', 'o1ring', 'o1panel', 'o1museum', 'o1blurframe', 'o1slices', 'o1tiles', 'o1film', 'o1arch', 'o1magnify', 'o1blinds');
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
