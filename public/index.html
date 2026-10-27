@@ -72,6 +72,8 @@ button{cursor:pointer}
 .strip-head h2{font-size:15px;margin:0;font-weight:600}
 .add-sel{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:500;cursor:pointer}
 .add-sel[hidden]{display:none}
+.chip-x{margin-left:8px;border:1px solid var(--line);background:transparent;color:inherit;border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer;opacity:.85}
+.chip-x:hover{opacity:1;border-color:var(--accent);color:var(--accent)}
 .sfxm{position:absolute;bottom:3px;width:9px;height:9px;margin-left:-4px;background:#F2B84B;border:1.5px solid #fff;border-radius:50%;pointer-events:none;z-index:2}
 .sfx-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .sfx-it{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
@@ -7082,7 +7084,7 @@ function buildFilePane() {
       <div class="row" style="margin-top:10px"><button class="btn small" id="resetBtn">처음 상태로</button></div></div>`}
     <p class="status" id="saveStatus"></p>`;
   $('audioInput2').onchange = e => loadAudioFile(e.target.files[0]);
-  $('audioClear').onclick = () => { if (!abuf) return; pause(); abuf = null; peaks = null; audioName = ''; audioBlob = null; if (TEAM) { project.audio = null; loadedAudioId = null; touch('audio'); save(); } else idbDel('audio'); onAudioReady(); };
+  $('audioClear').onclick = () => removeAudio();
   $('tplSave').onclick = saveTemplate;
   $('workSave2').onclick = saveWork;
   $('workLoad').onclick = () => { $('workInput').value = ''; $('workInput').click(); };
@@ -7102,11 +7104,19 @@ function askReset() {
     project = defaultProject(); sel = 0; curT = 0; onAudioReady(); buildInfoPane(); buildLyricPane(); resetHistory(); buildFilePane(); toast('처음 상태로 되돌렸어요');
   });
 }
+function removeAudio(ask) {
+  if (!abuf) return;
+  if (ask && !confirm(`‘${audioName}’ 음원을 뺄까요? 넣어 둔 가사 자막은 그대로 남아요.`)) return;
+  pause(); abuf = null; peaks = null; audioName = ''; audioBlob = null;
+  if (TEAM) { project.audio = null; loadedAudioId = null; touch('audio'); save(); } else idbDel('audio');
+  onAudioReady(); toast('음원을 뺐어요');
+}
 function updateAudioInfo() {
   const el = $('audioInfo'), chip = $('audioChip');
   if (abuf) {
     if (el) el.textContent = `${audioName} (${fmt(abuf.duration)}). 영상 길이가 이 음원 길이에 맞춰져요.`;
-    chip.innerHTML = `<span>음원</span><strong>${esc(audioName)}</strong><span>${fmt(abuf.duration)}</span>`;
+    chip.innerHTML = `<span>음원</span><strong>${esc(audioName)}</strong><span>${fmt(abuf.duration)}</span><button type="button" class="chip-x" id="chipClear" title="음원 빼기" aria-label="음원 빼기">빼기</button>`;
+    const cx = $('chipClear'); if (cx) cx.onclick = e => { e.stopPropagation(); removeAudio(true); };
   } else {
     if (el) el.textContent = '음원이 없어요. 음원을 넣으면 전체 길이가 음원에 맞춰 자동으로 늘거나 줄어요.';
     chip.innerHTML = '<span>음원이 없어요</span>';
