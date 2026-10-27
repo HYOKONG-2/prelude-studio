@@ -2256,21 +2256,22 @@ Object.assign(LAYOUTS, {
     }
   },
   doubleexp: {
-    name: '겹쳐 흐르는 두 사진 (몽환)', slots: 2, weight: 5,
-    fields: [['nav', '위쪽 작은 글씨', NAV_DEF], ['mark', '아래 워터마크', '']],
+    name: '파스텔 두 장 (큰 사진 + 밀려오는 카드)', slots: 2, weight: 5,
+    fields: [['word', '작은 필기체', 'sweet days']],
     opts: [['bw', '흑백', false]],
-    cap: () => [960, 990, 'photo'],
+    cap: () => [700, 1030, 'light'],
     draw(c, s, t, d) {
-      bg(c, '#000');
-      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.05 * clamp(t / d) });
-      if (s.media[1] && s.media[1].id) {
-        c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.25 + 0.45 * ease(clamp(t / d));
-        const ho = hitOn; hitOn = false; cover(c, s, 1, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.12 - 0.06 * clamp(t / d) }); hitOn = ho; c.restore();
-      }
-      c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(0, 0, W, H);
-      noBg(() => { navStrip(c, s, t); watermark(c, s, t); });
+      bg(c, BLUSH);
+      const g = c.createRadialGradient(700, 480, 100, 700, 480, 1000); g.addColorStop(0, 'rgba(255,255,255,.7)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      const e1 = ease(clamp(t / 1.0));
+      c.save(); c.globalAlpha *= e1; c.save(); c.shadowColor = 'rgba(150,110,110,.18)'; c.shadowBlur = 30 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; rr(c, 140, 80, 1120, 820, 32); c.fill(); c.restore();
+      roundCover(c, s, 0, 160, 100, 1080, 780, t, d, { bw: s.opts.bw, r: 24, zoom: 1.06 - 0.04 * e1 + 0.03 * clamp(t / d) }); c.restore();
+      whiteBorder(c, s, 1, 1200, 250, 560, 700, t, d, 3, { at: 0.6, b: 16, dx: 260, bw: s.opts.bw });
+      txt(c, fill(s.texts.word), 300, 975, F.script(80), '#B98A8A', fade(t, 1.2, 0.8), { align: 'left', k: 'word' });
+      const sa = fade(t, 1.4, 0.8); if (sa > 0) { c.save(); c.globalAlpha *= sa; c.fillStyle = '#FFFFFF'; c.shadowColor = '#F0D0D0'; c.shadowBlur = 10 * R.S; drawSpark(c, 1230, 200, 18); drawSpark(c, 1280, 240, 10); c.restore(); }
     }
   },
+
   memoend: {
     name: '손글씨 엔딩', slots: 1, weight: 7,
     fields: [['head', '맨 위 이름 (작게)', '{GROOM} & {BRIDE}'], ['text', '손글씨 인사', '부부로서 내딛는 첫 발걸음을\n함께해 주셔서 감사합니다', true], ['sign', '작은 서명', '{신랑} 그리고 {신부}']],
@@ -2288,7 +2289,7 @@ CATS[0][1].push('softcard', 'birth', 'announce');
 CATS[1][1].push('navphoto', 'petalphoto', 'checkprofile', 'centerphoto', 'focusbox');
 CATS[2][1].push('row3', 'wavyframe', 'doubleexp');
 CATS[4][1].push('memoend');
-['navphoto', 'doubleexp'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+['navphoto'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 /* ---------------- G type (modern white + handwriting) & H type (editorial white) ---------------- */
 const PLAYF = (px, w = 800, it = false) => `${it ? 'italic ' : ''}${w} ${px}px "Playfair Display", "Cormorant Garamond", Georgia, serif`;
 function nFilled(s, def) { const n = s.media.filter(m => m.id).length; return n || def; }
@@ -5647,10 +5648,11 @@ Object.assign(LAYOUTS, {
     }
   },
   fwindow: {
-    name: '창가 빛 프레임 (커튼 + 사진)', slots: 1, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    name: '창가 빛 프레임 (커튼 + 창마다 사진 4장)', slots: 4, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       bg(c, BLUSH);
-      cover(c, s, 0, 420, 90, 1080, 900, t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) });
+      c.fillStyle = '#FFFFFF'; c.fillRect(420, 90, 1080, 900);
+      [[433, 103], [970, 103], [433, 550], [970, 550]].forEach(([x, y], i) => { c.save(); c.globalAlpha *= fade(t, 0.2 + i * 0.25, 0.8); cover(c, s, i, x, y, 517, 427, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); });
       c.fillStyle = '#FFFFFF'; c.fillRect(420 + 530, 90, 20, 900); c.fillRect(420, 90 + 440, 1080, 20);
       c.strokeStyle = '#FFFFFF'; c.lineWidth = 26; c.strokeRect(420, 90, 1080, 900);
       const op = ease(clamp(t / 1.6));
