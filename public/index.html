@@ -2420,13 +2420,14 @@ Object.assign(LAYOUTS, {
     }
   },
   edbooth: {
-    name: '에디토리얼 네 컷', slots: 4, weight: 6,
+    name: '에디토리얼 사진 줄 (넣은 만큼 1~4장)', slots: 4, weight: 6, autoDefault: true, countOpts: [1, 2, 3, 4],
     fields: [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['sideL', '왼쪽 세로 글씨', 'chapter one'], ['sideR', '오른쪽 세로 글씨', 'the wedding issue']],
     opts: [['bw', '흑백', false]],
     cap: () => [960, 940, 'light'],
     draw(c, s, t, d) {
       bg(c, '#FFFFFF');
-      [[240, 200, 330, 470], [610, 200, 330, 470], [980, 200, 330, 470], [1350, 200, 330, 470]].forEach((r, i) => { c.save(); c.globalAlpha = fade(t, i * 0.25, 0.7); cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: 1.02 }); c.restore(); });
+      const n = photoCount(s, 4), size = { 1: [640, 780], 2: [560, 720], 3: [440, 600], 4: [330, 470] }[n], gap = n > 2 ? 40 : 60, tw = n * size[0] + (n - 1) * gap, x0 = 960 - tw / 2, y0 = 470 - size[1] / 2;
+      for (let i = 0; i < n; i++) { c.save(); c.globalAlpha = fade(t, i * 0.25, 0.7); cover(c, s, i, x0 + i * (size[0] + gap), y0, size[0], size[1], t, { bw: s.opts.bw, zoom: 1.02 }); c.restore(); }
       edHead(c, s, t); edSides(c, s, t);
     }
   },
@@ -3203,8 +3204,14 @@ CATS[0][1].push('sbheart', 'sbtitle', 'sbskytext');
 CATS[1][1].push('sbprofile', 'sbbig');
 CATS[2][1].push('sbcollage3', 'sbnote2', 'sbgrid4', 'sbstrip', 'sbsky');
 /* ---------------- I type: bright highlight film (grid paper, photo entrance animations) ---------------- */
-const COUNT_DEF = { gridrow: 3, datestamp: 2, mgrow: 3 };
-function photoCount(s, def) { const L = LAYOUTS[s.layout]; return clamp(Math.round(s.count || def), 1, L ? L.slots : 4); }
+const COUNT_DEF = { gridrow: 3, datestamp: 2, mgrow: 3, edbooth: 4 };
+// 'auto': show as many cells as photos put in (up to the last filled cell); fixed number otherwise
+function isAutoCount(s) { const L = LAYOUTS[s.layout]; return s.count === 'auto' || (s.count == null && L && L.autoDefault); }
+function photoCount(s, def) {
+  const L = LAYOUTS[s.layout], max = L ? L.slots : 4;
+  if (isAutoCount(s)) { let last = -1; s.media.forEach((m, i) => { if (m && m.id && i < max) last = i; }); return last >= 0 ? last + 1 : clamp(def, 1, max); }
+  return clamp(Math.round(+s.count || def), 1, max);
+}
 function gridBg(c, plain) {
   bg(c, '#FFFFFF');
   if (plain) return;
@@ -3363,7 +3370,7 @@ LAYOUTS.iending = {
   }
 };
 ['handtitle', 'iending'].forEach(k => { LAYOUTS[k].bgHidden = true; });
-LAYOUTS.gridrow.countOpts = [1, 2, 3, 4]; LAYOUTS.datestamp.countOpts = [1, 2, 3];
+LAYOUTS.gridrow.countOpts = [1, 2, 3, 4]; LAYOUTS.datestamp.countOpts = [1, 2, 3]; LAYOUTS.gridrow.autoDefault = true; LAYOUTS.datestamp.autoDefault = true;
 CATS[4][1].push('iending');
 CATS[0][1].push('handtitle');
 CATS[2][1].push('gridrow', 'datestamp', 'instapair', 'marquee', 'heartgrid', 'tiltcards');
@@ -4495,7 +4502,7 @@ Object.assign(LAYOUTS, {
   }
 });
 ['mgblack'].forEach(k => { LAYOUTS[k].bgHidden = true; });
-LAYOUTS.mgrow.countOpts = [1, 2, 3, 4];
+LAYOUTS.mgrow.countOpts = [1, 2, 3, 4]; LAYOUTS.mgrow.autoDefault = true;
 CATS[0][1].push('mgfilm', 'mgtext');
 CATS[1][1].push('mgwide', 'mgsingle', 'mgtiles', 'mgtorn', 'mgname');
 CATS[2][1].push('mgtrio', 'mgrow', 'mgheart', 'mgcollage');
@@ -6021,7 +6028,7 @@ function defaultProject() {
 function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
   p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
-    if (LAYOUTS[s.layout].countOpts && !s.count) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
+    if (LAYOUTS[s.layout].countOpts && !s.count && !LAYOUTS[s.layout].autoDefault) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
   p.title = p.title || ''; p.audio = p.audio || null; p.sfx = Array.isArray(p.sfx) ? p.sfx.filter(x => x && (x.key || x.fid)) : [];
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
   return p;
@@ -6645,7 +6652,7 @@ function buildScenePane() {
       <button class="btn small ghost" data-act="del">삭제</button>`}</div>
     ${CUSTOMER ? '' : `<div class="field"><span>장면 구성</span><button type="button" class="btn small" id="fLayout" style="width:100%;justify-content:space-between;display:flex">${esc(L.name)}<span style="opacity:.7">바꾸기 ›</span></button></div>`}
     ${layoutTimes(s.layout) ? `<div class="field"><span>장면 속 효과 타이밍</span>${layoutTimes(s.layout).map(([k, n]) => { const dd = timeline[sel] ? timeline[sel].dur : 5, v = Math.min(tv(s, k, dd), dd); return `<div class="tmrow" style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${n}</span><b data-tmv="${k}">${v.toFixed(1)}초</b></div><div style="display:flex;gap:6px;align-items:center"><input type="range" min="0" max="${dd.toFixed(1)}" step="0.1" value="${v.toFixed(1)}" data-tm="${k}" style="flex:1" aria-label="${n}"><button type="button" class="x" data-tmnow="${k}">지금</button></div></div>`; }).join('')}<p class="hint" style="margin:6px 0 0">‘지금’을 누르면 재생 위치에 맞춰요. 타이밍을 바꾸면 그 순간부터 0.6초 앞에서 다시 보여줘요.${s.tm ? ' <button type="button" class="x" data-tmreset>기본 타이밍으로</button>' : ''}</p></div>` : ''}
-    ${L.countOpts ? `<label class="field"><span>사진 칸 수</span><select id="fCount">${L.countOpts.map(n => `<option value="${n}" ${photoCount(s, COUNT_DEF[s.layout] || 3) === n ? 'selected' : ''}>${n}장</option>`).join('')}</select></label>` : ''}
+    ${L.countOpts ? `<label class="field"><span>사진 칸 수</span><select id="fCount"><option value="auto" ${isAutoCount(s) ? 'selected' : ''}>자동 (넣은 사진 수만큼)</option>${L.countOpts.map(n => `<option value="${n}" ${!isAutoCount(s) && photoCount(s, COUNT_DEF[s.layout] || 3) === n ? 'selected' : ''}>${n}장</option>`).join('')}</select></label>` : ''}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
     ${L.bgHidden ? `<div class="group"><h3>사진 뒤 배경색</h3><p class="hint" style="margin-top:0">사진을 줄이거나 옮겼을 때 빈 곳에 보이는 색이에요.</p><div class="bgrow">${[['', '기본'], ['#000000', '블랙'], ['#FFFFFF', '화이트'], ['#F3EEE7', ''], ['#F2E4E4', ''], ['#E6E2EF', ''], ['#E1E8E1', ''], ['#2B2B30', '']].map(([v, n]) => n ? `<button type="button" class="x${(s.pbg || '') === v ? ' on' : ''}" data-pbg="${v}" style="border:1px solid var(--line);border-radius:999px;padding:6px 14px">${n}</button>` : `<button type="button" class="swb${s.pbg === v ? ' on' : ''}" data-pbg="${v}" style="background:${v}" aria-label="사진 뒤 배경 ${v}"></button>`).join('')}<input type="color" id="fPbg" value="${s.pbg || '#000000'}" aria-label="사진 뒤 배경색 직접 고르기"></div></div>` : `<div class="group"><h3>배경</h3><div class="bgrow">
@@ -6674,7 +6681,7 @@ function buildScenePane() {
     p.querySelector('#realLen').textContent = `영상에서 ${fmt1(timeline[sel].start)}부터 ${fmt1(timeline[sel].start + timeline[sel].dur)}까지 나와요`;
     p.querySelectorAll('[data-act]').forEach(b => b.onclick = () => sceneAction(b.dataset.act));
     p.querySelector('#fLayout').onclick = () => openPicker('change');
-  const fc = p.querySelector('#fCount'); if (fc) fc.onchange = e => { s.count = +e.target.value; sceneChanged(s); buildSlots(s); };
+  const fc = p.querySelector('#fCount'); if (fc) fc.onchange = e => { s.count = e.target.value === 'auto' ? 'auto' : +e.target.value; sceneChanged(s); buildSlots(s); };
   const tmPreview = v => { const st = timeline[sel] ? timeline[sel].start : 0; if (!playing) seek(st + Math.max(0, v - 0.6)); };
   p.querySelectorAll('[data-tm]').forEach(r => {
     r.oninput = () => { s.tm = s.tm || {}; s.tm[r.dataset.tm] = +r.value; p.querySelector(`[data-tmv="${r.dataset.tm}"]`).textContent = (+r.value).toFixed(1) + '초'; tmPreview(+r.value); sceneChanged(s); };
@@ -6761,7 +6768,7 @@ function wireVid(d, s, slot, m) {
     changed(true); select(sel); toast(`장면 길이를 ${s.weight}초로 맞췄어요`);
   };
 }
-function visibleSlots(s) { const L = LAYOUTS[s.layout]; return L && L.countOpts ? photoCount(s, COUNT_DEF[s.layout] || 3) : s.media.length; }
+function visibleSlots(s) { const L = LAYOUTS[s.layout]; return L && L.countOpts && !isAutoCount(s) ? photoCount(s, COUNT_DEF[s.layout] || 3) : s.media.length; }
 function buildSlots(s) {
   const box = $('slots'); box.innerHTML = '';
   s.media.forEach((slot, i) => {
