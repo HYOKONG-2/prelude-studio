@@ -6411,6 +6411,80 @@ TEMPLATES.J = {
     return baseProj('J', fitTotal(mkScenes(list)), { lyricFx: '' });
   }
 };
+/* ================= 고객 요청 템플릿 K: "우리가 함께한 날" (day counter opening + white diary pages + profiles) ================= */
+const KP = { page: '#FFFFFF', ink: '#2B2A28', sub: '#6E6A64' };
+function kHead(c, s, t) {
+  txt(c, fill(s.texts.head || ''), 960, 46, F.serif(26, 500, false), KP.ink, fade(t, 0.2, 0.7), { k: 'head', sp: 6 });
+  const a = fade(t, 0.3, 0.7); if (a <= 0.001) return;
+  [[52, -1, s.texts.sideL], [W - 52, 1, s.texts.sideR]].forEach(([x, dir, str]) => { const v = fill(str || ''); if (!v) return; c.save(); c.globalAlpha *= a; c.translate(x, 540); c.rotate(dir * Math.PI / 2); c.font = F.serif(24, 500, dir > 0 ? false : true); setSpacing(c, dir > 0 ? 6 : 1); c.fillStyle = KP.ink; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(v, 0, 0); c.restore(); });
+}
+const K_FIELDS = [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['sideL', '왼쪽 세로 글씨', 'We’re getting married'], ['sideR', '오른쪽 세로 글씨', '{날짜}']];
+Object.assign(LAYOUTS, {
+  kcount: {
+    name: '고객요청 · 우리가 함께한 지 ○일 (사진이 바뀌며 숫자가 올라가요)', slots: 4, weight: 9,
+    fields: [['label', '왼쪽 글씨', '우리가\n함께한지', true], ['since', '처음 만난 날 (YYYY.MM.DD)', '2022.09.01'], ['unit', '단위', '일']],
+    opts: [['bw', '흑백', false]], cap: () => [960, 1010, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      const m = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(fill(s.texts.since) || ''), pd = parseKoDate(project.info.dateKo);
+      let days = 1000; if (m) { const a = new Date(+m[1], +m[2] - 1, +m[3]), b = pd ? new Date(pd.y, pd.mo - 1, pd.d) : new Date(); days = Math.max(1, Math.round((b - a) / 86400000)); }
+      const n = autoN(s, 4), p = clamp((t - 0.8) / Math.max(1, d - 2.2)), pe = 1 - Math.pow(1 - p, 2.2), seg = Math.min(n - 1, Math.floor(pe * n * 0.999));
+      const bars = 150 * (1 - ease(clamp(t / 1.2)));
+      cover(c, s, seg, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.06 - 0.04 * ((pe * n) % 1) });
+      c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(0, 0, W, H);
+      noBg(() => {
+        const lab = fill(s.texts.label).split('\n'); lab.forEach((l, i) => txt(c, l, 470, 470 + (i - (lab.length - 1) / 2) * 70, UIF(56, 400), '#FFFFFF', fade(t, 0.6, 0.6), { k: i ? null : 'label', shadow: 'rgba(0,0,0,.35)', blur: 8 }));
+        txt(c, Math.round(days * pe).toLocaleString(), 1010, 470, UIF(230, 200), '#FFFFFF', fade(t, 0.7, 0.5), { k: 'since', shadow: 'rgba(0,0,0,.35)', blur: 10 });
+        txt(c, fill(s.texts.unit), 1490, 500, UIF(56, 400), '#FFFFFF', fade(t, 0.8, 0.5), { k: 'unit', shadow: 'rgba(0,0,0,.35)', blur: 8 });
+      });
+      if (bars > 0.5) { c.fillStyle = '#000'; c.fillRect(0, 0, W, bars); c.fillRect(0, H - bars, W, bars); }
+    }
+  },
+  kpage: {
+    name: '고객요청 · 흰 페이지 사진 (이름 머리말 + 세로 글씨, 넣은 만큼 1~4장)', slots: 4, weight: 5, fields: K_FIELDS, autoDefault: true, countOpts: [1, 2, 3, 4],
+    opts: [['wide', '1장일 때 가로로 크게', false], ['bw', '흑백', false]], cap: () => [960, 1000, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, KP.page); kHead(c, s, t);
+      const n = photoCount(s, 2), Y = 100, Hh = 900;
+      const sets = { 1: s.opts.wide ? [[150, Y + 40, 1620, 840]] : [[580, Y, 760, Hh]], 2: [[150, Y, 800, Hh], [970, Y, 800, Hh]], 3: [[150, Y + 60, 527, 780], [697, Y + 60, 527, 780], [1244, Y + 60, 527, 780]], 4: [[150, Y + 140, 392, 620], [559, Y + 140, 392, 620], [968, Y + 140, 392, 620], [1377, Y + 140, 392, 620]] };
+      sets[n].forEach((r, i) => { c.save(); c.globalAlpha *= iFade(s, t, i); cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); });
+    }
+  },
+  kstudio: {
+    name: '고객요청 · 스튜디오 엔딩 (어두운 사진 + 감사 인사)', slots: 1, weight: 8,
+    fields: [['text', '감사 인사', '오늘 이 특별한 순간을 함께해주신 여러분께\n진심으로 감사드립니다', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1010, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#1E1E1F');
+      cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.08 - 0.06 * ease(clamp(t / d)) });
+      const g = c.createRadialGradient(960, 520, 300, 960, 560, 1150); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      noBg(() => { c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14 * R.S; block(c, fill(s.texts.text), 960, 520, UIF(50, 600), 72, '#FFFFFF', t, 0.8, 1, false, 'text'); c.restore(); });
+      const end = clamp((t - (d - 1.6)) / 1.4); if (end > 0) { c.fillStyle = `rgba(0,0,0,${0.85 * ease(end)})`; c.fillRect(0, 0, W, H); }
+    }
+  }
+});
+['kcount', 'kstudio'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+LAYOUTS.kcount.times = [];
+FIXED_LONG.push('kcount', 'kstudio');
+CATS.push(['고객 요청 (K타입)', ['kcount', 'kpage', 'kstudio']]);
+TEMPLATES.K = {
+  custom: true,
+  name: '우리가 함께한 날', desc: '“우리가 함께한 지 ○일” 숫자가 올라가며 사진이 바뀌는 오프닝, 신랑·신부 단독 사진 프로필 소개, 이름 머리말과 세로 글씨가 있는 흰 페이지에 사진이 크게 이어지고, 스튜디오 사진 감사 인사로 마무리하는 구성',
+  tags: ['함께한 날 카운트', '신랑·신부 프로필', '흰 페이지 사진', '손글씨 자막'], preview: 0,
+  make: () => {
+    const P = (n, o = {}) => ['kpage', { count: n, ...o }];
+    const list = [
+      ['kcount', {}, 9],
+      P(1, { opts: { wide: true } }),
+      ['introgroom', { weight: 5.5 }, 5.5], ['introbride', { weight: 5.5 }, 5.5], ['gcouple', {}, 5],
+      P(1), P(2), P(1, { opts: { wide: true } }), P(1), P(2), P(4), P(1), P(2), P(1, { opts: { wide: true } }), P(2), P(1), P(3), P(2), P(1),
+      P(1, { opts: { wide: true } }), P(2), P(1), P(4), P(2), P(1), P(2), P(1, { opts: { wide: true } }), P(1), P(2), P(3), P(1),
+      P(1, { opts: { wide: true } }), P(2), P(1), P(2), P(4), P(1), P(2), P(1, { opts: { wide: true } }), P(2), P(1),
+      P(2), P(1, { opts: { bw: true } }), P(2),
+      ['kstudio', {}, 8]
+    ];
+    return baseProj('K', fitTotal(mkScenes(list)), { lyricFx: 'hand' });
+  }
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -8634,6 +8708,7 @@ function tplPreview(type, cv) {
     cv.getContext('2d').drawImage(TR.canvas, 0, 0, cv.width, cv.height);
   } catch (e) {} finally { project = keep; timeline = kT; total = kTot; span = kSpan; collectVideos = kc; }
 }
+let startTab = 'base';
 function showStart() {
   if (TEAM || CUSTOMER) return;
   pause();
@@ -8647,7 +8722,11 @@ function showStart() {
       <button class="btn primary" id="resumeBtn">이어서 작업하기</button></div>`;
     $('resumeBtn').onclick = hideStart;
   } else r.innerHTML = '';
-  $('tplGrid').innerHTML = Object.entries(TEMPLATES).map(([k, T]) => `<div class="tpl"><canvas width="480" height="270" data-tp="${k}"></canvas><div class="b">
+  const tab = startTab || 'base', list = Object.entries(TEMPLATES).filter(([, T]) => tab === 'custom' ? T.custom : !T.custom);
+  let tabs = $('tplTabs'); if (!tabs) { tabs = document.createElement('div'); tabs.id = 'tplTabs'; tabs.className = 'seg-toggle'; tabs.style.margin = '0 0 16px'; $('tplGrid').parentNode.insertBefore(tabs, $('tplGrid')); }
+  tabs.innerHTML = `<button type="button" data-tab2="base" class="${tab === 'base' ? 'on' : ''}" style="padding:8px 18px;font-size:14px">기본 템플릿</button><button type="button" data-tab2="custom" class="${tab === 'custom' ? 'on' : ''}" style="padding:8px 18px;font-size:14px">고객 요청</button>`;
+  tabs.querySelectorAll('[data-tab2]').forEach(b => b.onclick = () => { startTab = b.dataset.tab2; showStart(); });
+  $('tplGrid').innerHTML = list.map(([k, T]) => `<div class="tpl"><canvas width="480" height="270" data-tp="${k}"></canvas><div class="b">
     <div class="badge2">${k}타입</div><h3>${esc(T.name)}</h3><p>${esc(T.desc)}</p>
     <div class="tagrow">${T.tags.map(x => `<span>${esc(x)}</span>`).join('')}</div>
     <button class="btn small primary" data-start="${k}" style="align-self:flex-start;margin-top:6px">${k}타입으로 시작</button></div></div>`).join('');
