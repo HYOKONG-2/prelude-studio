@@ -2694,7 +2694,7 @@ Object.assign(LAYOUTS, {
     }
   },
   contactsheet: {
-    name: '밀착 인화지 (마커 표시)', slots: 3, weight: 5, fields: [['mark', '마커 옆 글씨', 'BEST!']], opts: [['bw', '흑백', false]],
+    name: '밀착 인화지 (필름 여섯 컷)', slots: 3, weight: 5, fields: [], opts: [['bw', '흑백', false]],
     cap: () => [960, 1030, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#181716');
@@ -2705,9 +2705,6 @@ Object.assign(LAYOUTS, {
         cover(c, s, slotAt(s, i), x, y, fw, fh, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore();
         c.font = F.ui(20, 600); c.fillStyle = '#E8A33C'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(`${12 + i}A  ▶`, x, y + fh + 26);
       }
-      const tmk = tv(s, 'mark', d), p = ease(clamp((t - tmk) / 0.9)), mx = x0 + fw + gx + fw / 2, my = y0 + fh / 2;
-      if (p > 0) { c.save(); c.strokeStyle = '#E2342D'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.ellipse(mx, my, fw * 0.58, fh * 0.62, -0.05, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2.05 * p); c.stroke(); c.restore(); }
-      noBg(() => txt(c, fill(s.texts.mark), mx + fw * 0.62, my - fh * 0.62, PEN(70), '#E2342D', fade(t, tmk + 0.8, 0.5), { k: 'mark', align: 'left' }));
     }
   },
   tornpaper: {
@@ -6694,7 +6691,7 @@ const TIMES = {
   slate: [['cut', '슬레이트가 사라지고 사진으로 바뀌는 시간', d => Math.max(2.2, d * 0.5)]],
   envelope: [['open', '봉투가 열리는 시간', 0.4]],
   focusbox: [['focus', '초점 박스가 나타나는 시간', 0.8]],
-  contactsheet: [['mark', '빨간 마커가 그려지는 시간', 1.2]]
+  contactsheet: []
 };
 /* ---------------- timeline ---------------- */
 let timeline = [], total = 0, scale = 1, span = 1;
@@ -7126,7 +7123,7 @@ function buildScenePane() {
       <button class="btn small ghost" data-act="dup">복제</button>
       <button class="btn small ghost" data-act="del">삭제</button>`}</div>
     ${CUSTOMER ? '' : `<div class="field"><span>장면 구성</span><button type="button" class="btn small" id="fLayout" style="width:100%;justify-content:space-between;display:flex">${esc(L.name)}<span style="opacity:.7">바꾸기 ›</span></button></div>`}
-    ${layoutTimes(s.layout) ? `<div class="field"><span>장면 속 효과 타이밍</span>${layoutTimes(s.layout).map(([k, n]) => { const dd = timeline[sel] ? timeline[sel].dur : 5, v = Math.min(tv(s, k, dd), dd); return `<div class="tmrow" style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${n}</span><b data-tmv="${k}">${v.toFixed(1)}초</b></div><div style="display:flex;gap:6px;align-items:center"><input type="range" min="0" max="${dd.toFixed(1)}" step="0.1" value="${v.toFixed(1)}" data-tm="${k}" style="flex:1" aria-label="${n}"><button type="button" class="x" data-tmnow="${k}">지금</button></div></div>`; }).join('')}<p class="hint" style="margin:6px 0 0">‘지금’을 누르면 재생 위치에 맞춰요. 타이밍을 바꾸면 그 순간부터 0.6초 앞에서 다시 보여줘요.${s.tm ? ' <button type="button" class="x" data-tmreset>기본 타이밍으로</button>' : ''}</p></div>` : ''}
+    ${(layoutTimes(s.layout) || []).length ? `<div class="field"><span>장면 속 효과 타이밍</span>${layoutTimes(s.layout).map(([k, n]) => { const dd = timeline[sel] ? timeline[sel].dur : 5, v = Math.min(tv(s, k, dd), dd); return `<div class="tmrow" style="margin-top:6px"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${n}</span><b data-tmv="${k}">${v.toFixed(1)}초</b></div><div style="display:flex;gap:6px;align-items:center"><input type="range" min="0" max="${dd.toFixed(1)}" step="0.1" value="${v.toFixed(1)}" data-tm="${k}" style="flex:1" aria-label="${n}"><button type="button" class="x" data-tmnow="${k}">지금</button></div></div>`; }).join('')}<p class="hint" style="margin:6px 0 0">‘지금’을 누르면 재생 위치에 맞춰요. 타이밍을 바꾸면 그 순간부터 0.6초 앞에서 다시 보여줘요.${s.tm ? ' <button type="button" class="x" data-tmreset>기본 타이밍으로</button>' : ''}</p></div>` : ''}
     ${L.countOpts ? `<label class="field"><span>사진 칸 수</span><select id="fCount"><option value="auto" ${isAutoCount(s) ? 'selected' : ''}>자동 (넣은 사진 수만큼)</option>${L.countOpts.map(n => `<option value="${n}" ${!isAutoCount(s) && photoCount(s, COUNT_DEF[s.layout] || 3) === n ? 'selected' : ''}>${n}장</option>`).join('')}</select></label>` : ''}
     ${L.slots ? `<div class="group"><h3>사진 · 영상</h3><div class="slots" id="slots"></div></div>` : ''}
     ${L.opts.length ? `<div class="checks">${L.opts.map(o => `<label><input type="checkbox" data-opt="${o[0]}" ${s.opts[o[0]] ? 'checked' : ''}>${esc(o[1])}</label>`).join('')}</div>` : ''}
