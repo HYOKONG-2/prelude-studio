@@ -833,7 +833,7 @@ const LAYOUTS = {
     }
   },
   profile: {
-    name: '소개 카드', slots: 1, weight: 12,
+    name: '소개 카드 · 신랑', slots: 1, weight: 12,
     fields: [['eyebrow', '필기체 머리말', 'Groom'], ['title', '제목', '신랑 {신랑}'], ['line1', '소개 1', '다정하고 듬직한 사람'], ['line2', '소개 2', '말보다 행동으로 보여주는 사람'], ['line3', '소개 3', '']],
     opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]],
     cap: s => [s.opts.flip ? 520 : 1400, 1010, 'light'],
@@ -1401,7 +1401,7 @@ Object.assign(LAYOUTS, {
 });
 const CATS = [
   ['오프닝·문구', ['title', 'typing', 'chapter', 'together']],
-  ['사진 1장', ['full', 'vignette1', 'cinema', 'cam', 'framed', 'circle', 'arch', 'split', 'quote', 'magazine', 'profile']],
+  ['사진 1장', ['full', 'vignette1', 'cinema', 'cam', 'framed', 'circle', 'arch', 'split', 'quote', 'magazine', 'profile', 'profilebride']],
   ['사진 여러 장', ['vignette2', 'vignette3', 'filmstrip', 'triptych', 'duo', 'grid4', 'mosaic5', 'polaroid', 'polaroid3', 'booth', 'slideshow', 'timeline']],
   ['카드·소품', ['calendar', 'letter', 'ticket', 'invite']],
   ['엔딩', ['ending', 'credits']]
@@ -7845,6 +7845,13 @@ TEMPLATES.M2.make = () => {
     else if (L === 'mkthanks') s.tr = 'dissolve'; });
   return baseProj('M2', fitTotal(sc), { lyricFx: '' });
 };
+/* intro card: separate bride version (photo on the right, bride wording) */
+LAYOUTS.profilebride = Object.assign({}, LAYOUTS.profile, {
+  name: '소개 카드 · 신부',
+  fields: [['eyebrow', '필기체 머리말', 'Bride'], ['title', '제목', '신부 {신부}'], ['line1', '소개 1', '밝고 따뜻한 사람'], ['line2', '소개 2', '작은 일에도 크게 웃는 사람'], ['line3', '소개 3', '']],
+  opts: [['flip', '사진 오른쪽', true], ['bw', '흑백', false]]
+});
+PAIR_OK.push('profilebride');
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
