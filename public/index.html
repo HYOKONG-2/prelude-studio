@@ -7689,6 +7689,162 @@ TEMPLATES.M2 = {
     return baseProj('M2', fitTotal(sc), { lyricFx: '' });
   }
 };
+/* ================= M-2 rebuilt: same paper-collage feel as M, new compositions and scene order ================= */
+function tornWindow(c, s, si, x, y, w, h, t, d, o = {}) { // photo seen through a torn hole in the paper, white fibrous rim
+  [x, y, w, h] = slotRect(s, si, x, y, w, h);
+  const P = []; const n = 34; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, rx = w / 2 * (0.94 + 0.08 * rnd(i, o.seed || 1201)), ry = h / 2 * (0.94 + 0.08 * rnd(i, (o.seed || 1201) + 1)); const sq = 0.82; P.push([x + w / 2 + Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), sq) * rx, y + h / 2 + Math.sign(Math.sin(a)) * Math.pow(Math.abs(Math.sin(a)), sq) * ry]); }
+  const ring = P.map(([px, py], i) => { const dx = px - (x + w / 2), dy = py - (y + h / 2), l = Math.hypot(dx, dy) || 1, k = 16 + 10 * rnd(i, 1203); return [px + dx / l * k, py + dy / l * k]; });
+  const ho = hitOn; hitOn = false;
+  c.save(); c.beginPath(); P.forEach(([px, py], i) => i ? c.lineTo(px, py) : c.moveTo(px, py)); c.closePath(); c.clip(); coverIn(c, s, si, x - 20, y - 20, w + 40, h + 40, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); hitOn = ho;
+  c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 12 * R.S; c.fillStyle = '#F6F3EC'; c.beginPath(); P.forEach(([px, py], i) => i ? c.lineTo(px, py) : c.moveTo(px, py)); c.closePath(); ring.slice().reverse().forEach(([px, py], i) => i ? c.lineTo(px, py) : c.moveTo(px, py)); c.closePath(); c.fill('evenodd'); c.restore();
+  addHit({ type: 'media', si, x, y, w, h, oy: 0 });
+}
+function tornStripLabel(c, str, cx, cy, w, size, t, st, key, rot) { // a torn strip of white paper with handwriting
+  const a = fade(t, st, 0.45); if (a <= 0.001 || !str) return;
+  c.save(); c.globalAlpha *= a; c.translate(cx, cy); c.rotate(rot || 0); const h = size * 1.7;
+  c.shadowColor = 'rgba(0,0,0,.2)'; c.shadowBlur = 8 * R.S; c.shadowOffsetY = 3 * R.S; c.fillStyle = '#FBFAF6';
+  c.beginPath(); c.moveTo(-w / 2, -h / 2); for (let i = 0; i <= 12; i++) c.lineTo(-w / 2 + w * i / 12, -h / 2 + (rnd(i, 1211) - 0.5) * 6); for (let j = 0; j <= 6; j++) c.lineTo(w / 2 + (rnd(j, 1212) - 0.5) * 10, -h / 2 + h * j / 6); for (let i = 12; i >= 0; i--) c.lineTo(-w / 2 + w * i / 12, h / 2 + (rnd(i, 1213) - 0.5) * 6); for (let j = 6; j >= 0; j--) c.lineTo(-w / 2 + (rnd(j, 1214) - 0.5) * 10, -h / 2 + h * j / 6); c.closePath(); c.fill();
+  c.restore(); txt(c, str, cx, cy + 2, PEN(size), '#2E2C2A', a, { k: key });
+}
+Object.assign(LAYOUTS, {
+  m2open: {
+    name: 'M-2 오프닝 (사진 세 장이 부채꼴로 + OUR WEDDING)', slots: 3, weight: 9, fields: [['t1', '오린 글자', 'OUR WEDDING'], ['date', '날짜 메모', '{날짜}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid');
+      [[-1, 420, 230, 520, 380, -9, 0.2], [1, 980, 230, 520, 380, 8, 0.45], [0, 690, 180, 560, 420, -1, 0.7]].forEach(([dir, x, y, w, h, rot, st], i) => mkAt(c, t, d, st, [dir || 0, dir ? 0.4 : 1], () => mkPhoto(c, s, i, x, y, w, h, t, d, { at: -10, rot, bw: s.opts.bw, tape2: i === 2 })));
+      mkAt(c, t, d, 1.1, [0, 1], () => mkRansom(c, fill(s.texts.t1), 960, 760, 82, t, 1.1, 't1'), 600);
+      mkAt(c, t, d, 1.6, [1, 0], () => mkNote(c, 1380, 830, 380, 100, [fill(s.texts.date)], t, 1.6, { holes: 'top', fs: 44, lh: 46, rot: 4, keys: ['date'] }), 800);
+      mkAt(c, t, d, 1.8, [-1, -1], () => { mkHeartBalloon(c, 260, 220, 0.75, t); }, 800);
+      mkDoodle(c, 'spark', 1640, 240, 1.4, clamp((t - 2.0) / 0.8), '#7A8FA8'); mkDoodle(c, 'heart', 300, 860, 0.7, clamp((t - 2.2) / 0.7), '#C2607E');
+    }
+  },
+  m2pair: {
+    name: 'M-2 신랑·신부 한 화면 소개 (사진 두 장 + 오린 글자 + 메모)', slots: 2, weight: 10,
+    fields: [['g', '왼쪽 글자', 'GROOM'], ['gn', '신랑 이름', '{신랑}'], ['g1', '신랑 메모', '1995. 06. 01 · INFP\n장난꾸러기 사랑꾼', true], ['b', '오른쪽 글자', 'BRIDE'], ['bn', '신부 이름', '{신부}'], ['b1', '신부 메모', '1997. 09. 03 · ESTJ\n애교 많은 첫째 딸', true]],
+    opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'beige');
+      c.save(); c.strokeStyle = 'rgba(120,105,85,.25)'; c.setLineDash([10, 12]); c.lineWidth = 2; c.beginPath(); c.moveTo(960, 90); c.lineTo(960, 990); c.stroke(); c.restore();
+      mkAt(c, t, d, 0.1, [-1, 0], () => mkPiece(c, s, 0, 150, 120, 560, 640, t, d, { rot: -3, seed: 71, outline: '#1E1C1A', r: 8 }));
+      mkAt(c, t, d, 0.35, [1, 0], () => mkPiece(c, s, 1, 1210, 120, 560, 640, t, d, { rot: 3, seed: 73, outline: '#1E1C1A', r: 8 }));
+      mkAt(c, t, d, 0.7, [0, 1], () => { mkRansom(c, fill(s.texts.g), 430, 820, 56, t, 0.7, 'g'); mkLabel(c, fill(s.texts.gn), 760, 820, 52, t, 0.9, 'gn', { font: UIF(54, 800), bg: '#C9D2DC', rot: -0.03 }); });
+      mkAt(c, t, d, 0.8, [0, 1], () => { mkRansom(c, fill(s.texts.b), 1490, 820, 56, t, 0.8, 'b'); mkLabel(c, fill(s.texts.bn), 1160, 820, 52, t, 1.0, 'bn', { font: UIF(54, 800), bg: '#E8CBD3', rot: 0.03 }); });
+      mkAt(c, t, d, 1.2, [-1, 0.3], () => mkNote(c, 160, 890, 640, 150, fill(s.texts.g1).split('\n'), t, 1.2, { fs: 40, lh: 52, rot: -1, keys: ['g1'] }), 900);
+      mkAt(c, t, d, 1.3, [1, 0.3], () => mkNote(c, 1120, 890, 640, 150, fill(s.texts.b1).split('\n'), t, 1.3, { fs: 40, lh: 52, rot: 1, keys: ['b1'] }), 900);
+      mkHeart(c, 960, 470, 90, '#C2607E', 0, pop(t, 1.5, 0.5)); mkHeart(c, 760, 140, 50, '#5E82A6', -0.3, pop(t, 1.7, 0.4)); mkHeart(c, 1160, 150, 50, '#C2607E', 0.3, pop(t, 1.8, 0.4));
+    }
+  },
+  m2kid: {
+    name: 'M-2 어린 시절 두 사람 (누끼·흰 테두리 + 메모)', slots: 2, weight: 7, cutout: true, slotNames: ['신랑 어린 시절 (누끼 PNG면 흰 테두리)', '신부 어린 시절 (누끼 PNG면 흰 테두리)'],
+    fields: [['note', '가운데 메모', '서로를 몰랐던\n어린 날의 우리', true], ['l1', '왼쪽 라벨', 'little groom'], ['l2', '오른쪽 라벨', 'little bride']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid');
+      mkAt(c, t, d, 0.1, [-1, 0], () => mkPiece(c, s, 0, 160, 150, 520, 720, t, d, { rot: -4, seed: 81, edge: '#FFFFFF', outline: '#FFFFFF', r: 16 }));
+      mkAt(c, t, d, 0.3, [1, 0], () => mkPiece(c, s, 1, 1240, 150, 520, 720, t, d, { rot: 4, seed: 83, edge: '#FFFFFF', outline: '#FFFFFF', r: 16 }));
+      mkAt(c, t, d, 0.7, [0, -1], () => mkNote(c, 720, 340, 480, 260, fill(s.texts.note).split('\n'), t, 0.7, { holes: 'top', fs: 52, lh: 76, keys: ['note'] }), 900);
+      tornStripLabel(c, fill(s.texts.l1), 420, 930, 340, 46, t, 1.0, 'l1', -0.04); tornStripLabel(c, fill(s.texts.l2), 1500, 930, 340, 46, t, 1.2, 'l2', 0.04);
+      mkDoodle(c, 'spark', 960, 760, 1.4, clamp((t - 1.4) / 0.7), '#7A8FA8');
+    }
+  },
+  m2chapter: {
+    name: 'M-2 챕터 (찢은 종이띠 + 오린 글자)', slots: 0, weight: 4.5, fields: [['ch', '오린 글자', 'CHAPTER 1'], ['title', '찢은 종이띠 글', '우리가 만나온 날들']], opts: [], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid');
+      const p = ease(clamp((t - 0.2) / 0.7)); c.save(); c.beginPath(); c.rect(0, 0, W * p, H); c.clip(); tornStripLabel(c, ' ', 960, 560, 1500, 90, t, 0.2, null, -0.02); c.restore();
+      mkRansom(c, fill(s.texts.ch), 960, 400, 64, t, 0.6, 'ch');
+      txt(c, fill(s.texts.title), 960, 566, PEN(92), '#2E2C2A', fade(t, 0.9, 0.6), { k: 'title' });
+      mkDoodle(c, 'swirl', 330, 760, 1.2, clamp((t - 1.3) / 0.8), '#7A8FA8'); mkDoodle(c, 'heart', 1600, 330, 0.6, clamp((t - 1.5) / 0.6), '#C2607E');
+    }
+  },
+  m2row: {
+    name: 'M-2 사진 네 장 물결 줄 + 아래 메모', slots: 4, weight: 6, fields: [['note', '아래 메모', '처음엔 어색했지만, 자꾸만 보고 싶은 사람이 되었어요']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'beige'); const n = autoN(s, 4), wv = { 1: [[660, 200, 600, 520, -2]], 2: [[340, 200, 560, 480, -3], [1020, 230, 560, 480, 3]], 3: [[160, 230, 500, 440, -4], [710, 180, 500, 440, 2], [1260, 240, 500, 440, -2]], 4: [[90, 250, 400, 380, -5], [520, 190, 420, 400, 3], [970, 250, 400, 380, -2], [1400, 200, 420, 400, 4]] }[n];
+      wv.forEach((r, i) => mkAt(c, t, d, 0.1 + i * 0.2, [0, i % 2 ? -1 : 1], () => mkPhoto(c, s, i, r[0], r[1], r[2], r[3], t, d, { at: -10, rot: r[4], bw: s.opts.bw })));
+      mkAt(c, t, d, 1.0, [0, 1], () => tornStripLabel(c, fill(s.texts.note), 960, 860, 1300, 48, t, 1.0, 'note', -0.01), 500);
+      mkSticker(c, 'flower', 1780, 140, pop(t, 1.3, 0.5)); mkSticker(c, 'donut', 150, 900, pop(t, 1.4, 0.5));
+    }
+  },
+  m2feature: {
+    name: 'M-2 큰 사진 한 장 + 옆 메모 두 장 + 스티커', slots: 1, weight: 6,
+    fields: [['n1', '위 메모', '첫 데이트 날,\n하루가 너무 짧았어요', true], ['n2', '아래 메모', '그날 이후로\n매일 연락했죠', true]], opts: [['flip', '좌우 바꾸기', false], ['sticker', '스티커', 'bear'], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'beige'); const f = s.opts.flip, M = (x, w = 0) => f ? W - x - w : x, sd = f ? 1 : -1;
+      mkAt(c, t, d, 0.1, [sd, 0], () => mkPhoto(c, s, 0, M(120, 1000), 110, 1000, 820, t, d, { at: -10, rot: f ? 2 : -2, bw: s.opts.bw, tape2: true }));
+      mkAt(c, t, d, 0.6, [-sd, -0.3], () => mkNote(c, M(1220, 560), 150, 560, 260, fill(s.texts.n1).split('\n'), t, 0.6, { holes: 'left', fs: 46, lh: 74, rot: f ? -3 : 3, keys: ['n1'] }));
+      mkAt(c, t, d, 1.0, [-sd, 0.3], () => mkNote(c, M(1250, 500), 480, 500, 240, fill(s.texts.n2).split('\n'), t, 1.0, { holes: 'top', fs: 46, lh: 70, rot: f ? 2 : -2, keys: ['n2'] }));
+      const sk = ['bear', 'lolly', 'donut', 'flower', 'phone'].includes(s.opts.sticker) ? s.opts.sticker : 'bear'; mkAt(c, t, d, 1.3, [-sd, 1], () => mkSticker(c, sk, M(1500), 860, 1.3));
+    }
+  },
+  m2scatter: {
+    name: 'M-2 사진 다섯 장 흩뿌리기 + 손글씨', slots: 5, weight: 6, fields: [['word', '가운데 손글씨', 'our days']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid'); const n = autoN(s, 5);
+      const R5 = [[120, 110, 480, 360, -6], [660, 80, 440, 340, 4], [1190, 120, 520, 380, -3], [260, 560, 520, 380, 5], [1060, 580, 520, 380, -5]];
+      R5.slice(0, n).forEach((r, i) => mkAt(c, t, d, 0.1 + i * 0.18, [[-1, -1], [0, -1], [1, -1], [-1, 1], [1, 1]][i], () => mkPhoto(c, s, i, r[0], r[1], r[2], r[3], t, d, { at: -10, rot: r[4], bw: s.opts.bw })));
+      txt(c, fill(s.texts.word), 960, 560, F.script(110), '#2E2C2A', fade(t, 1.2, 0.6), { k: 'word', shadow: 'rgba(255,255,255,.8)', blur: 10 });
+      mkDoodle(c, 'heart', 960, 450, 0.5, clamp((t - 1.5) / 0.6), '#C2607E');
+    }
+  },
+  m2window: {
+    name: 'M-2 찢어진 종이 창으로 보는 웨딩 사진 + 낙서', slots: 1, weight: 5, fields: [['cap', '찢은 종이띠 글', '']], opts: [['doodle', '낙서', 'flowers'], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'beige');
+      tornWindow(c, s, 0, 130, 80, 1660, 880, t, d, { seed: 1201 });
+      const kd = s.opts.doodle || 'flowers', p = clamp((t - 0.5) / 0.9);
+      if (kd === 'flowers') [[300, 260], [520, 820], [1450, 220], [1650, 700], [1180, 860]].forEach(([x, y], i) => mkDoodle(c, 'flower', x, y, 1.3, clamp((t - 0.4 - i * 0.12) / 0.5)));
+      else if (kd === 'crown') { mkDoodle(c, 'crown', 820, 260, 1.1, p); mkDoodle(c, 'crown', 1100, 280, 1.1, clamp((t - 0.8) / 0.9)); }
+      else if (kd === 'arrows') { c.save(); c.translate(560, 500); mkDoodle(c, 'arrow', 0, 0, 1.1, p); c.restore(); c.save(); c.translate(1360, 500); c.scale(-1, 1); mkDoodle(c, 'arrow', 0, 0, 1.1, clamp((t - 0.8) / 0.9)); c.restore(); }
+      else { mkDoodle(c, 'emph', 960, 250, 1.2, p); mkDoodle(c, 'spark', 1500, 300, 1.2, clamp((t - 0.8) / 0.8)); }
+      if (fill(s.texts.cap)) tornStripLabel(c, fill(s.texts.cap), 960, 990, 760, 48, t, 1.0, 'cap', 0.02);
+    }
+  },
+  m2strip: {
+    name: 'M-2 마지막 사진 띠 + 편지 메모', slots: 3, weight: 7, fields: [['text', '편지', '저희 두 사람,\n오늘부터 부부가 됩니다.\n예쁘게 잘 살게요.', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid-kraft'); const n = autoN(s, 3);
+      for (let i = 0; i < n; i++) mkAt(c, t, d, 0.1 + i * 0.2, [-1, 0], () => mkPhoto(c, s, i, 170 + i * 40, 90 + i * 300, 560, 300, t, d, { at: -10, rot: [-3, 2, -2][i], bw: s.opts.bw }));
+      mkAt(c, t, d, 0.8, [1, 0], () => mkNote(c, 1000, 260, 760, 470, fill(s.texts.text).split('\n'), t, 0.8, { holes: 'left', fs: 56, lh: 100, keys: ['text'] }));
+      mkHeart(c, 1700, 230, 64, '#C2607E', 0.2, pop(t, 1.8, 0.5));
+    }
+  }
+});
+LAYOUTS.m2feature.optSelects = { sticker: [['bear', '곰돌이'], ['lolly', '롤리팝'], ['donut', '도넛'], ['flower', '꽃'], ['phone', '전화기']] };
+LAYOUTS.m2window.optSelects = { doodle: [['flowers', '작은 꽃'], ['crown', '왕관'], ['arrows', '화살표'], ['emph', '강조선 + 반짝이']] };
+FIXED_LONG.push('m2open', 'm2pair', 'm2strip');
+for (let i = CATS.length - 1; i >= 0; i--) if (CATS[i][0].startsWith('빈티지 스토리 콜라주')) CATS.splice(i, 1);
+CATS.push(['콜라주 다이어리 (M-2타입)', ['m2open', 'm2pair', 'm2kid', 'm2chapter', 'm2row', 'm2feature', 'm2scatter', 'm2window', 'm2strip']]);
+TEMPLATES.M2.name = '콜라주 다이어리 (M-2)';
+TEMPLATES.M2.desc = 'M타입과 같은 종이 콜라주 감성(모눈종이·구김 종이·메모·오린 글자·스티커)에 구성과 배치를 새로 짠 버전. 사진 세 장 오프닝, 신랑·신부 한 화면 소개, 어린 시절, 찢은 종이띠 챕터, 물결 사진 줄·큰 사진·흩뿌린 사진 콜라주, 찢어진 종이 창 웨딩, 사진 띠 편지 엔딩';
+TEMPLATES.M2.tags = ['종이 콜라주', '새 구성', '찢어진 종이 창 웨딩', '스토리형'];
+TEMPLATES.M2.make = () => {
+  const FE = (n1, n2, sticker, flip) => ['m2feature', { texts: { n1, n2 }, opts: { sticker, flip: !!flip } }];
+  const WI = (doodle, cap) => ['m2window', { opts: { doodle }, texts: { cap: cap || '' } }];
+  const WD = doodle => ['mkwed', { opts: { doodle } }];
+  const list = [
+    ['m2open', {}, 9],
+    ['m2pair', {}, 10], ['m2kid', {}, 7],
+    ['m2chapter', {}, 4.5],
+    ['m2row', {}], FE('첫 데이트 날,\n하루가 너무 짧았어요', '그날 이후로\n매일 연락했죠', 'phone'), ['m2scatter', {}],
+    ['m2row', { texts: { note: '좋아하는 것도, 웃는 모습도 닮아가던 우리' } }], FE('함께 걷던 길,\n함께 먹던 맛집', '모든 게 추억이 됐어요', 'donut', true), ['m2scatter', { texts: { word: 'with you' } }],
+    ['m2row', { texts: { note: '같은 마음으로 결혼을 꿈꾸게 되었습니다' } }], FE('그리고 어느 날,\n프러포즈를 받았어요', '대답은 물론, YES!', 'flower'),
+    ['m2chapter', { texts: { ch: 'CHAPTER 2', title: '우리가 함께할 미래' } }, 4.5],
+    WI('flowers', 'our wedding day'), WD('crown'), WI('arrows'), WD('spark'), WI('crown', 'forever'), WD('flowers'), WI('emph'), WD('heart'), WI('flowers', 'you & me'), WD('arrows'), WI('crown'),
+    ['m2strip', {}, 8],
+    ['mkthanks', {}, 7],
+    ['mkend', {}, 9]
+  ];
+  const sc = mkScenes(list); let k = 0;
+  sc.forEach((s, i) => { if (!i) return; const L = s.layout, P = sc[i - 1].layout;
+    if (L === 'm2pair') s.tr = 'paper';
+    else if (L === 'm2kid') s.tr = 'curl';
+    else if (L === 'm2chapter') s.tr = 'paper';
+    else if (/^m2(row|feature|scatter)$/.test(L)) s.tr = P === 'm2chapter' ? 'tearc' : (k++ % 2 ? 'cut' : 'curl');
+    else if (L === 'm2window' || L === 'mkwed') s.tr = P === 'm2chapter' ? 'tear' : ['tornh', 'tear', 'tornv', 'torn'][i % 4];
+    else if (L === 'm2strip' || L === 'mkend') s.tr = 'curl';
+    else if (L === 'mkthanks') s.tr = 'dissolve'; });
+  return baseProj('M2', fitTotal(sc), { lyricFx: '' });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
