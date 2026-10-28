@@ -6760,9 +6760,10 @@ function mkNote(c, x, y, w, h, lines, t, st, o = {}) { // torn notebook memo wit
   if (o.holes === 'left') { c.fillStyle = '#E3DED5'; const n = Math.max(2, Math.round(h / 60)); for (let i = 0; i < n; i++) { c.beginPath(); c.arc(26, 36 + i * (h - 72) / Math.max(1, n - 1), 8, 0, Math.PI * 2); c.fill(); } }
   else if (o.holes === 'top') { c.fillStyle = '#E3DED5'; const n = Math.max(3, Math.round(w / 60)); for (let i = 0; i < n; i++) { c.beginPath(); c.arc(30 + i * (w - 60) / (n - 1), 22, 8, 0, Math.PI * 2); c.fill(); } }
   c.restore();
-  const lh = o.lh || 50, lx = x + (o.holes === 'left' ? 70 : 34), ly0 = y + (o.holes === 'top' ? 64 : Math.max(44, lh * 0.68));
-  let last = st;
-  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + 0.3 + i * 0.25, 0.5); last = st + 0.3 + i * 0.25; txt(c, (o.dash ? '-  ' : '') + l, lx, ly0 + i * lh + e.dy, PEN(o.fs || 42), '#3A3532', a * e.a, { align: o.center ? 'center' : 'left', k: o.keys ? o.keys[i] : null }); });
+  // text block centred vertically inside the memo (below the ring holes when they're on top)
+  const lh = o.lh || 50, lx = x + (o.holes === 'left' ? 70 : 34), topPad = o.holes === 'top' ? 40 : 0, nL = Math.max(1, lines.length), ly0 = y + topPad + Math.max(0, (h - topPad - nL * lh) / 2) + lh / 2;
+  let last = st, fs = o.fs || 42; { c.save(); c.font = PEN(fs); const mw = Math.max(1, ...lines.map(l => c.measureText((o.dash ? '-  ' : '') + (l || '')).width)); c.restore(); const avail = w - (lx - x) - 30; if (mw > avail) fs = Math.max(20, Math.floor(fs * avail / mw)); }
+  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + 0.3 + i * 0.25, 0.5); last = st + 0.3 + i * 0.25; txt(c, (o.dash ? '-  ' : '') + l, lx, ly0 + i * lh + e.dy, PEN(fs), '#3A3532', a * e.a, { align: o.center ? 'center' : 'left', k: o.keys ? o.keys[i] : null }); });
   return last;
 }
 function mkRansom(c, str, cx, cy, size, t, st, key) {
@@ -7256,7 +7257,7 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       mkBg(c, 'beige'); const f = s.opts.flip, M = x => f ? W - x : x, col = f ? '#C2607E' : '#5E82A6', side = f ? -1 : 1;
       mkAt(c, t, d, 0.1, [side, 0], () => mkPiece(c, s, 0, f ? 90 : 1170, 90, 660, 1000, t, d, { rot: f ? -2 : 2, seed: f ? 31 : 17, outline: '#1E1C1A', r: 9 }));
-      mkAt(c, t, d, 0.5, [-side, -0.4], () => { mkRansom(c, fill(s.texts.role), M(330), 200, 74, t, 0.5, 'role'); mkLabel(c, fill(s.texts.name), M(420), 320, 66, t, 0.7, 'name', { font: UIF(68, 800), bg: '#C9C3B4' }); });
+      mkAt(c, t, d, 0.5, [-side, -0.4], () => { mkRansom(c, fill(s.texts.role), M(520), 200, 74, t, 0.5, 'role'); mkLabel(c, fill(s.texts.name), M(520), 320, 66, t, 0.7, 'name', { font: UIF(68, 800), bg: '#C9C3B4' }); });
       // memo sized like the original: four handwritten lines fill the page, the childhood photo overlaps its right edge without covering the text
       mkAt(c, t, d, 0.8, [-side, 0], () => mkNote(c, f ? 990 : 110, 440, 820, 480, [s.texts.i1, s.texts.i2, s.texts.i3, s.texts.i4].map(fill), t, 0.8, { holes: 'left', dash: true, lh: 104, fs: 60, keys: ['i1', 'i2', 'i3', 'i4'] }));
       mkAt(c, t, d, 1.2, [0, 1], () => mkPiece(c, s, 1, f ? 1530 : 680, 580, 340, 460, t, d, { rot: f ? 5 : -5, seed: f ? 41 : 23, edge: '#FFFFFF', outline: '#FFFFFF', r: 14 }));
@@ -7725,12 +7726,12 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       mkBg(c, 'beige');
       c.save(); c.strokeStyle = 'rgba(120,105,85,.25)'; c.setLineDash([10, 12]); c.lineWidth = 2; c.beginPath(); c.moveTo(960, 90); c.lineTo(960, 990); c.stroke(); c.restore();
-      mkAt(c, t, d, 0.1, [-1, 0], () => mkPiece(c, s, 0, 150, 120, 560, 640, t, d, { rot: -3, seed: 71, outline: '#1E1C1A', r: 8 }));
-      mkAt(c, t, d, 0.35, [1, 0], () => mkPiece(c, s, 1, 1210, 120, 560, 640, t, d, { rot: 3, seed: 73, outline: '#1E1C1A', r: 8 }));
-      mkAt(c, t, d, 0.7, [0, 1], () => { mkRansom(c, fill(s.texts.g), 430, 820, 56, t, 0.7, 'g'); mkLabel(c, fill(s.texts.gn), 760, 820, 52, t, 0.9, 'gn', { font: UIF(54, 800), bg: '#C9D2DC', rot: -0.03 }); });
-      mkAt(c, t, d, 0.8, [0, 1], () => { mkRansom(c, fill(s.texts.b), 1490, 820, 56, t, 0.8, 'b'); mkLabel(c, fill(s.texts.bn), 1160, 820, 52, t, 1.0, 'bn', { font: UIF(54, 800), bg: '#E8CBD3', rot: 0.03 }); });
-      mkAt(c, t, d, 1.2, [-1, 0.3], () => mkNote(c, 160, 890, 640, 150, fill(s.texts.g1).split('\n'), t, 1.2, { fs: 40, lh: 52, rot: -1, keys: ['g1'] }), 900);
-      mkAt(c, t, d, 1.3, [1, 0.3], () => mkNote(c, 1120, 890, 640, 150, fill(s.texts.b1).split('\n'), t, 1.3, { fs: 40, lh: 52, rot: 1, keys: ['b1'] }), 900);
+      mkAt(c, t, d, 0.1, [-1, 0], () => mkPiece(c, s, 0, 180, 110, 560, 640, t, d, { rot: -2, seed: 71, outline: '#1E1C1A', r: 8 }));
+      mkAt(c, t, d, 0.35, [1, 0], () => mkPiece(c, s, 1, 1180, 110, 560, 640, t, d, { rot: 2, seed: 73, outline: '#1E1C1A', r: 8 }));
+      mkAt(c, t, d, 0.7, [0, 1], () => { mkRansom(c, fill(s.texts.g), 300, 815, 52, t, 0.7, 'g'); mkLabel(c, fill(s.texts.gn), 580, 815, 50, t, 0.9, 'gn', { font: UIF(52, 800), bg: '#C9D2DC' }); });
+      mkAt(c, t, d, 0.8, [0, 1], () => { mkRansom(c, fill(s.texts.b), 1340, 815, 52, t, 0.8, 'b'); mkLabel(c, fill(s.texts.bn), 1620, 815, 50, t, 1.0, 'bn', { font: UIF(52, 800), bg: '#E8CBD3' }); });
+      mkAt(c, t, d, 1.2, [-1, 0.3], () => mkNote(c, 150, 880, 620, 150, fill(s.texts.g1).split('\n'), t, 1.2, { fs: 40, lh: 52, keys: ['g1'] }), 900);
+      mkAt(c, t, d, 1.3, [1, 0.3], () => mkNote(c, 1150, 880, 620, 150, fill(s.texts.b1).split('\n'), t, 1.3, { fs: 40, lh: 52, keys: ['b1'] }), 900);
       mkHeart(c, 960, 470, 90, '#C2607E', 0, pop(t, 1.5, 0.5)); mkHeart(c, 760, 140, 50, '#5E82A6', -0.3, pop(t, 1.7, 0.4)); mkHeart(c, 1160, 150, 50, '#C2607E', 0.3, pop(t, 1.8, 0.4));
     }
   },
