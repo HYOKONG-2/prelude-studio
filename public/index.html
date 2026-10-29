@@ -6766,7 +6766,9 @@ function mkNote(c, x, y, w, h, lines, t, st, o = {}) { // torn notebook memo wit
   // text block centred vertically inside the memo (below the ring holes when they're on top)
   const lh = o.lh || 50, lx = x + (o.holes === 'left' ? 70 : 34), topPad = o.holes === 'top' ? 40 : 0, nL = Math.max(1, lines.length), ly0 = y + topPad + Math.max(0, (h - topPad - nL * lh) / 2) + lh / 2;
   let last = st, fs = o.fs || 42; { c.save(); c.font = PEN(fs); const mw = Math.max(1, ...lines.map(l => c.measureText((o.dash ? '-  ' : '') + (l || '')).width)); c.restore(); const avail = w - (lx - x) - 30; if (mw > avail) fs = Math.max(20, Math.floor(fs * avail / mw)); }
-  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + 0.3 + i * 0.25, 0.5); last = st + 0.3 + i * 0.25; txt(c, (o.dash ? '-  ' : '') + l, lx, ly0 + i * lh + e.dy, PEN(fs), '#3A3532', a * e.a, { align: o.center ? 'center' : 'left', k: o.keys ? o.keys[i] : null }); });
+  // M-2 memos are centred both ways (left ring holes keep a little room on the left)
+  const ctr = o.center || (project && project.tpl === 'M2'), tx = ctr ? x + w / 2 + (o.holes === 'left' ? 22 : 0) : lx;
+  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + 0.3 + i * 0.25, 0.5); last = st + 0.3 + i * 0.25; txt(c, (o.dash ? '-  ' : '') + l, tx, ly0 + i * lh + e.dy, PEN(fs), '#3A3532', a * e.a, { align: ctr ? 'center' : 'left', k: o.keys ? o.keys[i] : null }); });
   return last;
 }
 function mkRansom(c, str, cx, cy, size, t, st, key) {
