@@ -544,8 +544,9 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
     if (collectVideos) usedVideos.set(slot.id, { t, slot });
     if (m.el.readyState < 2) { c.fillStyle = '#000'; c.fillRect(x, y, w, h); c.restore(); return; }
   }
-  const sw = m.type === 'video' ? (m.el.videoWidth || m.w) : m.w;
-  const sh = m.type === 'video' ? (m.el.videoHeight || m.h) : m.h;
+  const EL = (m.type === 'video' && exporting && slot._ev && slot._evId === slot.id && slot._ev.readyState >= 2) ? slot._ev : m.el;
+  const sw = m.type === 'video' ? (EL.videoWidth || m.w) : m.w;
+  const sh = m.type === 'video' ? (EL.videoHeight || m.h) : m.h;
   const mv = motionOf(slot.mo, t);
   const z = (mv ? mv.z : (o.zoom || 1)) * (slot.z || 1) * (ab ? ab.extraZoom : 1);
   const k = Math.max(w / sw, h / sh) * z;
@@ -555,9 +556,9 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
   if (z < 1 || ox || slot.oy != null) { c.fillStyle = scene.pbg || (o.dark ? '#000' : PAPER); c.fillRect(x, y, w, h); }
-  c.drawImage(m.el, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
+  c.drawImage(EL, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
   if (o.bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(x, y, w, h); }
-  if (slot.look || slot.lb) applyLook(c, slot, m, x, y, w, h, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
+  if (slot.look || slot.lb) applyLook(c, slot, { el: EL }, x, y, w, h, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
   c.restore();
 }
 const LOOKS = [['', '원본'], ['bw', '흑백'], ['bright', '화사하게'], ['soft', '뽀얗게'], ['warm', '따뜻하게'], ['cool', '시원하게'], ['film', '필름 감성'], ['vivid', '선명하게'], ['moody', '차분하게']];
@@ -9411,15 +9412,25 @@ async function resample48(buf) {
   }
   return out;
 }
+// while exporting, every slot gets its own <video> so two places (or two scenes in a transition) never fight over one player
+function slotVideo(slot, md) {
+  if (slot._ev && slot._evId === slot.id) return slot._ev;
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = md.url;
+  slot._ev = v; slot._evId = slot.id; return v;
+}
+function dropSlotVideos() { project.scenes.forEach(s => s.media.forEach(m => { if (m._ev) { try { m._ev.removeAttribute('src'); m._ev.load(); } catch (e) { } delete m._ev; delete m._evId; } })); }
 function videosAt(T) {
   const out = [], i = sceneAt(T);
-  const add = (k, t) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (md && md.type === 'video') out.push([md.el, vidTime(m, md.el, t)]); });
+  const add = (k, t) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (md && md.type === 'video') { const v = exporting ? slotVideo(m, md) : md.el; out.push([v, vidTime(m, md.el, t)]); } });
   const t = T - timeline[i].start; add(i, t);
   if (i > 0 && t < xfOf(i)) add(i - 1, timeline[i - 1].dur + t);
   return out;
 }
-function seekVideo(v, want) {
-  if (Math.abs(v.currentTime - want) < 0.004) return Promise.resolve();
+async function seekVideo(v, want) {
+  if (v.readyState < 1) await new Promise(res => { const to = setTimeout(res, 3000); v.addEventListener('loadedmetadata', () => { clearTimeout(to); res(); }, { once: true }); });
+  // aim at the middle of a frame so the decoder never lands on the previous / next frame by rounding (that flicker reads as shaking)
+  const D = isFinite(v.duration) ? v.duration : Infinity; want = Math.min(Math.max(0, D - 0.02), (Math.floor(want * 30 + 1e-6) + 0.5) / 30);
+  if (Math.abs(v.currentTime - want) < 0.004 && v.readyState >= 2) return;
   return new Promise(res => {
     const to = setTimeout(res, 1500);
     v.addEventListener('seeked', () => { clearTimeout(to); res(); }, { once: true });
@@ -9482,12 +9493,13 @@ async function exportFast(S) {
     }
   }
   if (err) throw err;
-  if (cancelled) { try { venc.close(); aenc && aenc.close(); } catch (e) {} return 'cancel'; }
+  if (cancelled) { try { venc.close(); aenc && aenc.close(); } catch (e) {} dropSlotVideos(); return 'cancel'; }
   pushAudio(total + 1);
   progress(1, '마무리 중 ');
   await venc.flush(); venc.close();
   if (aenc) { await aenc.flush(); aenc.close(); }
   if (err) throw err;
+  dropSlotVideos();
   return { blob: mux.finalize(), ext: 'mp4' };
 }
 // Fallback: record in real time
@@ -9537,6 +9549,7 @@ async function runExport(S) {
   let out = null;
   try { out = await exportFast(S); } catch (e) { out = null; }
   if (out === null && !cancelled) out = await exportRealtime(S);
+  dropSlotVideos();
   exporting = false; exportRT = false; ER = null; dirty = true; curT = 0;
   if (cancelled || out === 'cancel') { $('modal').hidden = true; toast('영상 만들기를 멈췄어요'); return; }
   if (!out) { ask('이 브라우저에서는 영상을 만들 수 없어요', '컴퓨터의 크롬이나 엣지, 또는 최신 사파리에서 열어주세요.', [['확인', true]]); return; }
