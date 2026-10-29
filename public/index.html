@@ -4515,12 +4515,14 @@ Object.assign(LAYOUTS, {
     }
   },
   mgcollage: {
-    name: '몽글 콜라주 (체크 프레임 + 사진들 + Love)', slots: 4, weight: 6, fields: [['love', '스티커 글씨', 'Love']], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
+    name: '몽글 콜라주 (체크 프레임 + 사진들 + Love, 넣은 만큼 2~5장)', slots: 5, weight: 6, fields: [['love', '스티커 글씨', 'Love']], opts: [['bw', '흑백', false]], cap: () => [960, 1012, 'photo'],
     draw(c, s, t, d) {
       mgBg(c, t, { clouds: 'top' });
       whiteBorder(c, s, 0, 120, 360, 420, 560, t, d, -4, { at: 0.1, b: 26, bottom: 40, gingham: 'rgba(150,205,180,.45)', bw: s.opts.bw });
-      [[560, 70], [930, 50], [1300, 70]].forEach(([x, y], i) => whiteBorder(c, s, slotAt(s, 1 + (i % 2)), x, y, 340, 300, t, d, i === 1 ? 2 : -1, { at: 0.4 + i * 0.15, b: 10, bw: s.opts.bw }));
-      whiteBorder(c, s, 3, 1150, 560, 640, 440, t, d, 2, { at: 0.9, b: 12, bw: s.opts.bw });
+      // every frame has its own photo; with fewer photos the top row shrinks instead of repeating one
+      const n = autoN(s, 5), top = Math.max(0, n - 2), row = { 0: [], 1: [[930, 50]], 2: [[700, 60], [1160, 60]], 3: [[560, 70], [930, 50], [1300, 70]] }[Math.min(3, top)];
+      row.forEach(([x, y], i) => whiteBorder(c, s, 1 + i, x, y, 340, 300, t, d, i === 1 ? 2 : -1, { at: 0.4 + i * 0.15, b: 10, bw: s.opts.bw }));
+      if (n >= 2) whiteBorder(c, s, n - 1, 1150, 560, 640, 440, t, d, 2, { at: 0.9, b: 12, bw: s.opts.bw });
       const k = pop(t, 1.3, 0.5);
       if (k > 0.001) { c.save(); c.translate(760, 800); c.rotate(-0.08); c.scale(k, k); c.fillStyle = '#FFFFFF'; c.shadowColor = 'rgba(0,0,0,.15)'; c.shadowBlur = 10 * R.S; rr(c, -150, -62, 300, 124, 18); c.fill(); c.shadowColor = 'transparent'; c.font = PACI(84); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#9C82D2'; c.fillText(fill(s.texts.love), 0, 6); c.restore();
         c.save(); c.translate(1120, 600); c.scale(k, k); c.fillStyle = '#A9DCC4'; c.beginPath(); c.arc(0, 0, 46, 0, Math.PI * 2); c.fill(); c.fillStyle = '#FFFFFF'; heartShape(c, 0, 4, 44); c.fill(); c.restore(); }
@@ -7854,6 +7856,113 @@ LAYOUTS.profilebride = Object.assign({}, LAYOUTS.profile, {
   opts: [['flip', '사진 오른쪽', true], ['bw', '흑백', false]]
 });
 PAIR_OK.push('profilebride');
+/* ================= M-2 v3: new scenes (photo line, calendar, photo wall, envelope) + season-chapter story, 45 scenes ================= */
+function clothespin(c, x, y, rot) { c.save(); c.translate(x, y); c.rotate(rot || 0); c.shadowColor = 'rgba(0,0,0,.2)'; c.shadowBlur = 4 * R.S; c.shadowOffsetY = 2 * R.S; const g = c.createLinearGradient(-9, 0, 9, 0); g.addColorStop(0, '#C9A57A'); g.addColorStop(1, '#A9845A'); c.fillStyle = g; rr(c, -9, -30, 18, 62, 4); c.fill(); c.shadowColor = 'transparent'; c.fillStyle = '#9C9C9C'; c.fillRect(-10, -4, 20, 6); c.restore(); }
+Object.assign(LAYOUTS, {
+  m2line: {
+    name: 'M-2 끈에 집게로 건 사진 (연도·글 태그)', slots: 4, weight: 6, fields: [['c1', '첫 태그', '2019'], ['c2', '둘째 태그', '2021'], ['c3', '셋째 태그', '2023'], ['c4', '넷째 태그', '2025']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid'); const n = autoN(s, 4), sag = 90, y0 = 170, p = ease(clamp(t / 0.9));
+      const yAt = x => y0 + sag * (1 - Math.pow((x - 960) / 1000, 2)) - sag * 0.6;
+      c.save(); c.strokeStyle = '#8C7B66'; c.lineWidth = 3; c.beginPath(); for (let x = -20; x <= (W + 40) * p; x += 20) { const y = yAt(x); x === -20 ? c.moveTo(x, y) : c.lineTo(x, y); } c.stroke(); c.restore();
+      const xs = { 1: [960], 2: [640, 1280], 3: [460, 960, 1460], 4: [300, 730, 1190, 1620] }[n], w = n > 3 ? 360 : 420, h = n > 3 ? 450 : 520;
+      xs.forEach((cx, i) => {
+        const st = 0.4 + i * 0.22, k = clamp((t - st) / 0.6); if (k <= 0) return;
+        const sw = Math.sin(t * 1.6 + i) * 0.03 * (1 - clamp((t - st) / 3)) + (1 - backOut(k)) * 0.4 * (i % 2 ? 1 : -1), top = yAt(cx);
+        c.save(); c.translate(cx, top); c.rotate(sw); c.globalAlpha *= clamp(k * 2);
+        c.save(); c.shadowColor = 'rgba(40,30,20,.28)'; c.shadowBlur = 14 * R.S; c.shadowOffsetY = 6 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(-w / 2 - 12, 10, w + 24, h + 70); c.restore();
+        const ho = hitOn; hitOn = false; coverIn(c, s, i, -w / 2, 22, w, h, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho;
+        c.font = PEN(46); c.fillStyle = '#2E2C2A'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(fill(s.texts['c' + (i + 1)]), 0, h + 52);
+        clothespin(c, 0, 8, 0); c.restore();
+        addHit({ type: 'media', si: i, x: cx - w / 2, y: top + 22, w, h, oy: 0 });
+      });
+    }
+  },
+  m2calendar: {
+    name: 'M-2 찢은 달력 (예식일 동그라미) + 사진', slots: 1, weight: 6, fields: [['note', '메모', 'D-DAY']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'beige');
+      const pd = parseKoDate(project.info.dateKo) || { y: 2026, mo: 5, d: 23 };
+      mkAt(c, t, d, 0.1, [-1, 0], () => {
+        c.save(); c.translate(560, 540); c.rotate(-0.03);
+        c.save(); c.shadowColor = 'rgba(40,30,20,.25)'; c.shadowBlur = 18 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FCFBF7'; c.beginPath(); c.moveTo(-380, -380); for (let i = 0; i <= 20; i++) c.lineTo(-380 + 38 * i, -380 + (rnd(i, 1301) - 0.5) * 10); c.lineTo(380, 420); c.lineTo(-380, 420); c.closePath(); c.fill(); c.restore();
+        c.fillStyle = '#E3DED5'; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(-320 + i * 80, -350, 9, 0, Math.PI * 2); c.fill(); }
+        c.font = PEN(110); c.fillStyle = '#2E2C2A'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(pd.mo + '월', 0, -250);
+        c.font = UIF(22, 700); ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach((wd, i) => { c.fillStyle = i === 0 ? '#C2607E' : '#8A847C'; c.fillText(wd, -270 + i * 90, -150); });
+        const first = new Date(pd.y, pd.mo - 1, 1).getDay(), days = new Date(pd.y, pd.mo, 0).getDate(); c.font = PEN(46);
+        for (let n = 1; n <= days; n++) { const k = first + n - 1, cx = -270 + (k % 7) * 90, cy = -80 + Math.floor(k / 7) * 86; c.fillStyle = k % 7 === 0 ? '#C2607E' : '#2E2C2A'; c.fillText(String(n), cx, cy);
+          if (n === pd.d) { const pp = ease(clamp((t - 1.0) / 0.8)); if (pp > 0) { c.save(); c.strokeStyle = '#D23A4E'; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.ellipse(cx, cy, 44, 36, -0.15, -1.6, -1.6 + Math.PI * 2.15 * pp); c.stroke(); c.restore(); if (pp > 0.95) mkHeart(c, cx + 40, cy - 40, 28, '#D23A4E', 0.2, 1); } } }
+        c.restore();
+      });
+      mkAt(c, t, d, 0.4, [1, 0], () => mkPhoto(c, s, 0, 1080, 170, 680, 640, t, d, { at: -10, rot: 3, bw: s.opts.bw, tape2: true }));
+      mkAt(c, t, d, 1.6, [1, 1], () => tornStripLabel(c, fill(s.texts.note), 1420, 900, 360, 52, t, 1.6, 'note', -0.04), 600);
+    }
+  },
+  m2wall: {
+    name: 'M-2 사진 여섯 장 벽 + 가운데 오린 글자', slots: 6, weight: 6, fields: [['word', '가운데 오린 글자', 'LOVE']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'grid'); const n = autoN(s, 6);
+      const cells = gridCells(n, 150, 90, 1620, 900, 60);
+      cells.forEach(([x, y, w, h], i) => mkAt(c, t, d, 0.1 + i * 0.12, [[-1, -1], [0, -1], [1, -1], [-1, 1], [0, 1], [1, 1]][i], () => mkPhoto(c, s, i, x + 16, y + 16, w - 32, h - 32, t, d, { at: -10, rot: [-3, 2, -2, 3, -1, 2][i], bw: s.opts.bw })));
+      mkAt(c, t, d, 1.0, [0, 1], () => mkRansom(c, fill(s.texts.word), 960, 540, 96, t, 1.0, 'word'), 700);
+      mkDoodle(c, 'heart', 1140, 470, 0.45, clamp((t - 1.6) / 0.6), '#C2607E');
+    }
+  },
+  m2envelope: {
+    name: 'M-2 봉투에서 꺼내지는 사진 세 장 + 메모', slots: 3, weight: 6, fields: [['note', '메모', '그날의 마음을\n봉투에 담아 두었어요', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      mkBg(c, 'beige'); const n = autoN(s, 3), ex = 760, ey = 760, ew = 820, eh = 420;
+      mkAt(c, t, d, 0.05, [0, 1], () => {
+        c.save(); c.shadowColor = 'rgba(40,30,20,.3)'; c.shadowBlur = 20 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#C9AC85'; c.fillRect(ex - ew / 2, ey - eh / 2, ew, eh); c.restore();
+        c.fillStyle = '#B9996F'; c.beginPath(); c.moveTo(ex - ew / 2, ey - eh / 2); c.lineTo(ex, ey - eh / 2 - 170); c.lineTo(ex + ew / 2, ey - eh / 2); c.closePath(); c.fill();
+      }, 900);
+      const rise = ease(clamp((t - 0.6) / 1.0));
+      const P = [[-240, -14], [0, 0], [240, 12]].slice(0, n);
+      P.forEach(([dx, rot], i) => { const pw = 340, ph = 420, py = ey - eh / 2 + 80 - (360 + i % 2 * 30) * ease(clamp((t - 0.6 - i * 0.15) / 1.0)); c.save(); c.beginPath(); c.rect(0, 0, W, ey + eh / 2 - 60); c.clip(); mkPhoto(c, s, i, ex + dx - pw / 2, py - ph / 2, pw, ph, t, d, { at: -10, rot: rot * rise, bw: s.opts.bw, tape: false }); c.restore(); });
+      mkAt(c, t, d, 0.05, [0, 1], () => { c.fillStyle = '#D6BC96'; c.beginPath(); c.moveTo(ex - ew / 2, ey + eh / 2); c.lineTo(ex - ew / 2, ey - eh / 2 + 40); c.lineTo(ex, ey + 40); c.lineTo(ex + ew / 2, ey - eh / 2 + 40); c.lineTo(ex + ew / 2, ey + eh / 2); c.closePath(); c.fill(); mkHeart(c, ex, ey + 20, 46, '#C2607E', 0, 1); }, 900);
+      mkAt(c, t, d, 1.4, [1, 0], () => mkNote(c, 1300, 220, 500, 280, fill(s.texts.note).split('\n'), t, 1.4, { holes: 'top', fs: 48, lh: 74, rot: 3, keys: ['note'] }));
+    }
+  }
+});
+LAYOUTS.m2envelope.noBulk = [];
+FIXED_LONG.push('m2line', 'm2envelope');
+CATS.find(c => c[0] === '콜라주 다이어리 (M-2타입)')[1].push('m2line', 'm2calendar', 'm2wall', 'm2envelope');
+TEMPLATES.M2.desc = '종이 콜라주 감성에 계절로 흐르는 스토리. 사진 세 장 오프닝 → 오늘의 웨딩 미리보기 → 두 사람 소개 → 끈에 건 사진 타임라인 → 봄·여름·가을·겨울 챕터마다 콜라주, 봉투, 사진 벽, 찢은 달력, 찢어진 종이 창 웨딩 → 사진 띠 편지와 감사 엔딩';
+TEMPLATES.M2.tags = ['종이 콜라주', '계절 챕터 스토리', '45장면', '새 장면 4종'];
+TEMPLATES.M2.make = () => {
+  const CH = (ch, title) => ['m2chapter', { texts: { ch, title } }, 4.2];
+  const FE = (n1, n2, sticker, flip) => ['m2feature', { texts: { n1, n2 }, opts: { sticker, flip: !!flip } }];
+  const RO = note => ['m2row', { texts: { note } }];
+  const WI = (doodle, cap) => ['m2window', { opts: { doodle }, texts: { cap: cap || '' } }];
+  const WD = doodle => ['mkwed', { opts: { doodle } }];
+  const LN = (a, b2, c3, d4) => ['m2line', { texts: { c1: a, c2: b2, c3: c3, c4: d4 } }];
+  const list = [
+    ['m2open', {}, 8],
+    WI('emph', '오늘, 우리'),
+    CH('PROLOGUE', '오늘에 닿기까지'),
+    ['m2pair', {}, 9], ['m2kid', {}, 6.5],
+    LN('2019', '2021', '2023', '2025'),
+    CH('SPRING', '처음 만난 봄'),
+    FE('어색한 인사로 시작해\n긴 대화가 이어졌어요', '그날 집에 가는 길이\n유난히 짧았어요', 'phone'), RO('자꾸만 보고 싶은 사람이 되었어요'), ['m2envelope', { texts: { note: '처음 주고받은\n마음들을 모아두었어요' } }, 6], ['m2scatter', { texts: { word: 'first' } }], ['m2wall', { texts: { word: 'US' } }],
+    CH('SUMMER', '뜨거웠던 우리의 여름'),
+    RO('함께 걷던 바닷가, 함께 먹던 맛집'), FE('사소한 일에도\n크게 웃던 날들', '그게 다\n추억이 됐어요', 'donut', true), LN('바다', '여행', '맛집', '우리'), ['m2scatter', { texts: { word: 'summer' } }], ['m2wall', { texts: { word: 'FUN' } }], FE('다툰 날에도\n결국 서로의 편', '그래서 더\n단단해졌어요', 'bear'),
+    CH('AUTUMN', '약속의 가을'),
+    ['m2envelope', { texts: { note: '그리고 어느 날,\n평생을 약속했어요' } }, 6], RO('대답은 물론, YES!'), FE('반지를 끼워주던 순간\n떨리던 두 손', '평생 잊지\n못할 거예요', 'flower', true), WI('flowers', 'our promise'), WD('arrows'), ['m2scatter', { texts: { word: 'promise' } }], WI('crown'),
+    CH('WINTER', '그리고, 오늘'),
+    ['m2calendar', {}, 6], WI('flowers', 'wedding day'), WD('crown'), ['m2wall', { texts: { word: 'LOVE' } }], WI('arrows'), WD('spark'), FE('서로의 가장 예쁜 날,\n함께 웃을 수 있어서', '정말 행복해요', 'flower'), WI('emph', 'you & me'), WD('flowers'), RO('이제 같은 이름으로 같은 내일을'), WI('crown', 'forever'), WD('heart'), LN('Bride', 'Groom', 'Just', 'Married'), WI('flowers'),
+    ['m2strip', {}, 7.5], ['mkthanks', {}, 6.5], ['mkend', {}, 8.5]
+  ];
+  const sc = mkScenes(list); let k = 0, w = 0;
+  const WED = ['tornh', 'tear', 'tornv', 'torn'];
+  sc.forEach((s, i) => { if (!i) return; const L = s.layout, P = sc[i - 1].layout;
+    if (L === 'm2chapter') s.tr = 'paper';
+    else if (L === 'm2pair' || L === 'm2kid') s.tr = 'curl';
+    else if (/^m2(row|feature|scatter|line|wall|envelope|calendar)$/.test(L)) s.tr = P === 'm2chapter' ? 'tearc' : (/^(m2window|mkwed)$/.test(P) ? 'tornv' : (k++ % 2 ? 'cut' : 'curl'));
+    else if (L === 'm2window' || L === 'mkwed') s.tr = P === 'm2chapter' ? 'tear' : WED[w++ % WED.length];
+    else if (L === 'm2strip' || L === 'mkend') s.tr = 'curl';
+    else if (L === 'mkthanks') s.tr = 'dissolve'; });
+  return baseProj('M2', fitTotal(sc), { lyricFx: '' });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -9352,7 +9461,7 @@ function progress(p, note) {
   bar.style.width = (clamp(p) * 100).toFixed(1) + '%';
   const tEl = $('expTime'); if (tEl) tEl.textContent = (note || '') + Math.round(clamp(p) * 100) + '%';
 }
-const SHRINKS = ['triptych', 'tri3dark', 'row3', 'wide3', 'duo', 'half2', 'grid4', 'dgarch2', 'dgpills', 'mgduo', 'pcduo', 'vignette2', 'vignette3', 'polaroid3', 'instapair', 'dgmosaic', 'heartgrid', 'roundphotos', 'edphoto', 'gallery', 'marquee', 'scrollrow', 'vfilm', 'contactsheet', 'stack2'];
+const SHRINKS = ['triptych', 'tri3dark', 'row3', 'wide3', 'duo', 'half2', 'grid4', 'dgarch2', 'dgpills', 'mgduo', 'pcduo', 'vignette2', 'vignette3', 'polaroid3', 'instapair', 'dgmosaic', 'heartgrid', 'roundphotos', 'edphoto', 'gallery', 'marquee', 'scrollrow', 'vfilm', 'contactsheet', 'stack2', 'mgcollage'];
 function emptySlotList() {
   const out = [];
   project.scenes.forEach((s, i) => {
