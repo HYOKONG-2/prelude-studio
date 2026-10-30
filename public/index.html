@@ -72,6 +72,7 @@ button{cursor:pointer}
 .strip-head h2{font-size:15px;margin:0;font-weight:600}
 .add-sel{border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:6px 12px;font-weight:500;cursor:pointer}
 .add-sel[hidden]{display:none}
+.mute{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;color:inherit;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}.mute svg{width:18px;height:18px}.mute.on{border-color:var(--accent);color:var(--accent)}
 .chip-x{margin-left:8px;border:1px solid var(--line);background:transparent;color:inherit;border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer;opacity:.85}
 .chip-x:hover{opacity:1;border-color:var(--accent);color:var(--accent)}
 .sfxm{position:absolute;bottom:3px;width:9px;height:9px;margin-left:-4px;background:#F2B84B;border:1.5px solid #fff;border-radius:50%;pointer-events:none;z-index:2}
@@ -245,6 +246,7 @@ body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
       <div class="seg-toggle" role="group" aria-label="사진 끌기 방식"><button type="button" class="on" id="dmIn">사진 안쪽 옮기기</button><button type="button" id="dmFrame">사진 칸 옮기기</button></div></div>
     <div class="transport">
       <button class="play" id="playBtn" aria-label="재생"><svg viewBox="0 0 16 16" id="playIcon"><path d="M3 1.5v13l11-6.5z" fill="currentColor"/></svg></button>
+      <button type="button" class="mute" id="muteBtn" aria-label="소리 끄기" title="미리보기 소리 끄기/켜기"><svg viewBox="0 0 16 16" id="muteIcon"></svg></button>
       <span class="time" id="timeLabel">0:00 / 0:00</span>
       <div class="timeline" id="timeline" role="slider" aria-label="재생 위치" tabindex="0"><canvas id="wave"></canvas><div class="playhead" id="playhead"></div></div>
     </div>
@@ -7965,6 +7967,20 @@ TEMPLATES.M2.make = () => {
     else if (L === 'mkthanks') s.tr = 'dissolve'; });
   return baseProj('M2', fitTotal(sc), { lyricFx: '' });
 };
+/* quote + photo without the big quotation mark */
+LAYOUTS.edquote2 = {
+  name: '인용 문장 + 사진 (따옴표 없음)', slots: 1, weight: 5,
+  fields: [['quote', '인용 글', 'You are my\nfavorite chapter.', true], ['by', '작은 글씨', '— {GROOM} to {BRIDE}']],
+  opts: [['bw', '흑백', true]],
+  cap: () => [700, 1010, 'light'],
+  draw(c, s, t, d) {
+    bg(c, '#FFFFFF');
+    block(c, fill(s.texts.quote), 700, 500, PLAYF(84, 500, true), 104, '#1A1A1A', t, 0.4, 1, false, 'quote');
+    txt(c, fill(s.texts.by), 700, 760, F.serif(30, 500, false), '#8A8A8A', fade(t, 1.0, 0.8), { k: 'by', sp: 2 });
+    c.save(); c.globalAlpha = fade(t, 0.6, 1); cover(c, s, 0, 1320, 140, 480, 800, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+  }
+};
+CATS[0][1].push('edquote2');
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -8017,11 +8033,21 @@ function computePeaks() {
   }
 }
 const hasAudio = () => !!abuf;
+// preview volume: everything you hear while testing goes through this, so it can be muted without touching the saved project or the exported video
+let previewMuted = false; try { previewMuted = localStorage.getItem('prelude:mute') === '1'; } catch (e) { }
+let _pg = null, _pgCtx = null;
+function previewOut(ctx) { if (!_pg || _pgCtx !== ctx) { _pg = ctx.createGain(); _pg.connect(ctx.destination); _pgCtx = ctx; } _pg.gain.value = previewMuted && !exporting ? 0 : 1; return _pg; }
+function setPreviewMute(m) {
+  previewMuted = m; try { localStorage.setItem('prelude:mute', m ? '1' : '0'); } catch (e) { }
+  if (_pg) _pg.gain.value = m && !exporting ? 0 : 1;
+  const b = $('muteBtn'); if (b) { b.classList.toggle('on', m); b.setAttribute('aria-label', m ? '소리 켜기' : '소리 끄기'); }
+  const ic = $('muteIcon'); if (ic) ic.innerHTML = m ? '<path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 6l4 4M15 6l-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' : '<path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.6a6 6 0 0 1 0 8.8" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/>';
+}
 function startSource() {
   stopSource();
   const ctx = getCtx(); if (ctx.state === 'suspended') ctx.resume();
   srcNode = ctx.createBufferSource(); srcNode.buffer = abuf;
-  srcNode.connect(ctx.destination); if (dest) srcNode.connect(dest);
+  srcNode.connect(previewOut(ctx)); if (dest) srcNode.connect(dest);
   srcNode.start(0, clamp(curT, 0, abuf.duration - 0.01));
   ctxStart = ctx.currentTime; offStart = curT;
 }
@@ -8080,7 +8106,7 @@ function scheduleSfx() {
   project.sfx.forEach(x => {
     const b = sfxBuffer(x); if (!b || x.start + b.duration <= curT || x.start >= total) return;
     const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = b; g.gain.value = x.vol == null ? 1 : x.vol;
-    src.connect(g); g.connect(ctx.destination); if (dest) g.connect(dest);
+    src.connect(g); g.connect(previewOut(ctx)); if (dest) g.connect(dest);
     const off = Math.max(0, curT - x.start); src.start(now + Math.max(0, x.start - curT) + 0.02, off);
     sfxNodes.push(src);
   });
@@ -10351,6 +10377,7 @@ function autoFit() {
 $('autoFit').onclick = autoFit;
 
 /* ---------------- wiring ---------------- */
+setPreviewMute(previewMuted); $('muteBtn').onclick = () => setPreviewMute(!previewMuted);
 $('playBtn').onclick = () => { if (exporting) return; if (abuf) getCtx(); playing ? pause() : play(); };
 const tl = $('timeline');
 function tlSeek(e) {
