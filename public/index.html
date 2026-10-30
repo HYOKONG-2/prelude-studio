@@ -2701,15 +2701,17 @@ Object.assign(LAYOUTS, {
     }
   },
   contactsheet: {
-    name: '밀착 인화지 (필름 여섯 컷)', slots: 3, weight: 5, fields: [], opts: [['bw', '흑백', false]],
+    name: '밀착 인화지 (필름 여섯 컷, 칸마다 다른 사진)', slots: 6, weight: 5, fields: [], opts: [['bw', '흑백', false]],
     cap: () => [960, 1030, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#181716');
-      const fw = 520, fh = 360, gx = 60, gy = 70, x0 = (W - (fw * 3 + gx * 2)) / 2, y0 = 130;
-      for (let i = 0; i < 6; i++) {
-        const x = x0 + (i % 3) * (fw + gx), y = y0 + Math.floor(i / 3) * (fh + gy);
+      // six frames, each with its own photo; with fewer photos only that many frames are shown (no repeats)
+      const n = autoN(s, 6), rows = n > 3 ? 2 : 1, fw = 520, fh = 360, gx = 60, gy = 70, y0 = rows === 2 ? 130 : (H - fh) / 2 - 20;
+      for (let i = 0; i < n; i++) {
+        const r = i < 3 ? 0 : 1, inRow = r === 0 ? Math.min(3, n) : n - 3, col = r === 0 ? i : i - 3, x0 = (W - (fw * inRow + gx * (inRow - 1))) / 2;
+        const x = x0 + col * (fw + gx), y = y0 + r * (fh + gy);
         c.save(); c.globalAlpha = fade(t, i * 0.12, 0.5); c.fillStyle = '#0B0A0A'; c.fillRect(x - 10, y - 10, fw + 20, fh + 20);
-        cover(c, s, slotAt(s, i), x, y, fw, fh, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore();
+        cover(c, s, i, x, y, fw, fh, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore();
         c.font = F.ui(20, 600); c.fillStyle = '#E8A33C'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(`${12 + i}A  ▶`, x, y + fh + 26);
       }
     }
