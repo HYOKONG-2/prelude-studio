@@ -7784,8 +7784,10 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       mkBg(c, 'beige'); const f = s.opts.flip, M = (x, w = 0) => f ? W - x - w : x, sd = f ? 1 : -1, n = autoN(s, 3);
       const sk = ['bear', 'lolly', 'donut', 'flower', 'phone'].includes(s.opts.sticker) ? s.opts.sticker : 'bear';
-      if (n <= 1) { // original look: one big photo with two memos
-        mkAt(c, t, d, 0.1, [sd, 0], () => mkPhoto(c, s, 0, M(120, 1000), 110, 1000, 820, t, d, { at: -10, rot: f ? 2 : -2, bw: s.opts.bw, tape2: true }));
+      if (n <= 2) { // big photo with two memos on the other side; a second photo overlaps the big one's lower corner
+        const big = n === 2 ? [90, 80, 900, 720] : [120, 110, 1000, 820];
+        mkAt(c, t, d, 0.1, [sd, 0], () => mkPhoto(c, s, 0, M(big[0], big[2]), big[1], big[2], big[3], t, d, { at: -10, rot: f ? 2 : -2, bw: s.opts.bw, tape2: true }));
+        if (n === 2) mkAt(c, t, d, 0.45, [0, 1], () => mkPhoto(c, s, 1, M(620, 500), 560, 500, 390, t, d, { at: -10, rot: f ? -4 : 4, bw: s.opts.bw }));
         mkAt(c, t, d, 0.6, [-sd, -0.3], () => mkNote(c, M(1220, 560), 150, 560, 260, fill(s.texts.n1).split('\n'), t, 0.6, { holes: 'left', fs: 46, lh: 74, rot: f ? -3 : 3, keys: ['n1'] }));
         mkAt(c, t, d, 1.0, [-sd, 0.3], () => mkNote(c, M(1250, 500), 480, 500, 240, fill(s.texts.n2).split('\n'), t, 1.0, { holes: 'top', fs: 46, lh: 70, rot: f ? 2 : -2, keys: ['n2'] }));
         mkAt(c, t, d, 1.3, [-sd, 1], () => mkSticker(c, sk, M(1500), 860, 1.3));
