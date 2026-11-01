@@ -7664,7 +7664,7 @@ LAYOUTS.vbcol2.optSelects = { prop: [['ticket', '영화표'], ['flower', '말린
 FIXED_LONG.push('vbcover', 'vbprofile', 'vbend', 'vbletters', 'vbletter');
 CATS.push(['빈티지 스토리 콜라주 (M-2타입)', ['vbcover', 'vbprofile', 'vbchapter', 'vbcol2', 'vbcol3', 'vbletters', 'vbwed', 'vbcutwed', 'vbletter', 'vbthanks', 'vbend']]);
 // warm light-leak transition for the vintage set
-TRANS.push(['leak', '빛 번짐으로 넘어가기']);
+TRANS.push(['leak', '빛 번짐으로 넘어가기'], ['blur', '흐릿하다 선명해지며'], ['bars', '시네마 막이 닫혔다 열리며'], ['push', '아래에서 밀어 올리며']);
 TEMPLATES.M2 = {
   custom: true, code: 'M-2',
   name: '빈티지 스토리 콜라주 (M-2)', desc: 'M타입을 바탕으로 새로 디자인한 버전. 오래된 앨범 표지로 열고, 톱니 테두리 옛날 사진·앨범 코너·라벨 테이프·인덱스 카드·영화표·말린 꽃·우표로 꾸민 따뜻한 빈티지 콜라주가 이야기처럼 이어져요. 웨딩은 필름 날짜 도장과 빛 번짐으로',
@@ -8699,6 +8699,21 @@ TEMPLATES.K.make = (o => () => {
   });
   return p;
 })(TEMPLATES.K.make);
+function kTransitions(p) {
+  const sc = p.scenes; let wd = 0, dk = 0, ms = 0; const ci = sc.findIndex(s => s.layout === 'sachapter' && s.texts && s.texts.num === '03');
+  const DARK = ['dissolve', 'blur', 'push', 'leak', 'dissolve', 'zoom', 'wipe', 'blur', 'black'], LIGHT = ['dissolve', 'blur', 'slide', 'zoom', 'dissolve', 'white', 'push'], MSG = ['blur', 'dissolve', 'black'];
+  sc.forEach((s, i) => { if (!i) return; const L = s.layout, P = sc[i - 1].layout;
+    if (L === 'sachapter') s.tr = 'bars';
+    else if (P === 'sachapter') s.tr = s.opts && s.opts.light ? 'white' : 'black';
+    else if (L === 'saprofile') s.tr = 'dissolve';
+    else if (L === 'samsg') s.tr = P === 'samsg' ? MSG[ms++ % MSG.length] : 'black';
+    else if (L === 'saend') s.tr = 'black';
+    else if (ci >= 0 && i > ci) s.tr = LIGHT[wd++ % LIGHT.length];
+    else s.tr = DARK[dk++ % DARK.length];
+  });
+  return p;
+}
+TEMPLATES.K.make = (o => () => kTransitions(o()))(TEMPLATES.K.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -8716,6 +8731,7 @@ function defaultProject() {
 }
 function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
+  if (p.tpl === 'K' && !p.trV2 && typeof kTransitions === 'function') { kTransitions(p); p.trV2 = true; }
   if (p.tpl === 'K') p.scenes.forEach(s => { if (s.layout === 'edcover' && LAYOUTS.savow) { s.layout = 'savow'; const L = LAYOUTS.savow; s.texts = {}; L.fields.forEach(f => s.texts[f[0]] = f[2]); s.opts = Object.assign({}, ...L.opts.map(o => ({ [o[0]]: o[2] }))); s.media = (s.media || []).slice(0, 1); } });
   p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
     if (LAYOUTS[s.layout].countOpts && !s.count && !LAYOUTS[s.layout].autoDefault) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
@@ -8965,7 +8981,7 @@ function sceneAt(T) {
   for (let i = timeline.length - 1; i >= 0; i--) if (T >= timeline[i].start) return i;
   return 0;
 }
-const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' ? 1.4 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
+const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' || tr === 'bars' ? 1.4 : tr === 'blur' || tr === 'push' ? 1.1 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
 function lyricAt(T) {
   if (!project.lyricsOn) return null;
   for (const l of project.lyrics) if ((l.text || l.sub) && T >= l.start && T < l.end) return l;
@@ -9025,6 +9041,9 @@ function render(r, T, preview) {
       else if (tr === 'iris') { c.beginPath(); c.arc(960, 540, 1110 * e, 0, Math.PI * 2); c.clip(); c.drawImage(r.la, 0, 0, W, H); }
       else if (tr === 'wipe') { c.beginPath(); c.rect(0, 0, W * e, H); c.clip(); c.drawImage(r.la, 0, 0, W, H); }
       else if (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) paperTr(c, r, tr, pr);
+      else if (tr === 'blur') { c.save(); if ('filter' in c) c.filter = `blur(${Math.round(16 * (1 - e) * r.S)}px)`; c.globalAlpha = e; c.drawImage(r.la, 0, 0, W, H); c.restore(); }
+      else if (tr === 'bars') { const h2 = H / 2; if (e < 0.5) { const k = ease(e / 0.5) * h2; c.fillStyle = '#000'; c.fillRect(0, 0, W, k); c.fillRect(0, H - k, W, k); } else { c.drawImage(r.la, 0, 0, W, H); const k = (1 - ease((e - 0.5) / 0.5)) * h2; c.fillStyle = '#000'; c.fillRect(0, 0, W, k); c.fillRect(0, H - k, W, k); } }
+      else if (tr === 'push') { c.save(); c.fillStyle = `rgba(0,0,0,${0.5 * e})`; c.fillRect(0, 0, W, H); const y = H * (1 - e); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * r.S; c.drawImage(r.la, 0, y, W, H); c.restore(); }
       else if (tr === 'leak') { c.save(); c.globalAlpha = ease(pr); c.drawImage(r.la, 0, 0, W, H); c.restore(); const la = Math.sin(pr * Math.PI); const g = c.createRadialGradient(W * (0.2 + 0.6 * pr), H * 0.4, 40, W * (0.2 + 0.6 * pr), H * 0.4, 1300); g.addColorStop(0, `rgba(255,170,80,${0.85 * la})`); g.addColorStop(0.45, `rgba(255,90,40,${0.45 * la})`); g.addColorStop(1, 'rgba(255,60,30,0)'); c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = g; c.fillRect(0, 0, W, H); c.restore(); }
       else if (tr === 'zoom') { const sc = 1.12 - 0.12 * e; c.globalAlpha = e; c.translate(W / 2, H / 2); c.scale(sc, sc); c.drawImage(r.la, -W / 2, -H / 2, W, H); }
       else { c.globalAlpha = ease(pr); c.drawImage(r.la, 0, 0, W, H); }
