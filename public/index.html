@@ -8338,10 +8338,12 @@ Object.assign(LAYOUTS, {
           const ho = hitOn; hitOn = false; c.save(); rr(c, -IW / 2, -PH / 2 + 22, IW, IH, 8); c.clip(); coverIn(c, s, i, -IW / 2, -PH / 2 + 22, IW, IH, t, { bw: s.opts.bw, zoom: 1.03 }); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(230,170,100,.5)'; c.fillRect(-IW / 2, -PH / 2 + 22, IW, IH); c.restore(); hitOn = ho; c.restore(); addHit({ type: 'media', si: i, x: cx - IW / 2, y: cy - PH / 2 + 22, w: IW, h: IH, oy: 0 }); });
         block(c, fill(s.texts.text), 960, 950, KSERIF(54), 70, SA.ink, t, 0.8, 1, false, 'text');
       } else if (fr === 'slide') {
-        slideMount(c, s, 0, 640, 520, 900, -0.025, t, d, fade(t, 0, 0.8));
+        if (n >= 2) { slideMount(c, s, 0, 470, 420, 680, -0.06, t, d, fade(t, 0, 0.8)); slideMount(c, s, 1, 800, 650, 680, 0.045, t, d, fade(t, 0.4, 0.8)); }
+        else slideMount(c, s, 0, 640, 520, 900, -0.025, t, d, fade(t, 0, 0.8));
         block(c, fill(s.texts.text), 1460, 520, KSERIF(52), 80, SA.ink, t, 0.7, 1, false, 'text');
       } else if (fr === 'keyline') {
-        keyline(c, s, 0, 200, 170, 760, 740, t, d, { a: fade(t, 0, 0.8) });
+        if (n >= 2) { keyline(c, s, 0, 100, 190, 450, 640, t, d, { a: fade(t, 0, 0.8) }); keyline(c, s, 1, 590, 250, 450, 640, t, d, { a: fade(t, 0.35, 0.8) }); }
+        else keyline(c, s, 0, 200, 170, 760, 740, t, d, { a: fade(t, 0, 0.8) });
         block(c, fill(s.texts.text), 1400, 540, KSERIF(54), 80, SA.ink, t, 0.7, 1, false, 'text');
       } else if (fr === 'cinema') {
         cover(c, s, 0, 0, 138, W, 804, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.04 * clamp(t / d) }); c.fillStyle = 'rgba(0,0,0,.42)'; c.fillRect(0, 138, W, 804);
