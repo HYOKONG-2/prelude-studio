@@ -6921,7 +6921,8 @@ Object.assign(LAYOUTS, {
     name: '다이어리 웨딩 풀사진 + 흰 낙서', slots: 1, weight: 5, fields: [], opts: [['doodle', '낙서 (crown·spark·emph·heart·plane·swirl)', 'emph'], ['torn', '끝에 찢어진 종이로 넘기기', false], ['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
     draw(c, s, t, d) {
       bg(c, '#111'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.05 * clamp(t / d) });
-      const kd = ['crown', 'spark', 'emph', 'heart', 'plane', 'swirl', 'flowers', 'arrows'].includes(s.opts.doodle) ? s.opts.doodle : 'emph', p = clamp((t - 0.5) / 0.9);
+      const kd = ['crown', 'spark', 'emph', 'heart', 'plane', 'swirl', 'flowers', 'arrows', 'none'].includes(s.opts.doodle) ? s.opts.doodle : 'emph', p = clamp((t - 0.5) / 0.9);
+      if (kd === 'none') { if (s.opts.torn) mkTornWipe(c, t, d); return; }
       if (kd === 'flowers') { [[220, 300], [420, 760], [640, 180], [1320, 220], [1560, 420], [1700, 760], [1180, 880], [300, 560]].forEach(([x, y], i) => mkDoodle(c, 'flower', x, y, 1.2 + (i % 3) * 0.25, clamp((t - 0.4 - i * 0.12) / 0.5))); }
       if (kd === 'arrows') { c.save(); c.translate(560, 470); mkDoodle(c, 'arrow', 0, 0, 1.1, p); c.restore(); c.save(); c.translate(1360, 470); c.scale(-1, 1); mkDoodle(c, 'arrow', 0, 0, 1.1, clamp((t - 0.8) / 0.9)); c.restore(); mkDoodle(c, 'emph', 960, 230, 1, clamp((t - 1.2) / 0.6)); }
       if (kd === 'crown') { mkDoodle(c, 'crown', 800, 240, 1.1, p); mkDoodle(c, 'crown', 1080, 260, 1.1, clamp((t - 0.8) / 0.9)); }
@@ -6980,7 +6981,7 @@ Object.assign(LAYOUTS, {
 });
 ['mkwed', 'mkcutwed', 'mkthanks'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 LAYOUTS.mkcol2.optSelects = { sticker: [['bear', '곰돌이'], ['lolly', '롤리팝'], ['donut', '도넛'], ['flower', '꽃']] };
-LAYOUTS.mkwed.optSelects = { doodle: [['emph', '강조선 + 반짝이'], ['flowers', '작은 꽃 여러 개'], ['arrows', '양쪽 화살표'], ['crown', '왕관'], ['spark', '반짝이'], ['heart', '하트 풍선'], ['plane', '종이비행기'], ['swirl', '뱅글뱅글']] };
+LAYOUTS.mkwed.optSelects = { doodle: [['emph', '강조선 + 반짝이'], ['flowers', '작은 꽃 여러 개'], ['arrows', '양쪽 화살표'], ['crown', '왕관'], ['spark', '반짝이'], ['heart', '하트 풍선'], ['plane', '종이비행기'], ['swirl', '뱅글뱅글'], ['none', '낙서 없음']] };
 FIXED_LONG.push('mkopen', 'mkprofile', 'mkend', 'mkchat');
 CATS.push(['다이어리 스크랩 (M타입)', ['mkopen', 'mkprofile', 'mkchapter', 'mkcol2', 'mkcol3', 'mkchat', 'mkwed', 'mkcutwed', 'mkletter', 'mkthanks', 'mkend']]);
 TEMPLATES.M = {
@@ -7818,7 +7819,8 @@ Object.assign(LAYOUTS, {
       mkBg(c, 'beige');
       tornWindow(c, s, 0, 130, 80, 1660, 880, t, d, { seed: 1201 });
       const kd = s.opts.doodle || 'flowers', p = clamp((t - 0.5) / 0.9);
-      if (kd === 'flowers') [[300, 260], [520, 820], [1450, 220], [1650, 700], [1180, 860]].forEach(([x, y], i) => mkDoodle(c, 'flower', x, y, 1.3, clamp((t - 0.4 - i * 0.12) / 0.5)));
+      if (kd === 'none') { }
+      else if (kd === 'flowers') [[300, 260], [520, 820], [1450, 220], [1650, 700], [1180, 860]].forEach(([x, y], i) => mkDoodle(c, 'flower', x, y, 1.3, clamp((t - 0.4 - i * 0.12) / 0.5)));
       else if (kd === 'crown') { mkDoodle(c, 'crown', 820, 260, 1.1, p); mkDoodle(c, 'crown', 1100, 280, 1.1, clamp((t - 0.8) / 0.9)); }
       else if (kd === 'arrows') { c.save(); c.translate(560, 500); mkDoodle(c, 'arrow', 0, 0, 1.1, p); c.restore(); c.save(); c.translate(1360, 500); c.scale(-1, 1); mkDoodle(c, 'arrow', 0, 0, 1.1, clamp((t - 0.8) / 0.9)); c.restore(); }
       else { mkDoodle(c, 'emph', 960, 250, 1.2, p); mkDoodle(c, 'spark', 1500, 300, 1.2, clamp((t - 0.8) / 0.8)); }
@@ -7836,7 +7838,7 @@ Object.assign(LAYOUTS, {
   }
 });
 LAYOUTS.m2feature.optSelects = { sticker: [['bear', '곰돌이'], ['lolly', '롤리팝'], ['donut', '도넛'], ['flower', '꽃'], ['phone', '전화기']] };
-LAYOUTS.m2window.optSelects = { doodle: [['flowers', '작은 꽃'], ['crown', '왕관'], ['arrows', '화살표'], ['emph', '강조선 + 반짝이']] };
+LAYOUTS.m2window.optSelects = { doodle: [['flowers', '작은 꽃'], ['crown', '왕관'], ['arrows', '화살표'], ['emph', '강조선 + 반짝이'], ['none', '낙서 없음']] };
 FIXED_LONG.push('m2open', 'm2pair', 'm2strip');
 for (let i = CATS.length - 1; i >= 0; i--) if (CATS[i][0].startsWith('빈티지 스토리 콜라주')) CATS.splice(i, 1);
 CATS.push(['콜라주 다이어리 (M-2타입)', ['m2open', 'm2pair', 'm2kid', 'm2chapter', 'm2row', 'm2feature', 'm2scatter', 'm2window', 'm2strip']]);
