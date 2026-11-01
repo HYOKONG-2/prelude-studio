@@ -8005,11 +8005,11 @@ CATS[0][1].push('edquote2');
 /* ================= 고객 요청 템플릿 N: "L-O-V-E 포토 스트림" (black film, soft frames, lyric letters, ~200 photos) ================= */
 function nsBg(c) { bg(c, '#0B0A0A'); const g = c.createRadialGradient(960, 540, 200, 960, 540, 1100); g.addColorStop(0, 'rgba(40,34,30,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H); }
 function nsGrid(c, s, t, d, n, cols, X, Y, Wd, Ht, g, stag) { // soft feathered frames, staggered fade, gentle push-in
-  const rows = Math.ceil(n / cols), cw = (Wd - g * (cols - 1)) / cols, ch = (Ht - g * (rows - 1)) / rows, k = 1 + 0.03 * ease(clamp(t / d));
+  const rows = Math.ceil(n / cols), cw = (Wd - g * (cols - 1)) / cols, ch = (Ht - g * (rows - 1)) / rows, k = 1 + 0.02 * clamp(t / d);
   for (let i = 0; i < n; i++) {
     const r = Math.floor(i / cols), inRow = r === rows - 1 ? n - r * cols : cols, off = (cols - inRow) * (cw + g) / 2;
     const x = X + off + (i % cols) * (cw + g), y = Y + r * (ch + g), z = zoomRect([x, y, cw, ch], k);
-    frame(c, s, i, z[0], z[1], z[2], z[3], t, d, { bw: s.opts.bw, alpha: fade(t, (stag || 0.1) * i, 0.6) });
+    frame(c, s, i, z[0], z[1], z[2], z[3], t, d, { bw: s.opts.bw, alpha: fade(t, (stag || 0.1) * i * 1.8, 1.0) });
   }
 }
 Object.assign(LAYOUTS, {
@@ -8056,7 +8056,7 @@ Object.assign(LAYOUTS, {
     }
   },
   nssingle: { name: 'LOVE 사진 한 장 (흐린 프레임)', slots: 1, weight: 3.3, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
-    draw(c, s, t, d) { nsBg(c); const z = zoomRect([380, 110, 1160, 820], 1 + 0.04 * ease(clamp(t / d))); frame(c, s, 0, z[0], z[1], z[2], z[3], t, d, { bw: s.opts.bw, alpha: fade(t, 0, 0.6) }); } },
+    draw(c, s, t, d) { nsBg(c); const z = zoomRect([380, 110, 1160, 820], 1 + 0.03 * clamp(t / d)); frame(c, s, 0, z[0], z[1], z[2], z[3], t, d, { bw: s.opts.bw, alpha: fade(t, 0, 1.0) }); } },
   nsduo: { name: 'LOVE 사진 두 장', slots: 2, weight: 3.3, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) { nsBg(c); const n = autoN(s, 2); nsGrid(c, s, t, d, n, n, 170, 150, 1580, 760, 60, 0.25); } },
   nstrio: { name: 'LOVE 사진 세 장', slots: 3, weight: 3.3, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
@@ -8070,8 +8070,8 @@ Object.assign(LAYOUTS, {
   nsstream: { name: 'LOVE 흘러가는 사진 두 줄 (열 장)', slots: 10, weight: 3.3, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       nsBg(c); const n = autoN(s, 10), top = Math.ceil(n / 2), fw = 440, fh = 320, gap = 30, p = t / d;
-      [[0, top, 190, 1], [top, n, 570, -1]].forEach(([a, b, y, dir]) => { const cnt = b - a; if (cnt <= 0) return; const rowW = cnt * fw + (cnt - 1) * gap, x0 = (W - rowW) / 2 + dir * (220 - 440 * p);
-        for (let i = a; i < b; i++) frame(c, s, i, x0 + (i - a) * (fw + gap), y, fw, fh, t, d, { bw: s.opts.bw, alpha: fade(t, (i - a) * 0.08, 0.5) }); });
+      [[0, top, 190, 1], [top, n, 570, -1]].forEach(([a, b, y, dir]) => { const cnt = b - a; if (cnt <= 0) return; const rowW = cnt * fw + (cnt - 1) * gap, x0 = (W - rowW) / 2 + dir * (110 - 220 * p);
+        for (let i = a; i < b; i++) frame(c, s, i, x0 + (i - a) * (fw + gap), y, fw, fh, t, d, { bw: s.opts.bw, alpha: fade(t, (i - a) * 0.16, 0.9) }); });
     } }
 });
 LAYOUTS.nsvideo.times = [['L', 'L 가사가 나오는 시간', 0.3], ['O', 'O 가사가 나오는 시간', 4.3], ['V', 'V 가사가 나오는 시간', 8.3], ['E', 'E 가사가 나오는 시간', 12.3], ['ALL', 'L O V E 큰 글자가 나오는 시간', 16.4]];
@@ -8079,7 +8079,7 @@ CATS.push(['LOVE 포토 스트림 (N타입)', ['nsintro', 'nsprofile', 'nsvideo'
 TEMPLATES.N = {
   custom: true,
   name: 'L-O-V-E 포토 스트림', desc: '어두운 필름 화면에 흐린 프레임 사진. 인트로(3초) → 신랑·신부 소개(3초) → 0:06부터 30초 영상 + L·O·V·E 가사 글자 → 이후 약 200장의 사진이 3초대 장면으로 자연스럽게 흘러가는 2분 34초 구성',
-  tags: ['음원 2:34', '가사 맞춤 인트로', '사진 약 200장', '30초 영상 삽입'], preview: 0,
+  tags: ['음원 2:34', '가사 맞춤 인트로', '사진 약 90장', '30초 영상 삽입'], preview: 0,
   make: () => {
     const flow = ['nsgrid6', 'nsduo', 'nsstream', 'nstrio', 'nsgrid8', 'nsgrid4', 'nssingle', 'nsgrid6', 'nsstream', 'nstrio', 'nsgrid8', 'nsduo', 'nsgrid6', 'nsgrid4', 'nsstream', 'nstrio', 'nsgrid8', 'nsgrid6'];
     const list = [['nsintro', {}, 3], ['nsprofile', {}, 3], ['nsvideo', {}, 30]];
@@ -8094,7 +8094,7 @@ TEMPLATES.N = {
 Object.assign(LAYOUTS, {
   nsrec: { name: 'LOVE 캠코더 화면 (REC)', slots: 1, weight: 3.3, fields: [['tc', '아래 글씨', '{DATE}']], opts: [['bw', '흑백', false]], cap: () => [960, 990, 'photo'],
     draw(c, s, t, d) {
-      bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.04 * clamp(t / d) });
+      bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.025 * clamp(t / d) });
       c.save(); c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 4; const m = 70, L = 70;
       [[m, m, 1, 1], [W - m, m, -1, 1], [W - m, H - m, -1, -1], [m, H - m, 1, -1]].forEach(([x, y, sx, sy]) => { c.beginPath(); c.moveTo(x, y + sy * L); c.lineTo(x, y); c.lineTo(x + sx * L, y); c.stroke(); });
       c.beginPath(); c.moveTo(930, 540); c.lineTo(990, 540); c.moveTo(960, 510); c.lineTo(960, 570); c.lineWidth = 2; c.stroke(); c.restore();
@@ -8117,18 +8117,18 @@ Object.assign(LAYOUTS, {
   nsbooth: { name: 'LOVE 포토부스 네 컷 두 줄 (여덟 장)', slots: 8, weight: 3.3, fields: [['tag', '아래 글씨', 'LOVE · {DATE}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       nsBg(c); const n = autoN(s, 8), strips = n > 4 ? 2 : 1, xs = strips === 2 ? [600, 1320] : [960];
-      xs.forEach((cx, k) => { const cnt = k === 0 ? Math.min(4, n) : n - 4, e = ease(clamp((t - k * 0.25) / 0.7)); c.save(); c.globalAlpha *= e; c.translate(0, (1 - e) * (k ? -80 : 80));
+      xs.forEach((cx, k) => { const cnt = k === 0 ? Math.min(4, n) : n - 4, e = ease(clamp((t - k * 0.45) / 1.2)); c.save(); c.globalAlpha *= e; c.translate(0, (1 - e) * (k ? -60 : 60));
         c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 20 * R.S; c.fillStyle = '#F7F5F0'; c.fillRect(cx - 170, 40, 340, 1000); c.restore();
         for (let i = 0; i < cnt; i++) { const ho = hitOn; hitOn = false; coverIn(c, s, k * 4 + i, cx - 145, 64 + i * 225, 290, 205, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho; addHit({ type: 'media', si: k * 4 + i, x: cx - 145, y: 64 + i * 225, w: 290, h: 205, oy: 0 }); }
         c.font = UIF(18, 700); c.fillStyle = '#3A3532'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(fill(s.texts.tag), cx, 1012); c.restore(); });
     } },
   nsfilm: { name: 'LOVE 필름 스트립 네 컷', slots: 4, weight: 3.3, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1000, 'dark'],
     draw(c, s, t, d) {
-      nsBg(c); const n = autoN(s, 4), p = t / d, shift = 120 - 240 * p;
+      nsBg(c); const n = autoN(s, 4), p = t / d, shift = 60 - 120 * p;
       c.fillStyle = '#1B1918'; c.fillRect(0, 260, W, 560); c.fillStyle = '#0B0A0A'; const off = ((shift % 64) + 64) % 64;
       for (let x = off - 64; x < W + 64; x += 64) { rr(c, x, 276, 34, 22, 5); c.fill(); rr(c, x, 782, 34, 22, 5); c.fill(); }
       const fw = 420, gap = 30, tot = n * fw + (n - 1) * gap, x0 = (W - tot) / 2 + shift;
-      for (let i = 0; i < n; i++) { c.save(); c.globalAlpha *= fade(t, 0.1 + i * 0.12, 0.5); cover(c, s, i, x0 + i * (fw + gap), 320, fw, 440, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore(); c.font = F.ui(18, 600); c.fillStyle = '#E8A33C'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(`${20 + i}  ▶`, x0 + i * (fw + gap), 800); }
+      for (let i = 0; i < n; i++) { c.save(); c.globalAlpha *= fade(t, 0.1 + i * 0.22, 0.9); cover(c, s, i, x0 + i * (fw + gap), 320, fw, 440, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore(); c.font = F.ui(18, 600); c.fillStyle = '#E8A33C'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText(`${20 + i}  ▶`, x0 + i * (fw + gap), 800); }
     } },
   nspolaroid: { name: 'LOVE 폴라로이드 세 장 (어두운 바탕)', slots: 3, weight: 3.3, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
@@ -8172,15 +8172,17 @@ Object.assign(LAYOUTS, {
 });
 ['nsthanks', 'nsend'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 CATS.find(c => c[0] === 'LOVE 포토 스트림 (N타입)')[1].push('nsthanks', 'nsend');
-TEMPLATES.N.desc = '어두운 필름 화면에 흐린 프레임 사진. 인트로(3초) → 신랑·신부 소개(3초) → 0:06부터 30초 영상 + L·O·V·E 가사 글자 → 약 200장의 사진이 프레임 장면과 함께 흘러가고 → 마무리 멘트와 이름 엔딩으로 끝나는 2분 34초 구성';
+TEMPLATES.N.desc = '어두운 필름 화면에 흐린 프레임 사진. 인트로(3초) → 신랑·신부 소개(3초) → 0:06부터 30초 영상 + L·O·V·E 가사 글자 → 사진 약 90장이 장면당 약 5초씩 천천히 흘러가고 → 마무리 멘트와 이름 엔딩으로 끝나는 2분 34초 구성';
 TEMPLATES.N.make = () => {
   // 200 photos in total: intro 1 + profile 2 + flow 193 + closing 4
   const flow = ['nsgrid6', 'nsrec', 'nsstream', 'nsbooth', 'nsgrid8', 'nsfilm', 'nsstream', 'nsphone', 'nsgrid6', 'nspolaroid', 'nsstream', 'nsbooth', 'nsgrid8', 'nsrec', 'nsstream', 'nsfilm', 'nsgrid6', 'nsbooth', 'nsgrid4', 'nsgrid8', 'nsphone', 'nsstream', 'nsgrid6', 'nsbooth', 'nsfilm', 'nsgrid4', 'nsgrid8', 'nsphone', 'nsstream', 'nsgrid6', 'nsbooth'];
   const END = [['nsthanks', { texts: { text: '소중한 시간을 내어 저희 결혼식에 참석해 주신' } }, 4], ['nsthanks', { texts: { text: '모든 분들께 진심으로 감사드립니다.' } }, 4], ['nsthanks', { texts: { text: '행복하게 잘 살겠습니다.' } }, 4], ['nsend', {}, 6]];
+  const flow2 = ['nsgrid4', 'nsrec', 'nstrio', 'nsbooth', 'nssingle', 'nsfilm', 'nsgrid6', 'nsphone', 'nsduo', 'nspolaroid', 'nsstream', 'nsgrid4', 'nssingle', 'nsfilm', 'nstrio', 'nsbooth', 'nsduo', 'nsgrid6', 'nssingle', 'nspolaroid', 'nsgrid4'];
+  flow.splice(0, flow.length, ...flow2);
   const endLen = 18, flowLen = 154 - 36 - endLen, per = Math.round(flowLen / flow.length * 100) / 100;
   const list = [['nsintro', {}, 3], ['nsprofile', {}, 3], ['nsvideo', {}, 30], ...flow.map(k => [k, {}, per]), ...END];
   const sc = mkScenes(list);
-  sc.forEach((s, i) => { s.weight = list[i][2]; if (i) s.tr = i % 3 === 0 ? 'cut' : 'dissolve'; });
+  sc.forEach((s, i) => { s.weight = list[i][2]; if (i) s.tr = 'dissolve'; });
   const fe = 3 + flow.length; sc[3].tr = 'dissolve'; for (let i = fe; i < sc.length; i++) sc[i].tr = 'dissolve';
   return baseProj('N', sc, { lyricFx: '' });
 };
@@ -8440,10 +8442,10 @@ LAYOUTS.nspolaroid = { name: 'LOVE 큰 폴라로이드 (겹쳐 놓인 세 장)',
   draw(c, s, t, d) {
     nsBg(c); const n = autoN(s, 3), P = { 1: [[960, 540, -1.5]], 2: [[770, 545, -5], [1150, 530, 4]], 3: [[620, 560, -7], [1300, 560, 6], [960, 520, -1]] }[n], order = n === 3 ? [0, 1, 2] : [...Array(n).keys()];
     const lg = c.createRadialGradient(960, 520, 100, 960, 520, 900); lg.addColorStop(0, 'rgba(255,240,220,.07)'); lg.addColorStop(1, 'rgba(255,240,220,0)'); c.fillStyle = lg; c.fillRect(0, 0, W, H);
-    order.forEach(i => { const [cx, cy, rot] = P[i], e = ease(clamp((t - i * 0.25) / 0.8)); if (e <= 0) return; const pw = 600, ph = 720, iw = 540, ih = 560;
+    order.forEach(i => { const [cx, cy, rot] = P[i], e = ease(clamp((t - i * 0.45) / 1.2)); if (e <= 0) return; const pw = 600, ph = 720, iw = 540, ih = 560;
       c.save(); c.globalAlpha *= e; c.translate(cx, cy + (1 - e) * 60); c.rotate(rot * Math.PI / 180);
       c.save(); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = 34 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#F6F3EC'; c.fillRect(-pw / 2, -ph / 2, pw, ph); c.restore();
-      const ho = hitOn; hitOn = false; coverIn(c, s, i, -iw / 2, -ph / 2 + 30, iw, ih, t, { bw: s.opts.bw, zoom: 1.03 + 0.03 * clamp(t / d) }); hitOn = ho; c.restore();
+      const ho = hitOn; hitOn = false; coverIn(c, s, i, -iw / 2, -ph / 2 + 30, iw, ih, t, { bw: s.opts.bw, zoom: 1.03 + 0.02 * clamp(t / d) }); hitOn = ho; c.restore();
       addHit({ type: 'media', si: i, x: cx - iw / 2, y: cy - ph / 2 + 30, w: iw, h: ih, oy: 0 }); });
   } };
 // the slide-film frame in the thank-you scenes: one large mount with a big window
