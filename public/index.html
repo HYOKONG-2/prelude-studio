@@ -8660,6 +8660,45 @@ LAYOUTS.sadday = { name: '순애보 D-DAY 카드 (세로 사진 + 숫자 카운�
 CATS.find(c => c[0] === '순애보 시네마 (K타입)')[1].push('sadday');
 // new K projects: the countdown card closes chapter 02, right before '03 그리고, 오늘'
 TEMPLATES.K.make = (o => () => { const p = o(); const i = p.scenes.findIndex(s => s.layout === 'sachapter' && s.texts.num === '03'); if (i > 0) { const n = makeScene('sadday', { weight: 4.5 }); n.weight = 4.5; n.tr = 'dissolve'; p.scenes.splice(i, 0, n); } return p; })(TEMPLATES.K.make);
+/* ---- K: calmer pacing — new 1–2 photo scenes, and only one 8-photo scene per template ---- */
+Object.assign(LAYOUTS, {
+  sapair: { name: '순애보 두 장 겹침 (큰 사진 + 작은 사진)', slots: 2, weight: 4, fields: [['cap', '작은 글씨', '']], opts: [['flip', '좌우 바꾸기', false], ['bw', '흑백', false], ['light', '밝은 배경 (웨딩용)', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      saTheme(s); saBg(c); const f = s.opts.flip, n = autoN(s, 2), M = (x, w) => f ? W - x - w : x;
+      keyline(c, s, 0, M(230, 900), 110, 900, 760, t, d, { a: fade(t, 0, 0.9), zoom: 1.02 + 0.04 * clamp(t / d) });
+      if (n > 1) { const e = ease(clamp((t - 0.6) / 1.1)); keyline(c, s, 1, M(1150, 520), 330 + (1 - e) * 40, 520, 660, t, d, { a: e, zoom: 1.03 }); }
+      txt(c, fill(s.texts.cap), f ? 1690 : 230, 960, KSERIF(32), SA.sub, fade(t, 1.0, 0.7), { align: f ? 'right' : 'left', k: 'cap' });
+      saTheme(null);
+    } },
+  sablur: { name: '순애보 한 장 (흐린 배경 위 세로 사진)', slots: 1, weight: 4, fields: [['cap', '아래 작은 글씨', '']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#0C0C0D'); c.save(); c.globalAlpha = 0.55; softBg(c, s, 0, s.opts.bw); c.restore(); c.fillStyle = 'rgba(8,8,9,.45)'; c.fillRect(0, 0, W, H);
+      SA_DARK && Object.assign(SA, SA_DARK); keyline(c, s, 0, 660, 80, 600, 840, t, d, { a: fade(t, 0, 0.9), zoom: 1.02 + 0.04 * clamp(t / d) });
+      txt(c, fill(s.texts.cap), 960, 1000, KSERIF(32), SA_DARK.sub, fade(t, 0.9, 0.7), { k: 'cap' });
+    } },
+  samat: { name: '순애보 한 장 (짙은 매트 액자 + 캡션)', slots: 1, weight: 4, fields: [['cap', '캡션', 'our days'], ['year', '작은 숫자', '']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      saTheme(null); saBg(c); const a = fade(t, 0, 0.9), X = 400, Y = 90, Wd = 1120, Ht = 760, m = 44;
+      c.save(); c.globalAlpha *= a; c.save(); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#1B1A19'; c.fillRect(X - m, Y - m, Wd + 2 * m, Ht + 2 * m); c.restore();
+      c.strokeStyle = 'rgba(242,238,232,.18)'; c.lineWidth = 1.5; c.strokeRect(X - 12, Y - 12, Wd + 24, Ht + 24);
+      cover(c, s, 0, X, Y, Wd, Ht, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
+      txt(c, fill(s.texts.cap), X - m, 975, SERIF(40, true), SA_DARK.ink, fade(t, 0.8, 0.7), { align: 'left', k: 'cap' });
+      txt(c, fill(s.texts.year), X + Wd + m, 975, UIF(22, 600), SA_DARK.sub, fade(t, 1.0, 0.7), { align: 'right', k: 'year', sp: 6 });
+    } }
+});
+CATS.find(c => c[0] === '순애보 시네마 (K타입)')[1].push('sapair', 'sablur', 'samat');
+TEMPLATES.K.make = (o => () => {
+  const p = o(); const BIG = ['nsgrid6', 'nsgrid8', 'nsstream', 'nsbooth', 'sanega'], swap = ['sapair', 'sablur', 'samat', 'sapair', 'saletter', 'sasplit'];
+  let kept = false, k = 0;
+  p.scenes.forEach((s, i) => {
+    if (!BIG.includes(s.layout)) return;
+    if (!kept && s.layout === 'sanega') { kept = true; return; } // one film strip with up to 8 photos stays
+    const n = makeScene(swap[k++ % swap.length], { weight: s.weight }); n.weight = Math.max(3.8, s.weight); n.tr = s.tr;
+    if (p.scenes[i].opts && p.scenes[i].opts.light) n.opts.light = true;
+    p.scenes[i] = n;
+  });
+  return p;
+})(TEMPLATES.K.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
