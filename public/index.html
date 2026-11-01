@@ -8338,7 +8338,7 @@ Object.assign(LAYOUTS, {
           const ho = hitOn; hitOn = false; c.save(); rr(c, -IW / 2, -PH / 2 + 22, IW, IH, 8); c.clip(); coverIn(c, s, i, -IW / 2, -PH / 2 + 22, IW, IH, t, { bw: s.opts.bw, zoom: 1.03 }); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(230,170,100,.5)'; c.fillRect(-IW / 2, -PH / 2 + 22, IW, IH); c.restore(); hitOn = ho; c.restore(); addHit({ type: 'media', si: i, x: cx - IW / 2, y: cy - PH / 2 + 22, w: IW, h: IH, oy: 0 }); });
         block(c, fill(s.texts.text), 960, 950, KSERIF(54), 70, SA.ink, t, 0.8, 1, false, 'text');
       } else if (fr === 'slide') {
-        if (n >= 2) { slideMount(c, s, 0, 470, 420, 680, -0.06, t, d, fade(t, 0, 0.8)); slideMount(c, s, 1, 800, 650, 680, 0.045, t, d, fade(t, 0.4, 0.8)); }
+        if (n >= 2) { slideMount(c, s, 0, 320, 520, 540, -0.035, t, d, fade(t, 0, 0.8)); slideMount(c, s, 1, 880, 540, 540, 0.03, t, d, fade(t, 0.4, 0.8)); }
         else slideMount(c, s, 0, 640, 520, 900, -0.025, t, d, fade(t, 0, 0.8));
         block(c, fill(s.texts.text), 1460, 520, KSERIF(52), 80, SA.ink, t, 0.7, 1, false, 'text');
       } else if (fr === 'keyline') {
@@ -9139,10 +9139,11 @@ function loop() {
 }
 
 /* ---------------- thumbnails ---------------- */
-const thumbQueue = new Set();
+const thumbQueue = new Set(), thumbUrl = new Map(); let thumbLast = 0;
 function queueThumb(id) { thumbQueue.add(id); }
 function pumpThumbs() {
-  if (!thumbQueue.size || playing) return;
+  if (!thumbQueue.size) return;
+  if (playing) { const now = performance.now(); if (now - thumbLast < 300) return; thumbLast = now; } // keep refreshing slowly while playing
   const id = thumbQueue.values().next().value; thumbQueue.delete(id);
   const i = project.scenes.findIndex(s => s.id === id); if (i < 0) return;
   const cv = document.querySelector(`.card[data-id="${id}"] canvas`); if (!cv) return;
@@ -9151,7 +9152,12 @@ function pumpThumbs() {
   drawScene(c, i, timeline[i].dur * 0.75, false);
   collectVideos = keep;
   cv.getContext('2d').drawImage(TR.canvas, 0, 0, cv.width, cv.height);
+  // keep a picture copy behind the canvas: if the browser drops the canvas memory (many photos / long sessions), the card still shows the thumbnail instead of going black
+  try { cv.toBlob(b => { if (!b) return; const u = URL.createObjectURL(b), old = thumbUrl.get(id); thumbUrl.set(id, u); if (old) setTimeout(() => URL.revokeObjectURL(old), 4000); cv.style.backgroundImage = `url(${u})`; cv.style.backgroundSize = '100% 100%'; }, 'image/jpeg', 0.8); } catch (e) { }
+  if (!cv._lostHooked) { cv._lostHooked = true; cv.addEventListener('contextrestored', () => { thumbQueue.add(id); }); }
 }
+// if the thumbnail renderer itself loses its canvas, redraw every card once it's back
+TR.canvas.addEventListener && TR.canvas.addEventListener('contextrestored', () => { project.scenes.forEach(s => thumbQueue.add(s.id)); });
 
 /* ---------------- direct manipulation on the preview ---------------- */
 let editSel = null, drag = null;
@@ -9271,6 +9277,7 @@ function buildStrip() {
     b.innerHTML = `<canvas width="320" height="180"></canvas><div class="cap"><span>${i + 1}. ${esc(LAYOUTS[s.layout].name)}</span><span>${timeline[i].dur.toFixed(1)}초</span></div>`;
     b.onclick = () => { select(i); seek(timeline[i].start + Math.min(timeline[i].dur * 0.6, 3)); };
     el.appendChild(b); queueThumb(s.id);
+    { const u = thumbUrl.get(s.id), cv0 = b.querySelector('canvas'); if (u && cv0) { cv0.style.backgroundImage = `url(${u})`; cv0.style.backgroundSize = '100% 100%'; } } // show the last picture right away instead of a black card
   });
   const as = $('addScene'); if (!as) return;
   as.hidden = CUSTOMER;
