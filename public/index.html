@@ -8639,6 +8639,25 @@ LAYOUTS.samsg.optSelects.frame.splice(1, 0, ['album', '옛날 사진 3~4장 앨�
 }
 // new K projects: the three parents' lines use the album frame
 TEMPLATES.K.make = (o => () => { const p = o(); const ms = p.scenes.filter(s => s.layout === 'samsg'); [2, 3, 4].forEach(k => { if (ms[k]) ms[k].opts.frame = 'album'; }); return p; })(TEMPLATES.K.make);
+/* ---- K: wedding countdown card (portrait photo + rolling D-day number) ---- */
+LAYOUTS.sadday = { name: '순애보 D-DAY 카드 (세로 사진 + 숫자 카운트)', slots: 1, weight: 4.5,
+  fields: [['kicker', '작은 영문', 'WEDDING COUNTDOWN'], ['num', 'D- 숫자', '365'], ['text', '아래 글', '1년 뒤, 우리는 부부가 됩니다'], ['date', '작은 날짜 (비워도 돼요)', '']],
+  opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false], ['light', '밝은 배경 (웨딩용)', false]], cap: s => [s.opts.flip ? 560 : 1360, 1045, 'dark'],
+  draw(c, s, t, d) {
+    saTheme(s); saBg(c); const f = s.opts.flip, px = f ? 1100 : 220, cx = f ? 560 : 1360;
+    keyline(c, s, 0, px, 100, 640, 860, t, d, { a: fade(t, 0, 0.9), zoom: 1.02 + 0.04 * clamp(t / d) });
+    txt(c, fill(s.texts.kicker), cx, 300, UIF(22, 700), SA.sub, fade(t, 0.5, 0.6), { k: 'kicker', sp: 12 });
+    const raw = fill(s.texts.num), num = parseInt(raw, 10), k = ease(clamp((t - 0.7) / 1.4));
+    const shown = isFinite(num) && String(num) === raw.trim() ? String(Math.round(num * k)) : raw;
+    txt(c, 'D-' + shown, cx, 470, SERIF(190), SA.ink, fade(t, 0.6, 0.6), { k: 'num' });
+    const lp = ease(clamp((t - 1.6) / 0.6)); c.fillStyle = SA.line; c.fillRect(cx - 90 * lp, 610, 180 * lp, 1.2);
+    txt(c, fill(s.texts.text), cx, 680, KSERIF(40), SA.ink, fade(t, 1.8, 0.7), { k: 'text' });
+    txt(c, fill(s.texts.date), cx, 745, UIF(22, 500), SA.sub, fade(t, 2.0, 0.7), { k: 'date', sp: 6 });
+    saTheme(null);
+  } };
+CATS.find(c => c[0] === '순애보 시네마 (K타입)')[1].push('sadday');
+// new K projects: the countdown card closes chapter 02, right before '03 그리고, 오늘'
+TEMPLATES.K.make = (o => () => { const p = o(); const i = p.scenes.findIndex(s => s.layout === 'sachapter' && s.texts.num === '03'); if (i > 0) { const n = makeScene('sadday', { weight: 4.5 }); n.weight = 4.5; n.tr = 'dissolve'; p.scenes.splice(i, 0, n); } return p; })(TEMPLATES.K.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
