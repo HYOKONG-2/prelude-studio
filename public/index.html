@@ -8717,17 +8717,17 @@ function kTransitions(p) {
 }
 TEMPLATES.K.make = (o => () => kTransitions(o()))(TEMPLATES.K.make);
 /* ================= 고객 요청 6: "답 프로포즈 레터" — modern, letter lines that are easy to read ================= */
-const LP = { sans: (px, w) => `${w || 500} ${px}px "IBM Plex Sans KR", "Noto Sans KR", sans-serif`, serif: (px, it) => `${it ? 'italic ' : ''}400 ${px}px "Cormorant Garamond", "Gowun Batang", serif` };
+const LP = { hand: px => `400 ${Math.round(px * 1.45)}px "Nanum Pen Script", "Gaegu", "Gowun Dodum", sans-serif`, sans: (px, w) => `${w || 500} ${px}px "IBM Plex Sans KR", "Noto Sans KR", sans-serif`, serif: (px, it) => `${it ? 'italic ' : ''}400 ${px}px "Cormorant Garamond", "Gowun Batang", serif` };
 function lpLines(c, text, cx, cy, px, lh, col, t, st, key, align) { // letter text: each line fades up in turn, with a soft shadow for photos
   const lines = String(text || '').split('\n'); const n = lines.length, y0 = cy - (n - 1) * lh / 2;
-  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + i * 0.45, 0.8); txt(c, l, cx, y0 + i * lh + (1 - ease(clamp((t - st - i * 0.45) / 0.8))) * 12, LP.sans(px, 500), col, a, { align: align || 'center', k: i === 0 ? key : null, shadow: col === '#FFFFFF' ? 'rgba(0,0,0,.55)' : null, blur: col === '#FFFFFF' ? 14 : 0 }); });
+  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + i * 0.45, 0.8); txt(c, l, cx, y0 + i * lh + (1 - ease(clamp((t - st - i * 0.45) / 0.8))) * 12, LP.hand(px), col, a, { align: align || 'center', k: key, shadow: col === '#FFFFFF' ? 'rgba(0,0,0,.55)' : null, blur: col === '#FFFFFF' ? 14 : 0 }); });
   addHit({ type: 'text', key, x: cx - 700, y: y0 - lh / 2, w: 1400, h: n * lh });
 }
 Object.assign(LAYOUTS, {
   lpopen: { name: '레터 오프닝 (흐린 사진 + To.)', slots: 1, weight: 6, fields: [['to', '받는 사람', 'To. 나의 사랑에게'], ['title', '큰 글씨', 'Dear my love'], ['date', '날짜', '{DATE}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#0E0E0F'); c.save(); c.globalAlpha = 0.35 * fade(t, 0, 1.5); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.08 - 0.05 * clamp(t / d) }); c.restore();
-      txt(c, fill(s.texts.to), 960, 430, LP.sans(30, 400), 'rgba(255,255,255,.8)', fade(t, 0.6, 0.8), { k: 'to', sp: 4 });
+      txt(c, fill(s.texts.to), 960, 425, LP.hand(36), 'rgba(255,255,255,.88)', fade(t, 0.6, 0.8), { k: 'to' });
       txt(c, fill(s.texts.title), 960, 540, LP.serif(120, true), '#FFFFFF', fade(t, 1.0, 1.0), { k: 'title' });
       txt(c, fill(s.texts.date), 960, 650, LP.sans(24, 400), 'rgba(255,255,255,.6)', fade(t, 1.6, 0.8), { k: 'date', sp: 6 });
     } },
@@ -8735,30 +8735,30 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.04 * clamp(t / d) });
       const g = c.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.72)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-      noBg(() => lpLines(c, fill(s.texts.text), 960, 880, 54, 80, '#FFFFFF', t, 0.5, 'text'));
+      noBg(() => lpLines(c, fill(s.texts.text), 960, 870, 54, 88, '#FFFFFF', t, 0.5, 'text'));
     } },
   lpside: { name: '레터 사진 + 옆 편지 글 (여백 있는 모던)', slots: 1, weight: 4.6, fields: [['text', '편지 글', '어색하게 웃던 너의 얼굴이\n아직도 생생해', true]], opts: [['flip', '사진 왼쪽', false], ['dark', '어두운 배경', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 1440 : 480, 1045, s.opts.dark ? 'dark' : 'light'],
     draw(c, s, t, d) {
       const dk = s.opts.dark, f = s.opts.flip; bg(c, dk ? '#141414' : '#F4F2EE');
       const px = f ? 0 : 960; c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, px, 0, 960, H, t, { bw: s.opts.bw, dark: dk, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
       const cx = f ? 1440 : 480; c.fillStyle = dk ? 'rgba(255,255,255,.35)' : 'rgba(20,20,20,.3)'; c.fillRect(cx - 30 * ease(clamp((t - 0.3) / 0.6)), 330, 60 * ease(clamp((t - 0.3) / 0.6)), 1.5);
-      lpLines(c, fill(s.texts.text), cx, 540, 50, 78, dk ? '#F4F2EE' : '#1A1A1A', t, 0.5, 'text');
+      lpLines(c, fill(s.texts.text), cx, 540, 50, 86, dk ? '#F4F2EE' : '#1A1A1A', t, 0.5, 'text');
     } },
   lpduo: { name: '레터 사진 두 장 + 아래 편지 글', slots: 2, weight: 4.6, fields: [['text', '편지 글', '같이 걷던 길, 같이 먹던 밥\n사소한 것들이 하나씩 추억이 되었어', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#121212'); const n = autoN(s, 2);
       if (n <= 1) { c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, 260, 70, 1400, 700, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); }
       else { [[90, 0], [990, 0.3]].forEach(([x, st], i) => { c.save(); c.globalAlpha = fade(t, st, 0.8); cover(c, s, i, x, 80, 840, 680, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); }); }
-      lpLines(c, fill(s.texts.text), 960, 900, 50, 76, '#FFFFFF', t, 0.6, 'text');
+      lpLines(c, fill(s.texts.text), 960, 900, 50, 82, '#FFFFFF', t, 0.6, 'text');
     } },
   lptext: { name: '레터 글만 (가운데 큰 글씨)', slots: 0, weight: 4, fields: [['text', '편지 글', '그래서 이번엔\n내가 대답하려고 해', true]], opts: [['light', '밝은 배경', false]], cap: s => [960, 1045, s.opts.light ? 'light' : 'dark'],
-    draw(c, s, t, d) { const lt = s.opts.light; bg(c, lt ? '#F4F2EE' : '#0E0E0F'); lpLines(c, fill(s.texts.text), 960, 540, 64, 96, lt ? '#1A1A1A' : '#FFFFFF', t, 0.4, 'text'); } },
+    draw(c, s, t, d) { const lt = s.opts.light; bg(c, lt ? '#F4F2EE' : '#0E0E0F'); lpLines(c, fill(s.texts.text), 960, 540, 64, 108, lt ? '#1A1A1A' : '#FFFFFF', t, 0.4, 'text'); } },
   lpend: { name: '레터 엔딩 (Will you marry me?)', slots: 1, weight: 10, fields: [['small', '위 작은 글', '이번엔 내가 물어볼게'], ['big', '큰 글씨', 'Will you marry me?'], ['from', '보내는 사람', 'From. 너의 {신부}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#000'); c.save(); c.globalAlpha = 0.5; cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.04 * clamp(t / d) }); c.restore(); c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H);
-      txt(c, fill(s.texts.small), 960, 420, LP.sans(36, 400), 'rgba(255,255,255,.85)', fade(t, 0.6, 0.8), { k: 'small' });
+      txt(c, fill(s.texts.small), 960, 415, LP.hand(42), 'rgba(255,255,255,.9)', fade(t, 0.6, 0.8), { k: 'small' });
       txt(c, fill(s.texts.big), 960, 540, LP.serif(132, true), '#FFFFFF', fade(t, 1.6, 1.2), { k: 'big', shadow: 'rgba(0,0,0,.4)', blur: 16 });
-      txt(c, fill(s.texts.from), 960, 680, LP.sans(28, 400), 'rgba(255,255,255,.75)', fade(t, 2.8, 0.8), { k: 'from', sp: 4 });
+      txt(c, fill(s.texts.from), 960, 685, LP.hand(34), 'rgba(255,255,255,.85)', fade(t, 2.8, 0.8), { k: 'from' });
       const end = clamp((t - (d - 2)) / 1.8); if (end > 0) { c.fillStyle = `rgba(0,0,0,${ease(end)})`; c.fillRect(0, 0, W, H); }
     } }
 });
