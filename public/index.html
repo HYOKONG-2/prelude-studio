@@ -8787,6 +8787,103 @@ TEMPLATES.P = {
     return baseProj('P', sc, { lyricFx: '' });
   }
 };
+/* ================= 고객 요청 7: "축가 플레이어" — record sliding out of its sleeve, synced lyrics, live audio bars ================= */
+const ckEnv = { buf: null, env: null };
+function ckEnvelope() { // loudness of the song, 30 values per second (used for the bars)
+  if (typeof abuf === 'undefined' || !abuf) return null;
+  if (ckEnv.buf === abuf) return ckEnv.env;
+  const ch = abuf.getChannelData(0), sr = abuf.sampleRate, step = Math.floor(sr / 30), n = Math.floor(ch.length / step), env = new Float32Array(n); let mx = 1e-6;
+  for (let i = 0; i < n; i++) { let s2 = 0; for (let j = 0; j < step; j += 8) { const v = ch[i * step + j] || 0; s2 += v * v; } env[i] = Math.sqrt(s2 / (step / 8)); mx = Math.max(mx, env[i]); }
+  for (let i = 0; i < n; i++) env[i] /= mx; ckEnv.buf = abuf; ckEnv.env = env; return env;
+}
+function ckTotal() { const L = timeline && timeline.length ? timeline[timeline.length - 1].start + timeline[timeline.length - 1].dur : 0; return (typeof abuf !== 'undefined' && abuf) ? abuf.duration : L; }
+function ckGT(t) { return (timeline && timeline[curIdx] ? timeline[curIdx].start : 0) + t; }
+LAYOUTS.cksong = {
+  name: '축가 플레이어 (LP + 가사 + 진행바)', slots: 2, weight: 20.5, ownLyrics: true, slotNames: ['배경·LP 커버 사진', 'LP 가운데 동그란 사진'],
+  fields: [['head', '위 작은 글씨', 'NOW PLAYING'], ['title', '곡 제목', 'Flower'], ['artist', '가수', 'OVAN'], ['sleeve', 'LP 커버 글씨', 'Our Wedding Song'], ['names', '이름', '{GROOM} & {BRIDE}'], ['date', '날짜', '{DATE}']],
+  opts: [['intro', '인트로 (가사 대신 큰 제목)', false], ['bw', '흑백', false]], cap: () => [1460, 1045, 'dark'],
+  draw(c, s, t, d) {
+    const gT = ckGT(t), total = Math.max(1, ckTotal()), intro = !!s.opts.intro;
+    // background: the cover photo, blurred and dimmed, with warm vignette
+    bg(c, '#0B0B0C'); c.save(); c.globalAlpha = 0.85; softBg(c, s, 0, s.opts.bw); c.restore();
+    c.fillStyle = 'rgba(8,8,10,.55)'; c.fillRect(0, 0, W, H);
+    const vg = c.createRadialGradient(760, 540, 200, 960, 540, 1250); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)'); c.fillStyle = vg; c.fillRect(0, 0, W, H);
+    // floating light specks
+    for (let i = 0; i < 46; i++) { const sp = 6 + rnd(i, 501) * 14, x = (rnd(i, 502) * W + Math.sin(gT * 0.2 + i) * 20), y = (H + 40 - ((rnd(i, 503) * (H + 80) + gT * sp) % (H + 80))), tw = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(gT * (1 + rnd(i, 504) * 2) + i)); c.fillStyle = `rgba(255,244,225,${0.35 * tw})`; c.beginPath(); c.arc(x, y, 1 + rnd(i, 505) * 2.2, 0, Math.PI * 2); c.fill(); }
+    // record: slides out of the sleeve at the very start, then keeps turning
+    const SX = 140, SY = 230, SS = 620, slide = ease(clamp((gT - 0.6) / 2.2)), rx = SX + SS / 2 + 320 * slide, ry = SY + SS / 2, RR = 300, ang = gT * Math.PI * 2 * 0.22;
+    c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 40 * R.S; c.shadowOffsetX = 10 * R.S; c.shadowOffsetY = 16 * R.S;
+    const dg = c.createRadialGradient(rx, ry, 20, rx, ry, RR); dg.addColorStop(0, '#1C1C1E'); dg.addColorStop(1, '#0D0D0E'); c.fillStyle = dg; c.beginPath(); c.arc(rx, ry, RR, 0, Math.PI * 2); c.fill(); c.restore();
+    c.save(); c.beginPath(); c.arc(rx, ry, RR, 0, Math.PI * 2); c.clip();
+    for (let k = 0; k < 34; k++) { const r2 = 128 + k * 5; c.strokeStyle = `rgba(255,255,255,${k % 5 === 0 ? 0.07 : 0.035})`; c.lineWidth = 1; c.beginPath(); c.arc(rx, ry, r2, 0, Math.PI * 2); c.stroke(); }
+    // light catching the grooves (fixed, the disc turns under it)
+    [[-0.9, 0.11], [2.25, 0.08]].forEach(([a0, al]) => { const g = c.createRadialGradient(rx, ry, 120, rx, ry, RR); g.addColorStop(0, `rgba(255,255,255,0)`); g.addColorStop(0.6, `rgba(255,255,255,${al})`); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.beginPath(); c.moveTo(rx, ry); c.arc(rx, ry, RR, a0 - 0.28, a0 + 0.28); c.closePath(); c.fill(); });
+    c.restore();
+    // label with the round photo, turning
+    c.save(); c.translate(rx, ry); c.rotate(ang); c.beginPath(); c.arc(0, 0, 112, 0, Math.PI * 2); c.clip();
+    const ho = hitOn; hitOn = false; coverIn(c, s, s.media[1] && s.media[1].id ? 1 : 0, -112, -112, 224, 224, t, { bw: s.opts.bw, zoom: 1.02 }); hitOn = ho;
+    c.strokeStyle = 'rgba(255,255,255,.35)'; c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, 104, 0, Math.PI * 2); c.stroke(); c.restore();
+    c.fillStyle = '#0B0B0C'; c.beginPath(); c.arc(rx, ry, 9, 0, Math.PI * 2); c.fill(); c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2; c.beginPath(); c.arc(rx, ry, 9, 0, Math.PI * 2); c.stroke();
+    addHit({ type: 'media', si: 1, x: rx - 112, y: ry - 112, w: 224, h: 224, oy: 0 });
+    // sleeve (on top): cover photo, soft edge wear, small titles
+    c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 36 * R.S; c.shadowOffsetX = 8 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#1A1A1A'; c.fillRect(SX, SY, SS, SS); c.restore();
+    cover(c, s, 0, SX, SY, SS, SS, t, { bw: s.opts.bw, zoom: 1.02 + 0.02 * Math.sin(gT * 0.05) });
+    const sg = c.createLinearGradient(0, SY + SS * 0.55, 0, SY + SS); sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(0,0,0,.6)'); c.fillStyle = sg; c.fillRect(SX, SY, SS, SS);
+    c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1.5; c.strokeRect(SX + 0.75, SY + 0.75, SS - 1.5, SS - 1.5);
+    const lg = c.createLinearGradient(SX, SY, SX + SS, SY + SS); lg.addColorStop(0, 'rgba(255,255,255,.10)'); lg.addColorStop(0.35, 'rgba(255,255,255,0)'); c.fillStyle = lg; c.fillRect(SX, SY, SS, SS);
+    txt(c, fill(s.texts.sleeve), SX + 40, SY + SS - 92, SERIF(46, true), '#FFFFFF', 1, { align: 'left', k: 'sleeve', shadow: 'rgba(0,0,0,.5)', blur: 8 });
+    txt(c, fill(s.texts.names), SX + 42, SY + SS - 44, UIF(20, 600), 'rgba(255,255,255,.8)', 1, { align: 'left', k: 'names', sp: 4 });
+    // right panel
+    const PX = 1180, PW = 600, PC = PX + PW / 2;
+    if (intro) {
+      txt(c, fill(s.texts.head), PC, 330, UIF(22, 700), 'rgba(255,255,255,.6)', fade(t, 1.2, 0.8), { k: 'head', sp: 10 });
+      txt(c, fill(s.texts.sleeve), PC, 450, SERIF(78, true), '#FFFFFF', fade(t, 1.6, 1.0), { k: 'sleeve' });
+      c.fillStyle = 'rgba(255,255,255,.35)'; const lp = ease(clamp((t - 2.2) / 0.7)); c.fillRect(PC - 60 * lp, 540, 120 * lp, 1.2);
+      txt(c, fill(s.texts.names), PC, 600, UIF(28, 500), 'rgba(255,255,255,.9)', fade(t, 2.4, 0.8), { k: 'names', sp: 6 });
+      txt(c, fill(s.texts.date), PC, 650, UIF(22, 500), 'rgba(255,255,255,.6)', fade(t, 2.6, 0.8), { k: 'date', sp: 6 });
+      txt(c, `♪  ${fill(s.texts.title)}  —  ${fill(s.texts.artist)}`, PC, 760, SERIF(34, true), 'rgba(255,255,255,.75)', fade(t, 3.0, 0.8));
+    } else {
+      txt(c, fill(s.texts.head), PX, 250, UIF(20, 700), 'rgba(255,255,255,.55)', 1, { align: 'left', k: 'head', sp: 8 });
+      txt(c, fill(s.texts.title), PX, 318, SERIF(64, true), '#FFFFFF', 1, { align: 'left', k: 'title' });
+      txt(c, fill(s.texts.artist), PX + 2, 372, UIF(24, 500), 'rgba(255,255,255,.65)', 1, { align: 'left', k: 'artist', sp: 3 });
+      // lyrics: previous · current · next, scrolling smoothly when the line changes
+      const L = (project.lyrics || []).filter(l => l.text).slice().sort((a, b) => a.start - b.start);
+      let ci = -1; for (let i = 0; i < L.length; i++) if (L[i].start <= gT) ci = i;
+      const sc = ci >= 0 ? 1 - ease(clamp((gT - L[ci].start) / 0.5)) : 0, LH = 82, LY = 560;
+      c.save(); c.beginPath(); c.rect(PX - 20, LY - 190, PW + 120, 380); c.clip();
+      for (let k = -2; k <= 2; k++) { const j = ci + k; if (j < 0 || j >= L.length) continue; const cur = k === 0 && gT < L[j].end + 1.2, y = LY + (k + sc) * LH, dist = Math.abs(k + sc);
+        const a = Math.max(0, 1 - dist * 0.5) * (cur ? 1 : 0.55), f = cur ? `600 46px "IBM Plex Sans KR", "Noto Sans KR", sans-serif` : `400 36px "IBM Plex Sans KR", "Noto Sans KR", sans-serif`;
+        txt(c, fill(L[j].text).split('\n')[0], PX, y, f, cur ? '#FFFFFF' : 'rgba(255,255,255,.75)', a, { align: 'left', shadow: 'rgba(0,0,0,.45)', blur: 10 }); }
+      if (!L.length && hitOn) txt(c, '가사 자막 탭에서 가사를 넣으면 여기서 흘러가요', PX, LY, `400 30px "IBM Plex Sans KR", sans-serif`, 'rgba(255,255,255,.5)', 1, { align: 'left' });
+      c.restore();
+      // progress bar, times and controls
+      const p = clamp(gT / total), BY = 800; c.fillStyle = 'rgba(255,255,255,.22)'; rr(c, PX, BY - 2, PW, 4, 2); c.fill(); c.fillStyle = '#FFFFFF'; rr(c, PX, BY - 2, PW * p, 4, 2); c.fill(); c.beginPath(); c.arc(PX + PW * p, BY, 8, 0, Math.PI * 2); c.fill();
+      const mm = v => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
+      txt(c, mm(gT), PX, BY + 34, UIF(20, 500), 'rgba(255,255,255,.6)', 1, { align: 'left' }); txt(c, '-' + mm(Math.max(0, total - gT)), PX + PW, BY + 34, UIF(20, 500), 'rgba(255,255,255,.6)', 1, { align: 'right' });
+      const CY = 900; c.fillStyle = '#FFFFFF';
+      const tri = (x, dir) => { c.beginPath(); c.moveTo(x, CY - 14); c.lineTo(x + dir * 20, CY); c.lineTo(x, CY + 14); c.closePath(); c.fill(); };
+      tri(PC - 130, -1); tri(PC - 150, -1); c.fillRect(PC - 157, CY - 14, 4, 28); tri(PC + 130, 1); tri(PC + 150, 1); c.fillRect(PC + 153, CY - 14, 4, 28);
+      c.beginPath(); c.arc(PC, CY, 40, 0, Math.PI * 2); c.fill(); c.fillStyle = '#111'; c.fillRect(PC - 11, CY - 15, 7, 30); c.fillRect(PC + 4, CY - 15, 7, 30);
+      c.fillStyle = 'rgba(255,255,255,.85)'; heartShape(c, PX + 14, CY, 26); c.fill();
+    }
+    // sound bars along the bottom, following the music
+    const env = ckEnvelope(), NB = 96, bw = 6, gap = (W - 280 - NB * bw) / (NB - 1);
+    for (let i = 0; i < NB; i++) { const fi = env ? Math.floor((gT + i * 0.012) * 30) : 0, e = env ? (env[Math.min(env.length - 1, Math.max(0, fi))] || 0) : 0.25 + 0.2 * Math.sin(gT * 3 + i);
+      const sh = 0.35 + 0.65 * Math.abs(Math.sin(i * 0.37 + gT * 2.1) * Math.cos(i * 0.11 - gT * 1.3)), h = 4 + 46 * e * sh, x = 140 + i * (bw + gap);
+      c.fillStyle = `rgba(255,255,255,${0.35 + 0.45 * e})`; rr(c, x, 1020 - h / 2, bw, h, 3); c.fill(); }
+  }
+};
+CATS.push(['축가 플레이어 (고객 요청 7타입)', ['cksong']]);
+TEMPLATES.S = {
+  custom: true, code: '7', name: '축가 플레이어', desc: '흐린 웨딩 사진 배경 위로 LP가 커버에서 미끄러져 나와 돌고, 오른쪽에 지금 부르는 가사가 이전·다음 줄과 함께 부드럽게 흘러가요. 실제 곡 진행바와 음악에 맞춰 움직이는 사운드 바까지. 사진은 약 20초마다 바뀌어요',
+  tags: ['축가', '가사 싱크', 'LP 플레이어', '약 2분 50초'], preview: 0,
+  make: () => {
+    const list = [['cksong', { opts: { intro: true } }, 8]];
+    for (let i = 0; i < 8; i++) list.push(['cksong', {}, 20.5]);
+    const sc = mkScenes(list); sc.forEach((s, i) => { s.weight = list[i][2]; if (i) s.tr = 'dissolve'; });
+    return baseProj('S', sc, { lyricFx: '', lyricsOn: true });
+  }
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -9091,6 +9188,7 @@ function render(r, T, preview) {
   activeLyricA = activeLyric ? Math.min(fade(T, activeLyric.start, 0.35), 1 - clamp((T - (activeLyric.end - 0.35)) / 0.35)) : 0;
   if (!project.scenes.length) { bg(c, '#000'); return; }
   const i = sceneAt(T), t = T - timeline[i].start, xf = xfOf(i);
+  if (activeLyric && LAYOUTS[project.scenes[i].layout] && LAYOUTS[project.scenes[i].layout].ownLyrics) activeLyric = null;
   if (i > 0 && t < xf) {
     const tr = project.scenes[i].tr || 'dissolve', pr = t / xf, prevT = timeline[i - 1].dur + t;
     if (tr === 'hearts') {
