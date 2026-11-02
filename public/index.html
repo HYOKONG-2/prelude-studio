@@ -8714,6 +8714,77 @@ function kTransitions(p) {
   return p;
 }
 TEMPLATES.K.make = (o => () => kTransitions(o()))(TEMPLATES.K.make);
+/* ================= 고객 요청 6: "답 프로포즈 레터" — modern, letter lines that are easy to read ================= */
+const LP = { sans: (px, w) => `${w || 500} ${px}px "IBM Plex Sans KR", "Noto Sans KR", sans-serif`, serif: (px, it) => `${it ? 'italic ' : ''}400 ${px}px "Cormorant Garamond", "Gowun Batang", serif` };
+function lpLines(c, text, cx, cy, px, lh, col, t, st, key, align) { // letter text: each line fades up in turn, with a soft shadow for photos
+  const lines = String(text || '').split('\n'); const n = lines.length, y0 = cy - (n - 1) * lh / 2;
+  lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + i * 0.45, 0.8); txt(c, l, cx, y0 + i * lh + (1 - ease(clamp((t - st - i * 0.45) / 0.8))) * 12, LP.sans(px, 500), col, a, { align: align || 'center', k: i === 0 ? key : null, shadow: col === '#FFFFFF' ? 'rgba(0,0,0,.55)' : null, blur: col === '#FFFFFF' ? 14 : 0 }); });
+  addHit({ type: 'text', key, x: cx - 700, y: y0 - lh / 2, w: 1400, h: n * lh });
+}
+Object.assign(LAYOUTS, {
+  lpopen: { name: '레터 오프닝 (흐린 사진 + To.)', slots: 1, weight: 6, fields: [['to', '받는 사람', 'To. 나의 사랑에게'], ['title', '큰 글씨', 'Dear my love'], ['date', '날짜', '{DATE}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#0E0E0F'); c.save(); c.globalAlpha = 0.35 * fade(t, 0, 1.5); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.08 - 0.05 * clamp(t / d) }); c.restore();
+      txt(c, fill(s.texts.to), 960, 430, LP.sans(30, 400), 'rgba(255,255,255,.8)', fade(t, 0.6, 0.8), { k: 'to', sp: 4 });
+      txt(c, fill(s.texts.title), 960, 540, LP.serif(120, true), '#FFFFFF', fade(t, 1.0, 1.0), { k: 'title' });
+      txt(c, fill(s.texts.date), 960, 650, LP.sans(24, 400), 'rgba(255,255,255,.6)', fade(t, 1.6, 0.8), { k: 'date', sp: 6 });
+    } },
+  lpfull: { name: '레터 풀사진 + 아래 편지 글', slots: 1, weight: 4.6, fields: [['text', '편지 글', '우리가 처음 만난 날,\n이렇게 오래 함께할 줄 알았을까', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.04 * clamp(t / d) });
+      const g = c.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.72)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      noBg(() => lpLines(c, fill(s.texts.text), 960, 880, 54, 80, '#FFFFFF', t, 0.5, 'text'));
+    } },
+  lpside: { name: '레터 사진 + 옆 편지 글 (여백 있는 모던)', slots: 1, weight: 4.6, fields: [['text', '편지 글', '어색하게 웃던 너의 얼굴이\n아직도 생생해', true]], opts: [['flip', '사진 왼쪽', false], ['dark', '어두운 배경', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 1440 : 480, 1045, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) {
+      const dk = s.opts.dark, f = s.opts.flip; bg(c, dk ? '#141414' : '#F4F2EE');
+      const px = f ? 0 : 960; c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, px, 0, 960, H, t, { bw: s.opts.bw, dark: dk, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
+      const cx = f ? 1440 : 480; c.fillStyle = dk ? 'rgba(255,255,255,.35)' : 'rgba(20,20,20,.3)'; c.fillRect(cx - 30 * ease(clamp((t - 0.3) / 0.6)), 330, 60 * ease(clamp((t - 0.3) / 0.6)), 1.5);
+      lpLines(c, fill(s.texts.text), cx, 540, 50, 78, dk ? '#F4F2EE' : '#1A1A1A', t, 0.5, 'text');
+    } },
+  lpduo: { name: '레터 사진 두 장 + 아래 편지 글', slots: 2, weight: 4.6, fields: [['text', '편지 글', '같이 걷던 길, 같이 먹던 밥\n사소한 것들이 하나씩 추억이 되었어', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#121212'); const n = autoN(s, 2);
+      if (n <= 1) { c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, 260, 70, 1400, 700, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); }
+      else { [[90, 0], [990, 0.3]].forEach(([x, st], i) => { c.save(); c.globalAlpha = fade(t, st, 0.8); cover(c, s, i, x, 80, 840, 680, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); }); }
+      lpLines(c, fill(s.texts.text), 960, 900, 50, 76, '#FFFFFF', t, 0.6, 'text');
+    } },
+  lptext: { name: '레터 글만 (가운데 큰 글씨)', slots: 0, weight: 4, fields: [['text', '편지 글', '그래서 이번엔\n내가 대답하려고 해', true]], opts: [['light', '밝은 배경', false]], cap: s => [960, 1045, s.opts.light ? 'light' : 'dark'],
+    draw(c, s, t, d) { const lt = s.opts.light; bg(c, lt ? '#F4F2EE' : '#0E0E0F'); lpLines(c, fill(s.texts.text), 960, 540, 64, 96, lt ? '#1A1A1A' : '#FFFFFF', t, 0.4, 'text'); } },
+  lpend: { name: '레터 엔딩 (Will you marry me?)', slots: 1, weight: 10, fields: [['small', '위 작은 글', '이번엔 내가 물어볼게'], ['big', '큰 글씨', 'Will you marry me?'], ['from', '보내는 사람', 'From. 너의 {신부}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000'); c.save(); c.globalAlpha = 0.5; cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.04 * clamp(t / d) }); c.restore(); c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H);
+      txt(c, fill(s.texts.small), 960, 420, LP.sans(36, 400), 'rgba(255,255,255,.85)', fade(t, 0.6, 0.8), { k: 'small' });
+      txt(c, fill(s.texts.big), 960, 540, LP.serif(132, true), '#FFFFFF', fade(t, 1.6, 1.2), { k: 'big', shadow: 'rgba(0,0,0,.4)', blur: 16 });
+      txt(c, fill(s.texts.from), 960, 680, LP.sans(28, 400), 'rgba(255,255,255,.75)', fade(t, 2.8, 0.8), { k: 'from', sp: 4 });
+      const end = clamp((t - (d - 2)) / 1.8); if (end > 0) { c.fillStyle = `rgba(0,0,0,${ease(end)})`; c.fillRect(0, 0, W, H); }
+    } }
+});
+['lpfull'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+CATS.push(['답 프로포즈 레터 (고객 요청 6타입)', ['lpopen', 'lpfull', 'lpside', 'lpduo', 'lptext', 'lpend']]);
+TEMPLATES.P = {
+  custom: true, code: '6', name: '답 프로포즈 레터', desc: '연애 사진 위로 편지 글이 한 줄씩 또렷하게 떠오르는 모던한 구성. 풀사진·여백 있는 사진·두 장 사진·글만 있는 장면이 번갈아 나오고, 마지막은 "Will you marry me?"로 끝나요. 약 3분',
+  tags: ['답 프로포즈', '편지 글 자막', '모던', '약 3분'], preview: 0,
+  make: () => {
+    const F = text => ['lpfull', { texts: { text } }], S = (text, flip, dark) => ['lpside', { texts: { text }, opts: { flip: !!flip, dark: !!dark } }], D = text => ['lpduo', { texts: { text } }], T = (text, light) => ['lptext', { texts: { text }, opts: { light: !!light } }, 4];
+    const list = [
+      ['lpopen', {}, 6],
+      F('우리가 처음 만난 날,\n이렇게 오래 함께할 줄 알았을까'), S('어색하게 웃던 너의 얼굴이\n아직도 생생해'), F('그날 이후로\n내 하루에는 늘 네가 있었어'), D('같이 걷던 길, 같이 먹던 밥\n사소한 것들이 하나씩 추억이 되었어'),
+      T('너는 늘\n나를 웃게 만드는 사람이었어'),
+      F('힘든 날엔 말없이\n옆에 있어줘서 고마웠어'), S('내가 울 때\n같이 속상해해줘서 고마웠어', true), F('다툰 날에도 결국\n먼저 손 내밀어줘서 고마워'), D('그렇게 우리는\n조금씩 서로에게 맞춰갔지'), F('계절이 몇 번이나 바뀌는 동안'), S('너는 한결같이\n내 편이었어', false, true),
+      T('그리고 그날,\n네가 나에게 물었지', true),
+      F('평생 함께해 줄 수 있냐고'), S('그날의 떨리던 네 목소리를\n잊지 못할 거야', true), D('그 순간을 떠올리면\n지금도 마음이 따뜻해져'),
+      T('그래서 이번엔\n내가 대답하려고 해'),
+      F('너와 함께라면\n어떤 날도 괜찮을 것 같아'), S('기쁜 날엔 두 배로 웃고'), S('힘든 날엔 반으로 나누면서', true), F('오래오래\n손잡고 걷고 싶어'), D('맛있는 걸 먹을 때도,\n예쁜 걸 볼 때도 늘 너와 함께'), F('내가 더 잘할게,\n더 많이 아껴줄게'), S('지금처럼,\n아니 지금보다 더 사랑할게', false, true),
+      T('고마워,\n나를 선택해줘서', true),
+      F('앞으로 우리가 만들어갈\n수많은 날들이 기대돼'), D('오늘도, 내일도,\n그다음 날도'), F('사랑해,\n앞으로도 계속'), S('그리고 이제,\n내 차례야', true, true),
+      ['lpend', {}, 10]
+    ];
+    const sc = mkScenes(list.map(x => x.length === 2 ? [...x, 5.2] : x));
+    sc.forEach((s, i) => { if (i) s.tr = s.layout === 'lptext' || sc[i - 1].layout === 'lptext' ? 'black' : (s.layout === 'lpend' ? 'black' : 'dissolve'); });
+    return baseProj('P', sc, { lyricFx: '' });
+  }
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
