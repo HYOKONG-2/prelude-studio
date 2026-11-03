@@ -6478,7 +6478,7 @@ Object.assign(LAYOUTS, {
 ['kcount', 'kstudio'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 LAYOUTS.kcount.times = [];
 FIXED_LONG.push('kcount', 'kstudio');
-CATS.push(['고객 요청 (K타입)', ['kcount', 'kpage', 'kstudio']]);
+CATS.push(['우리가 함께한 날 (고객 요청 1타입)', ['kcount', 'kpage', 'kstudio']]);
 TEMPLATES.K = {
   custom: true,
   name: '우리가 함께한 날', desc: '“우리가 함께한 지 ○일” 숫자가 올라가며 사진이 바뀌는 오프닝, 신랑·신부 단독 사진 프로필 소개, 이름 머리말과 세로 글씨가 있는 흰 페이지에 사진이 크게 이어지고, 스튜디오 사진 감사 인사로 마무리하는 구성',
@@ -8932,6 +8932,28 @@ Object.assign(LAYOUTS.lpside, { slots: 4, autoDefault: true, countOpts: [1, 2, 3
 LAYOUTS.lpfull.noBulk = [1, 2, 3]; LAYOUTS.lpside.noBulk = [1, 2, 3];
 Object.assign(LAYOUTS.lpduo, { noBulk: [2, 3], slots: 4, autoDefault: true, countOpts: [1, 2, 3, 4], name: '레터 넓은 사진 + 아래 편지 글 (사진 1~4장)',
   draw(c, s, t, d) { bg(c, '#0E0E0F'); const n = photoCount(s, 2); lpPhotos(c, s, t, d, 90, 70, 1740, 700, n, 16); lpLines(c, fill(s.texts.text), 960, 900, 50, 82, '#FFFFFF', t, 0.6, 'text'); } });
+/* ---- 고객 요청 1: childhood page before the profiles (2 photos each, white editorial page) ---- */
+LAYOUTS.kkids = {
+  name: '고객요청 · 어린 시절 (신랑 2장 + 신부 2장)', slots: 4, weight: 6, slotNames: ['신랑 어린 시절 1', '신랑 어린 시절 2', '신부 어린 시절 1', '신부 어린 시절 2'],
+  fields: [...K_FIELDS, ['kicker', '위 작은 글씨', 'Little Days'], ['l1', '왼쪽 아래 글씨', '어린 시절의 {신랑}'], ['l2', '오른쪽 아래 글씨', '어린 시절의 {신부}']],
+  opts: [['warm', '빛바랜 따뜻한 톤', true], ['bw', '흑백', false]], cap: () => [960, 1000, 'photo'],
+  draw(c, s, t, d) {
+    bg(c, KP.page); kHead(c, s, t);
+    txt(c, fill(s.texts.kicker), 960, 150, F.serif(54, 400, true), KP.ink, fade(t, 0.3, 0.8), { k: 'kicker' });
+    const lp = ease(clamp((t - 0.6) / 0.8)); c.fillStyle = 'rgba(43,42,40,.25)'; c.fillRect(959, 540 - 280 * lp, 1.5, 560 * lp);
+    const R4 = [[170, 230, 370, 520], [560, 230, 370, 520], [990, 230, 370, 520], [1380, 230, 370, 520]];
+    R4.forEach((r, i) => { const a = fade(t, 0.4 + i * 0.3, 0.8); if (a <= 0) return; c.save(); c.globalAlpha *= a;
+      c.save(); c.shadowColor = 'rgba(0,0,0,.14)'; c.shadowBlur = 20 * R.S; c.shadowOffsetY = 6 * R.S; c.fillStyle = '#F2F0EC'; c.fillRect(r[0], r[1], r[2], r[3]); c.restore();
+      cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) });
+      if (s.opts.warm && !s.opts.bw) { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(225,175,120,.45)'; c.fillRect(r[0], r[1], r[2], r[3]); c.restore(); }
+      c.restore(); });
+    txt(c, fill(s.texts.l1), 550, 820, F.serif(34, 500, false), KP.ink, fade(t, 1.4, 0.7), { k: 'l1', sp: 2 });
+    txt(c, fill(s.texts.l2), 1370, 820, F.serif(34, 500, false), KP.ink, fade(t, 1.6, 0.7), { k: 'l2', sp: 2 });
+  }
+};
+(CATS.find(c => /고객 요청|우리가 함께한 날/.test(c[0]) && c[1].includes('kpage')) || CATS[0])[1].push('kkids');
+// type 1: the childhood page comes right before the groom / bride profiles
+TEMPLATES.C1.make = (o => () => { const p = o(); const i = p.scenes.findIndex(s => s.layout === 'introgroom'); if (i >= 0) { const n = makeScene('kkids', { weight: 6 }); n.weight = 6; n.tr = p.scenes[i].tr || 'dissolve'; p.scenes.splice(i, 0, n); p.scenes = fitTotal(p.scenes); } return p; })(TEMPLATES.C1.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
