@@ -8897,7 +8897,7 @@ function lpApplyLetter(raw) {
   let pi = 0; const mid = paras.map((tx, i) => {
     const layout = cycle[i % cycle.length], s2 = makeScene(layout);
     s2.texts.text = tx; s2.tr = layout === 'lptext' || (i && cycle[(i - 1) % cycle.length] === 'lptext') ? 'black' : 'dissolve';
-    const n = LAYOUTS[layout].slots; for (let k = 0; k < n; k++) if (pool[pi]) s2.media[k] = pool[pi++];
+    const n = layout === 'lpduo' ? 2 : layout === 'lptext' ? 0 : 1; for (let k = 0; k < n; k++) if (pool[pi]) s2.media[k] = pool[pi++];
     s2.weight = Math.round(clamp(2.4 + tx.replace(/\s/g, '').length * 0.085, 3.2, 7.5) * 10) / 10; // longer paragraphs stay longer
     return s2;
   });
@@ -8913,6 +8913,25 @@ function lpApplyLetter(raw) {
   changed(true); select(Math.min(1, project.scenes.length - 1));
   toast(`편지 ${mid.length}개 문단을 장면 ${mid.length}개로 나눴어요${pool.length ? ` (사진 ${Math.min(pi, pool.length)}장 순서대로 유지)` : ''}`);
 }
+/* ---- letter template: every photo scene can hold 1–4 photos (dropdown or simply as many as you put in) ---- */
+function lpPhotos(c, s, t, d, X, Y, Wd, Ht, n, g, opt) { // 1 big · 2 side by side · 3 = big + two stacked · 4 = 2×2
+  const R4 = n <= 1 ? [[X, Y, Wd, Ht]] : n === 2 ? [[X, Y, (Wd - g) / 2, Ht], [X + (Wd + g) / 2, Y, (Wd - g) / 2, Ht]]
+    : n === 3 ? [[X, Y, Wd * 0.58 - g / 2, Ht], [X + Wd * 0.58 + g / 2, Y, Wd * 0.42 - g / 2, (Ht - g) / 2], [X + Wd * 0.58 + g / 2, Y + (Ht + g) / 2, Wd * 0.42 - g / 2, (Ht - g) / 2]]
+    : [[X, Y, (Wd - g) / 2, (Ht - g) / 2], [X + (Wd + g) / 2, Y, (Wd - g) / 2, (Ht - g) / 2], [X, Y + (Ht + g) / 2, (Wd - g) / 2, (Ht - g) / 2], [X + (Wd + g) / 2, Y + (Ht + g) / 2, (Wd - g) / 2, (Ht - g) / 2]];
+  R4.forEach((r, i) => { c.save(); c.globalAlpha = fade(t, i * 0.25, 0.8); if (opt && opt.shadow) { c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 24 * R.S; c.fillStyle = '#000'; c.fillRect(r[0], r[1], r[2], r[3]); c.restore(); }
+    cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); });
+}
+Object.assign(LAYOUTS.lpfull, { slots: 4, autoDefault: true, countOpts: [1, 2, 3, 4], name: '레터 풀사진 + 아래 편지 글 (사진 1~4장)',
+  draw(c, s, t, d) {
+    bg(c, '#000'); const n = photoCount(s, 1); lpPhotos(c, s, t, d, 0, 0, W, H, n, n > 1 ? 6 : 0);
+    const g = c.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.75)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    noBg(() => lpLines(c, fill(s.texts.text), 960, 900, 54, 88, '#FFFFFF', t, 0.5, 'text'));
+  } });
+Object.assign(LAYOUTS.lpside, { slots: 4, autoDefault: true, countOpts: [1, 2, 3, 4], name: '레터 사진 액자 + 아래 편지 글 (검은 배경, 사진 1~4장)',
+  draw(c, s, t, d) { bg(c, '#0E0E0F'); const n = photoCount(s, 1); lpPhotos(c, s, t, d, 330, 60, 1260, 700, n, 16, { shadow: true }); lpLines(c, fill(s.texts.text), 960, 900, 50, 86, '#FFFFFF', t, 0.5, 'text'); } });
+LAYOUTS.lpfull.noBulk = [1, 2, 3]; LAYOUTS.lpside.noBulk = [1, 2, 3];
+Object.assign(LAYOUTS.lpduo, { noBulk: [2, 3], slots: 4, autoDefault: true, countOpts: [1, 2, 3, 4], name: '레터 넓은 사진 + 아래 편지 글 (사진 1~4장)',
+  draw(c, s, t, d) { bg(c, '#0E0E0F'); const n = photoCount(s, 2); lpPhotos(c, s, t, d, 90, 70, 1740, 700, n, 16); lpLines(c, fill(s.texts.text), 960, 900, 50, 82, '#FFFFFF', t, 0.6, 'text'); } });
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
