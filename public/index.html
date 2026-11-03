@@ -8736,24 +8736,23 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.04 * clamp(t / d) });
       const g = c.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.72)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-      noBg(() => lpLines(c, fill(s.texts.text), 960, 870, 54, 88, '#FFFFFF', t, 0.5, 'text'));
+      noBg(() => lpLines(c, fill(s.texts.text), 960, 900, 54, 88, '#FFFFFF', t, 0.5, 'text'));
     } },
-  lpside: { name: '레터 사진 + 옆 편지 글 (여백 있는 모던)', slots: 1, weight: 4.6, fields: [['text', '편지 글', '어색하게 웃던 너의 얼굴이\n아직도 생생해', true]], opts: [['flip', '사진 왼쪽', false], ['dark', '어두운 배경', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 1440 : 480, 1045, s.opts.dark ? 'dark' : 'light'],
+  lpside: { name: '레터 사진 액자 + 아래 편지 글 (검은 배경)', slots: 1, weight: 4.6, fields: [['text', '편지 글', '어색하게 웃던 너의 얼굴이\n아직도 생생해', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
-      const dk = s.opts.dark, f = s.opts.flip; bg(c, dk ? '#141414' : '#F4F2EE');
-      const px = f ? 0 : 960; c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, px, 0, 960, H, t, { bw: s.opts.bw, dark: dk, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
-      const cx = f ? 1440 : 480; c.fillStyle = dk ? 'rgba(255,255,255,.35)' : 'rgba(20,20,20,.3)'; c.fillRect(cx - 30 * ease(clamp((t - 0.3) / 0.6)), 330, 60 * ease(clamp((t - 0.3) / 0.6)), 1.5);
-      lpLines(c, fill(s.texts.text), cx, 540, 50, 86, dk ? '#F4F2EE' : '#1A1A1A', t, 0.5, 'text');
+      bg(c, '#0E0E0F'); c.save(); c.globalAlpha = fade(t, 0, 0.8); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 30 * R.S; c.fillStyle = '#000'; c.fillRect(330, 60, 1260, 700); c.restore();
+      c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, 330, 60, 1260, 700, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
+      lpLines(c, fill(s.texts.text), 960, 900, 50, 86, '#FFFFFF', t, 0.5, 'text');
     } },
   lpduo: { name: '레터 사진 두 장 + 아래 편지 글', slots: 2, weight: 4.6, fields: [['text', '편지 글', '같이 걷던 길, 같이 먹던 밥\n사소한 것들이 하나씩 추억이 되었어', true]], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
-      bg(c, '#121212'); const n = autoN(s, 2);
+      bg(c, '#0E0E0F'); const n = autoN(s, 2);
       if (n <= 1) { c.save(); c.globalAlpha = fade(t, 0, 0.8); cover(c, s, 0, 260, 70, 1400, 700, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); }
       else { [[90, 0], [990, 0.3]].forEach(([x, st], i) => { c.save(); c.globalAlpha = fade(t, st, 0.8); cover(c, s, i, x, 80, 840, 680, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore(); }); }
       lpLines(c, fill(s.texts.text), 960, 900, 50, 82, '#FFFFFF', t, 0.6, 'text');
     } },
-  lptext: { name: '레터 글만 (가운데 큰 글씨)', slots: 0, weight: 4, fields: [['text', '편지 글', '그래서 이번엔\n내가 대답하려고 해', true]], opts: [['light', '밝은 배경', false]], cap: s => [960, 1045, s.opts.light ? 'light' : 'dark'],
-    draw(c, s, t, d) { const lt = s.opts.light; bg(c, lt ? '#F4F2EE' : '#0E0E0F'); lpLines(c, fill(s.texts.text), 960, 540, 64, 108, lt ? '#1A1A1A' : '#FFFFFF', t, 0.4, 'text'); } },
+  lptext: { name: '레터 글만 (검은 화면, 아래 글씨)', slots: 0, weight: 4, fields: [['text', '편지 글', '그래서 이번엔\n내가 대답하려고 해', true]], opts: [], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) { bg(c, '#0E0E0F'); lpLines(c, fill(s.texts.text), 960, 900, 56, 94, '#FFFFFF', t, 0.4, 'text'); } },
   lpend: { name: '레터 엔딩 (Will you marry me?)', slots: 1, weight: 10, fields: [['small', '위 작은 글', '이번엔 내가 물어볼게'], ['big', '큰 글씨', 'Will you marry me?'], ['from', '보내는 사람', 'From. 너의 {신부}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#000'); c.save(); c.globalAlpha = 0.5; cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.04 * clamp(t / d) }); c.restore(); c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H);
@@ -8885,6 +8884,35 @@ TEMPLATES.S = {
     return baseProj('S', sc, { lyricFx: '', lyricsOn: true });
   }
 };
+/* ---- letter template: paste the whole letter once → one scene per paragraph, photos kept in order, lengths fitted ---- */
+function lpApplyLetter(raw) {
+  const paras = String(raw || '').replace(/\r/g, '').split(/\n\s*\n+/).map(x => x.split('\n').map(l => l.trim()).filter(Boolean).join('\n')).filter(Boolean);
+  if (!paras.length) { toast('편지 내용을 붙여넣어 주세요'); return; }
+  const sc = project.scenes, open = sc.find(s => s.layout === 'lpopen'), end = sc.find(s => s.layout === 'lpend');
+  let sign = null; const last = paras[paras.length - 1];
+  if (end && !last.includes('\n') && /[-–—]\s*$/.test(last)) { sign = last.replace(/\s*[-–—]\s*$/, ''); paras.pop(); }
+  // photos already placed in the middle scenes, in order
+  const pool = []; sc.forEach(s => { if (s === open || s === end || !/^lp/.test(s.layout)) return; (s.media || []).forEach(m => { if (m && m.id) pool.push(JSON.parse(JSON.stringify(m))); }); });
+  const cycle = ['lpfull', 'lpside', 'lpfull', 'lpduo', 'lpfull', 'lpside', 'lpfull', 'lptext'];
+  let pi = 0; const mid = paras.map((tx, i) => {
+    const layout = cycle[i % cycle.length], s2 = makeScene(layout);
+    s2.texts.text = tx; s2.tr = layout === 'lptext' || (i && cycle[(i - 1) % cycle.length] === 'lptext') ? 'black' : 'dissolve';
+    const n = LAYOUTS[layout].slots; for (let k = 0; k < n; k++) if (pool[pi]) s2.media[k] = pool[pi++];
+    s2.weight = Math.round(clamp(2.4 + tx.replace(/\s/g, '').length * 0.085, 3.2, 7.5) * 10) / 10; // longer paragraphs stay longer
+    return s2;
+  });
+  if (sign && end) end.texts.from = sign;
+  project.scenes = [open, ...mid, end].filter(Boolean);
+  if (end) end.tr = 'black';
+  // fit the middle to the song (opening and ending keep their length)
+  if (typeof abuf !== 'undefined' && abuf) {
+    const fixed = (open ? +open.weight : 0) + (end ? +end.weight : 0), target = abuf.duration - fixed, sum = mid.reduce((a, s) => a + s.weight, 0);
+    if (target > mid.length * 2) mid.forEach(s => s.weight = Math.round(s.weight * target / sum * 100) / 100);
+  }
+  project.scenes.forEach(s => touch(s.id));
+  changed(true); select(Math.min(1, project.scenes.length - 1));
+  toast(`편지 ${mid.length}개 문단을 장면 ${mid.length}개로 나눴어요${pool.length ? ` (사진 ${Math.min(pi, pool.length)}장 순서대로 유지)` : ''}`);
+}
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -9606,6 +9634,7 @@ function buildScenePane() {
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
       <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label><label class="field" style="margin-top:8px"><span>자막 스타일</span><select id="fCapFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(s.capFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${colorRow('capCol', '자막 색', s.capCol)}${colorRow('capCol2', '둘째 줄 색', s.capCol2)}${styleCtl('caption', ts('caption'))}</div></div>
+    ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 한 번에 넣기</h3><p class="hint" style="margin-top:0">편지 전체를 붙여넣으세요. <b>빈 줄로 나뉜 문단 하나가 장면 하나</b>가 되고, 장면 수와 길이가 자동으로 맞춰져요. 넣어둔 사진은 순서대로 그대로 들어가요.</p><textarea id="lpLetter" rows="6" style="width:100%;resize:vertical" placeholder="첫 문단\n\n둘째 문단\n\n…"></textarea><button type="button" class="btn small primary" id="lpLetterGo" style="margin-top:8px">장면마다 나눠 넣기</button></div>` : ''}
     ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 글씨 크기 (모든 장면 함께)</h3><div class="ctl-row" style="gap:10px"><input type="range" id="lpScale" min="60" max="130" step="1" value="${Math.round((project.lpScale || 1) * 100)}" style="flex:1"><span id="lpScaleV" style="width:48px;text-align:right">${Math.round((project.lpScale || 1) * 100)}%</span></div><p class="hint">편지 글, To./From. 같은 손글씨가 전체 장면에서 같이 커지고 작아져요.</p></div>` : ''}
     ${CUSTOMER ? '' : `<div class="group"><h3>길이</h3>
       <div class="field len"><input type="number" id="fWeight" min="0.5" max="120" step="0.1" value="${s.weight}" aria-label="장면 길이(초)"><span>초</span></div>
@@ -9624,6 +9653,7 @@ function buildScenePane() {
     s.tm = s.tm || {}; s.tm[b.dataset.tmnow] = v; sceneChanged(s); buildScenePane();
   });
   const tr0 = p.querySelector('[data-tmreset]'); if (tr0) tr0.onclick = () => { delete s.tm; sceneChanged(s); buildScenePane(); };
+    { const lg = p.querySelector('#lpLetterGo'); if (lg) lg.onclick = () => { const v = p.querySelector('#lpLetter').value; if (!v.trim()) { toast('편지 내용을 붙여넣어 주세요'); return; } if (!confirm('지금 장면들의 편지 글이 새 편지로 바뀌고, 장면 수가 문단 수에 맞춰져요. 진행할까요?')) return; lpApplyLetter(v); }; }
     { const ls = p.querySelector('#lpScale'); if (ls) { ls.oninput = e => { project.lpScale = (+e.target.value || 100) / 100; p.querySelector('#lpScaleV').textContent = e.target.value + '%'; touch('lpScale'); dirty = true; }; ls.onchange = () => { project.scenes.forEach(x => { if (/^lp/.test(x.layout)) queueThumb(x.id); }); save(); }; } }
     p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = Math.round(clamp(+e.target.value || 1, 0.5, 120) * 10) / 10; changed(true); select(sel); };
   }
