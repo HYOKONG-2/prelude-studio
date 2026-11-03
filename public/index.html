@@ -8717,8 +8717,9 @@ function kTransitions(p) {
 }
 TEMPLATES.K.make = (o => () => kTransitions(o()))(TEMPLATES.K.make);
 /* ================= 고객 요청 6: "답 프로포즈 레터" — modern, letter lines that are easy to read ================= */
-const LP = { hand: px => `400 ${Math.round(px * 1.45)}px "Nanum Pen Script", "Gaegu", "Gowun Dodum", sans-serif`, sans: (px, w) => `${w || 500} ${px}px "IBM Plex Sans KR", "Noto Sans KR", sans-serif`, serif: (px, it) => `${it ? 'italic ' : ''}400 ${px}px "Cormorant Garamond", "Gowun Batang", serif` };
+const LP = { hand: px => `400 ${Math.round(px * 1.45 * ((typeof project !== 'undefined' && project && project.lpScale) || 1))}px "Nanum Pen Script", "Gaegu", "Gowun Dodum", sans-serif`, sans: (px, w) => `${w || 500} ${px}px "IBM Plex Sans KR", "Noto Sans KR", sans-serif`, serif: (px, it) => `${it ? 'italic ' : ''}400 ${px}px "Cormorant Garamond", "Gowun Batang", serif` };
 function lpLines(c, text, cx, cy, px, lh, col, t, st, key, align) { // letter text: each line fades up in turn, with a soft shadow for photos
+  lh *= (project && project.lpScale) || 1;
   const lines = String(text || '').split('\n'); const n = lines.length, y0 = cy - (n - 1) * lh / 2;
   lines.forEach((l, i) => { if (!l) return; const a = fade(t, st + i * 0.45, 0.8); txt(c, l, cx, y0 + i * lh + (1 - ease(clamp((t - st - i * 0.45) / 0.8))) * 12, LP.hand(px), col, a, { align: align || 'center', k: key, shadow: col === '#FFFFFF' ? 'rgba(0,0,0,.55)' : null, blur: col === '#FFFFFF' ? 14 : 0 }); });
   addHit({ type: 'text', key, x: cx - 700, y: y0 - lh / 2, w: 1400, h: n * lh });
@@ -9605,6 +9606,7 @@ function buildScenePane() {
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
       <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label><label class="field" style="margin-top:8px"><span>자막 스타일</span><select id="fCapFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(s.capFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${colorRow('capCol', '자막 색', s.capCol)}${colorRow('capCol2', '둘째 줄 색', s.capCol2)}${styleCtl('caption', ts('caption'))}</div></div>
+    ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 글씨 크기 (모든 장면 함께)</h3><div class="ctl-row" style="gap:10px"><input type="range" id="lpScale" min="60" max="130" step="1" value="${Math.round((project.lpScale || 1) * 100)}" style="flex:1"><span id="lpScaleV" style="width:48px;text-align:right">${Math.round((project.lpScale || 1) * 100)}%</span></div><p class="hint">편지 글, To./From. 같은 손글씨가 전체 장면에서 같이 커지고 작아져요.</p></div>` : ''}
     ${CUSTOMER ? '' : `<div class="group"><h3>길이</h3>
       <div class="field len"><input type="number" id="fWeight" min="0.5" max="120" step="0.1" value="${s.weight}" aria-label="장면 길이(초)"><span>초</span></div>
       <p class="hint" id="realLen"></p></div>`}`;
@@ -9622,6 +9624,7 @@ function buildScenePane() {
     s.tm = s.tm || {}; s.tm[b.dataset.tmnow] = v; sceneChanged(s); buildScenePane();
   });
   const tr0 = p.querySelector('[data-tmreset]'); if (tr0) tr0.onclick = () => { delete s.tm; sceneChanged(s); buildScenePane(); };
+    { const ls = p.querySelector('#lpScale'); if (ls) { ls.oninput = e => { project.lpScale = (+e.target.value || 100) / 100; p.querySelector('#lpScaleV').textContent = e.target.value + '%'; touch('lpScale'); dirty = true; }; ls.onchange = () => { project.scenes.forEach(x => { if (/^lp/.test(x.layout)) queueThumb(x.id); }); save(); }; } }
     p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = Math.round(clamp(+e.target.value || 1, 0.5, 120) * 10) / 10; changed(true); select(sel); };
   }
   const setBg = (v, rebuild) => {
