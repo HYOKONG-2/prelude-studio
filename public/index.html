@@ -5150,7 +5150,8 @@ Object.assign(LAYOUTS, {
       txt(c, fill(s.texts.label), 960, 330, JUA(54), DG.cocoa, fade(t, 0.3, 0.6), { k: 'label' });
       txt(c, n.toLocaleString() + fill(s.texts.unit), 960, 520, JUA(190), DG.cocoa, fade(t, 0.5, 0.5), { k: 'since' });
       txt(c, fill(s.texts.sub), 960, 690, PACI(54), DG.coral, fade(t, 2.2, 0.6), { k: 'sub' });
-      daisyBunch(c, t, 960, 1, 1.0);
+      // flowers grow under the photos so the counter and the line below stay clear
+      c.save(); c.translate(0, 80); daisyBunch(c, t, 360, 1, 0.72); daisyBunch(c, t, 1560, -1, 0.72); c.restore();
     }
   },
   dgtext: {
