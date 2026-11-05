@@ -8955,6 +8955,408 @@ LAYOUTS.kkids = {
 (CATS.find(c => /고객 요청|우리가 함께한 날/.test(c[0]) && c[1].includes('kpage')) || CATS[0])[1].push('kkids');
 // type 1: the childhood page comes right before the groom / bride profiles
 TEMPLATES.C1.make = (o => () => { const p = o(); const i = p.scenes.findIndex(s => s.layout === 'introgroom'); if (i >= 0) { const n = makeScene('kkids', { weight: 6 }); n.weight = 6; n.tr = p.scenes[i].tr || 'dissolve'; p.scenes.splice(i, 0, n); p.scenes = fitTotal(p.scenes); } return p; })(TEMPLATES.C1.make);
+/* ================= 고객 요청 8: "레트로 매거진 콜라주" — A타입 흐름을 잡지 오려 붙인 다이어리 + 레트로 필름 효과로 ================= */
+const RMC = { orange: '#EC6B3D', char: '#2E2D2C', cream: '#E9E1D1', blush: '#D9CECB', paper: '#F3F0E9', ink: '#1F1D1B' };
+const RMH = px => `400 ${px}px "Nanum Pen Script", "Gaegu", sans-serif`;
+const rmCache = {};
+function rmPaper(kind) { // crumpled paper in a flat retro colour
+  if (rmCache[kind]) return rmCache[kind];
+  const cv = document.createElement('canvas'); cv.width = 960; cv.height = 540; const p = cv.getContext('2d');
+  p.fillStyle = RMC[kind] || RMC.cream; p.fillRect(0, 0, 960, 540);
+  const sm = document.createElement('canvas'); sm.width = 160; sm.height = 90; const q = sm.getContext('2d');
+  for (let i = 0; i < 70; i++) { const x = rnd(i, 1601) * 160, y = rnd(i, 1602) * 90, r = 8 + rnd(i, 1603) * 26; q.beginPath(); for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + rnd(i, 1604 + k); const xx = x + Math.cos(a) * r * (0.5 + rnd(i * 7 + k, 1605)), yy = y + Math.sin(a) * r * (0.5 + rnd(i * 5 + k, 1606)); k ? q.lineTo(xx, yy) : q.moveTo(xx, yy); } q.closePath(); q.fillStyle = rnd(i, 1607) > 0.5 ? 'rgba(255,255,255,.055)' : 'rgba(0,0,0,.05)'; q.fill(); }
+  p.imageSmoothingEnabled = true; p.drawImage(sm, 0, 0, 960, 540);
+  for (let i = 0; i < 90; i++) { const x = rnd(i, 1609) * 960, y = rnd(i, 1610) * 540, dx = (rnd(i, 1611) - 0.5) * 300, dy = (rnd(i, 1612) - 0.5) * 180; p.strokeStyle = 'rgba(255,255,255,.09)'; p.lineWidth = 1; p.beginPath(); p.moveTo(x, y); p.lineTo(x + dx, y + dy); p.stroke(); p.strokeStyle = 'rgba(0,0,0,.07)'; p.beginPath(); p.moveTo(x + 1, y + 1); p.lineTo(x + dx + 1, y + dy + 1); p.stroke(); }
+  for (let i = 0; i < 3000; i++) { p.fillStyle = rnd(i, 1613) > 0.5 ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.08)'; p.fillRect(rnd(i, 1614) * 960, rnd(i, 1615) * 540, 1, 1); }
+  rmCache[kind] = cv; return cv;
+}
+function rmBg(c, kind) { c.drawImage(rmPaper(kind), 0, 0, W, H); }
+function rmNoise(k) { const key = 'n' + k; if (rmCache[key]) return rmCache[key]; const cv = document.createElement('canvas'); cv.width = 480; cv.height = 270; const p = cv.getContext('2d'); const im = p.createImageData(480, 270); for (let i = 0; i < im.data.length; i += 4) { const v = rnd(i, 1700 + k) * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } p.putImageData(im, 0, 0); rmCache[key] = cv; return cv; }
+function rmRetro(c, t) { // film grain, dust, a scratch now and then, gentle flicker and vignette (12 fps like old film)
+  const f = Math.floor(t * 12);
+  c.save(); c.globalAlpha = 0.07; c.globalCompositeOperation = 'overlay'; c.drawImage(rmNoise(f % 4), 0, 0, W, H); c.restore();
+  c.save(); for (let i = 0; i < 7; i++) { if (rnd(i, f * 3) > 0.55) continue; c.fillStyle = rnd(i, f * 5) > 0.5 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.5)'; c.beginPath(); c.arc(rnd(i, f * 7) * W, rnd(i, f * 11) * H, 1 + rnd(i, f * 13) * 2.5, 0, Math.PI * 2); c.fill(); }
+  if (rnd(f, 1801) > 0.82) { const x = rnd(f, 1802) * W; c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + (rnd(f, 1803) - 0.5) * 30, H); c.stroke(); } c.restore();
+  const fl = 0.035 * rnd(f, 1804); c.fillStyle = `rgba(255,236,200,${fl})`; c.fillRect(0, 0, W, H);
+  const v = c.createRadialGradient(960, 540, 520, 960, 540, 1150); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(20,10,0,.38)'); c.fillStyle = v; c.fillRect(0, 0, W, H);
+}
+function rmStar(c, x, y, r, col, kind, rot, k) { // spiky hand-cut stars; 'dots' = halftone star
+  if (k <= 0.001) return; const n = kind === 'burst' || kind === 'dots' ? 12 : 8, inner = kind === 'spike' ? 0.18 : 0.45;
+  c.save(); c.translate(x, y); c.rotate(rot || 0); c.scale(k, k); c.beginPath();
+  for (let i = 0; i <= n * 2; i++) { const a = -Math.PI / 2 + i * Math.PI / n, rr2 = (i % 2 ? r * inner : r * (0.85 + 0.3 * rnd(i, x | 0))); i ? c.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2) : c.moveTo(Math.cos(a) * rr2, Math.sin(a) * rr2); }
+  c.closePath();
+  if (kind === 'dots') { c.fillStyle = '#F7F4EE'; c.fill(); c.save(); c.clip(); c.fillStyle = '#151515'; for (let yy = -r; yy <= r; yy += 9) for (let xx = -r; xx <= r; xx += 9) { c.beginPath(); c.arc(xx + ((yy / 9) % 2 ? 4.5 : 0), yy, 3.2, 0, Math.PI * 2); c.fill(); } c.restore(); c.strokeStyle = '#151515'; c.lineWidth = 2.5; c.stroke(); }
+  else if (kind === 'spike') { c.strokeStyle = col; c.lineWidth = 2.5; c.stroke(); }
+  else { c.fillStyle = col; c.fill(); }
+  c.restore();
+}
+function rmTorn(c, x, y, w, h, col, rot, seed, shadow) { // torn paper strip / card
+  c.save(); c.translate(x + w / 2, y + h / 2); c.rotate(rot || 0);
+  const pts = [], st = 22; for (let i = 0; i <= w; i += st) pts.push([-w / 2 + i, -h / 2 + (rnd(i, seed) - 0.5) * 10]); for (let j = 0; j <= h; j += st) pts.push([w / 2 + (rnd(j, seed + 1) - 0.5) * 14, -h / 2 + j]);
+  for (let i = w; i >= 0; i -= st) pts.push([-w / 2 + i, h / 2 + (rnd(i, seed + 2) - 0.5) * 10]); for (let j = h; j >= 0; j -= st) pts.push([-w / 2 + (rnd(j, seed + 3) - 0.5) * 14, -h / 2 + j]);
+  if (shadow !== false) { c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 12 * R.S; c.shadowOffsetY = 5 * R.S; }
+  c.fillStyle = col; c.beginPath(); pts.forEach(([px, py], i) => i ? c.lineTo(px, py) : c.moveTo(px, py)); c.closePath(); c.fill(); c.restore();
+}
+function rmScribble(c, x, y, w, h, p, seed) { // hand-drawn double box line
+  if (p <= 0) return; c.save(); c.strokeStyle = RMC.ink; c.lineWidth = 3.5; c.lineCap = 'round'; c.setLineDash([(2 * (w + h)) * 1.15 * p, 99999]);
+  [0, 1].forEach(k => { c.beginPath(); const o = k * 9, J = i => (rnd(i, seed + k) - 0.5) * 8; c.moveTo(x + o, y + o + J(1)); c.bezierCurveTo(x + w * 0.3, y + o + J(2), x + w * 0.7, y + o + J(3), x + w - o, y + o + J(4)); c.bezierCurveTo(x + w - o + J(5), y + h * 0.4, x + w - o + J(6), y + h * 0.7, x + w - o + J(7), y + h - o); c.bezierCurveTo(x + w * 0.6, y + h - o + J(8), x + w * 0.3, y + h - o + J(9), x + o + J(10), y + h - o); c.bezierCurveTo(x + o + J(11), y + h * 0.6, x + o + J(12), y + h * 0.3, x + o + J(13), y + o + 10); c.stroke(); });
+  c.restore();
+}
+function rmArcText(c, str, cx, cy, r, a0, span, font, col, a) { if (a <= 0.001 || !str) return; c.save(); c.globalAlpha *= a; c.font = font; c.fillStyle = col; c.textAlign = 'center'; c.textBaseline = 'middle'; const ch = Array.from(str), step = span / Math.max(1, ch.length - 1); ch.forEach((x, i) => { const ang = a0 + i * step; c.save(); c.translate(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r); c.rotate(ang + Math.PI / 2); c.fillText(x, 0, 0); c.restore(); }); c.restore(); }
+function rmCut(c, s, si, x, y, w, h, t, d, o = {}) { mkPiece(c, s, si, x, y, w, h, t, d, { rot: o.rot || 0, seed: o.seed || 1900 + si, edge: '#F4F1EA', outline: '#F4F1EA', r: 14, bw: o.bw }); }
+function rmFrame(c, s, t, d, fn) { // shared: stop-motion timing + gate weave, then the retro overlay
+  const T = s.opts.stop === false ? t : Math.floor(t * 12) / 12, f = Math.floor(t * 12), jx = s.opts.retro === false ? 0 : (rnd(f, 1901) - 0.5) * 3, jy = s.opts.retro === false ? 0 : (rnd(f, 1902) - 0.5) * 3;
+  c.save(); c.translate(jx, jy); fn(T); c.restore(); if (s.opts.retro !== false && !project.retroFx) rmRetro(c, t);
+}
+const RM_OPTS = [['retro', '레트로 필름 효과 (노이즈·먼지·깜빡임)', true], ['stop', '스톱모션 움직임', true]];
+Object.assign(LAYOUTS, {
+  rmtitle: { name: '레트로 콜라주 오프닝 (오린 사진 + 둥근 글씨)', slots: 2, weight: 7, fields: [['arc', '둥근 글씨', 'HAPPY WEDDING DAY · HAPPY WEDDING DAY ·'], ['names', '이름 종이띠', '{신랑} ♥ {신부}'], ['date', '날짜', '{DATE}']], opts: [...RM_OPTS, ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'blush');
+      const p1 = ease(clamp(T / 0.6)), p2 = ease(clamp((T - 0.35) / 0.6));
+      c.save(); c.globalAlpha *= p1; c.translate(0, (1 - p1) * 40); rmCut(c, s, 0, 120, 200, 760, 860, t, d, { rot: -3, seed: 1911, bw: s.opts.bw }); c.restore();
+      c.save(); c.globalAlpha *= p2; c.translate(0, (1 - p2) * 40); rmCut(c, s, 1, 820, 120, 760, 940, t, d, { rot: 2, seed: 1912, bw: s.opts.bw }); c.restore();
+      rmArcText(c, fill(s.texts.arc), 1200, 520, 470, -Math.PI * 0.95 + T * 0.08, Math.PI * 1.25, `700 58px "Playfair Display", serif`, RMC.ink, fade(T, 0.8, 0.6));
+      const lp = ease(clamp((T - 1.1) / 0.5)); if (lp > 0) { c.save(); c.globalAlpha *= lp; rmTorn(c, 80, 820, 620, 120, RMC.paper, -0.03, 1913); c.restore(); txt(c, fill(s.texts.names), 390, 880, RMH(84), RMC.ink, lp, { k: 'names' }); }
+      txt(c, fill(s.texts.date), 390, 980, RMH(46), RMC.orange, fade(T, 1.5, 0.5), { k: 'date' });
+      rmStar(c, 1700, 170, 70, RMC.orange, 'burst', 0.2, pop(T, 1.3, 0.4)); rmStar(c, 140, 160, 46, RMC.ink, 'spike', 0, pop(T, 1.5, 0.4));
+    }); } },
+  rmcard: { name: '레트로 콜라주 문구 카드 (주황 종이 + 손글씨)', slots: 2, weight: 6, fields: [['text', '문구', "We're\nGetting\nMarried!", true]], opts: [...RM_OPTS, ['bw', '오린 사진 흑백', true]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'orange'); const cp = ease(clamp(T / 0.5));
+      c.save(); c.globalAlpha *= cp; rmTorn(c, 560, 180, 920, 700, RMC.cream, -0.02, 1921); c.restore();
+      rmScribble(c, 600, 220, 840, 620, clamp((T - 0.4) / 1.0), 1922);
+      { const tx = fill(s.texts.text); c.save(); c.font = RMH(110); const mw = Math.max(1, ...tx.split('\n').map(l => c.measureText(l).width)); c.restore(); const fs = Math.min(110, Math.floor(110 * 740 / mw)), nl = tx.split('\n').length, lh = Math.min(fs * 1.08, 560 / Math.max(1, nl));
+        block(c, tx, 1020, 530, RMH(fs), lh, RMC.ink, T, 0.6, 1, false, 'text'); }
+      if (s.media[0] && s.media[0].id) { const k = pop(T, 0.3, 0.5); c.save(); c.globalAlpha *= clamp(k); rmCut(c, s, 0, 120, 60, 520, 480, t, d, { rot: -8, seed: 1923, bw: s.opts.bw }); c.restore(); }
+      if (s.media[1] && s.media[1].id) { const k = pop(T, 0.6, 0.5); c.save(); c.globalAlpha *= clamp(k); rmCut(c, s, 1, 1360, 560, 460, 480, t, d, { rot: 6, seed: 1924, bw: s.opts.bw }); c.restore(); }
+      rmStar(c, 1470, 220, 70, null, 'dots', 0.2, pop(T, 1.0, 0.4)); rmStar(c, 610, 860, 60, null, 'dots', -0.3, pop(T, 1.2, 0.4)); rmStar(c, 1500, 130, 36, RMC.ink, 'spike', 0, pop(T, 1.4, 0.4));
+    }); } },
+  rmprofile: { name: '레트로 콜라주 프로필 (구겨진 검정 종이 + 오린 인물)', slots: 1, weight: 7, cutout: true, slotNames: ['인물 사진 (누끼 PNG면 실루엣)'],
+    fields: [['kicker', '위 작은 글씨', '세상에서 가장 멋진'], ['name', '이름', '{신랑}'], ['line', '아래 한 줄', '말보다 행동으로 보여주는 사람']], opts: [...RM_OPTS, ['flip', '사진 왼쪽 (신부용)', false], ['bw', '인물 흑백', true]], cap: s => [s.opts.flip ? 1300 : 600, 1045, 'dark'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'char'); const f = s.opts.flip, M = (x, w = 0) => f ? W - x - w : x, sd = f ? -1 : 1;
+      const pp = ease(clamp(T / 0.6)); c.save(); c.globalAlpha *= pp; c.translate(sd * (1 - pp) * 120, 0); rmCut(c, s, 0, M(1040, 760), 60, 760, 1020, t, d, { rot: sd * 2, seed: 1931, bw: s.opts.bw }); c.restore();
+      const k1 = ease(clamp((T - 0.5) / 0.4)), k2 = ease(clamp((T - 0.8) / 0.4));
+      if (k1 > 0) { c.save(); c.globalAlpha *= k1; rmTorn(c, M(170, 520), 300, 520, 80, RMC.paper, -0.03 * sd, 1932); c.restore(); txt(c, fill(s.texts.kicker), M(170, 520) + 260, 340, RMH(46), RMC.ink, k1, { k: 'kicker' }); }
+      if (k2 > 0) { c.save(); c.globalAlpha *= k2; rmTorn(c, M(130, 640), 420, 640, 200, f ? RMC.paper : RMC.orange, 0.02 * sd, 1933); c.restore(); txt(c, fill(s.texts.name), M(130, 640) + 320, 522, RMH(150), f ? RMC.ink : RMC.paper, k2, { k: 'name' }); }
+      const lightPaper = s.opts.paper && s.opts.paper !== 'char';
+      txt(c, fill(s.texts.line), M(130, 640) + 320, 700, RMH(54), lightPaper || f ? RMC.orange : '#F3D3C2', fade(T, 1.2, 0.5), { k: 'line' });
+      rmStar(c, M(260), 150, 40, lightPaper ? RMC.ink : '#F3F0E9', 'spike', 0, pop(T, 1.0, 0.4)); rmStar(c, M(1000), 930, 90, f || lightPaper ? RMC.orange : '#F3F0E9', f || lightPaper ? 'burst' : 'spike', 0.3, pop(T, 1.3, 0.4));
+    }); } },
+  rmquote: { name: '레트로 콜라주 한 줄 (검정 종이 + 주황 종이띠)', slots: 0, weight: 6, fields: [['text', '문구', '그렇게 서로를 만나']], opts: [...RM_OPTS], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'char'); const k = ease(clamp(T / 0.6)); c.save(); c.beginPath(); c.rect(0, 0, W * k, H); c.clip(); rmTorn(c, 160, 440, 1600, 200, RMC.orange, -0.02, 1941); c.restore();
+      const qt = fill(s.texts.text); c.save(); c.font = RMH(120); const qw = c.measureText(qt).width; c.restore(); const qs = Math.min(120, Math.floor(120 * 1440 / Math.max(1, qw)));
+      txt(c, qt, 960, 540, RMH(qs), RMC.paper, fade(T, 0.5, 0.5), { k: 'text' });
+      rmStar(c, 300, 260, 34, '#F3F0E9', 'spike', 0, pop(T, 0.9, 0.4)); rmStar(c, 1620, 820, 60, null, 'dots', 0.2, pop(T, 1.1, 0.4));
+    }); } },
+  rmwindow: { name: '레트로 콜라주 풀사진 + 찢긴 흰 종이 액자', slots: 1, weight: 5, fields: [['cap', '아래 손글씨 (비워도 돼요)', '']], opts: [...RM_OPTS, ['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: 1.04 + 0.04 * clamp(t / d) });
+      c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,170,110,.25)'; c.fillRect(0, 0, W, H); c.restore();
+      const k = ease(clamp(T / 0.6)), P = [], Q = []; const cx = 960, cy = 560, rw = 430 * (0.8 + 0.2 * k), rh = 400 * (0.8 + 0.2 * k);
+      for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, j = 0.86 + 0.18 * rnd(i, 1951); P.push([cx + Math.cos(a) * rw * j * 1.1, cy + Math.sin(a) * rh * j]); const j2 = j + 0.08 + 0.08 * rnd(i, 1952); Q.push([cx + Math.cos(a) * rw * j2 * 1.1, cy + Math.sin(a) * rh * j2]); }
+      c.save(); c.globalAlpha *= k; c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 14 * R.S; c.fillStyle = '#F4F1EA'; c.beginPath(); Q.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); P.slice().reverse().forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill('evenodd'); c.restore();
+      if (fill(s.texts.cap)) { const lp = ease(clamp((T - 0.8) / 0.4)); c.save(); c.globalAlpha *= lp; rmTorn(c, 640, 930, 640, 96, RMC.paper, -0.02, 1953); c.restore(); txt(c, fill(s.texts.cap), 960, 978, RMH(64), RMC.ink, lp, { k: 'cap' }); }
+    }); } },
+  rmduo: { name: '레트로 콜라주 사진 두 장 + 종이띠', slots: 2, weight: 6, fields: [['label', '종이띠 글', '우리의 여름']], opts: [...RM_OPTS, ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'cream'); const n = autoN(s, 2);
+      [[140, 120, 860, 740, -4], [960, 260, 820, 700, 3]].slice(0, n).forEach((r, i) => { const k = ease(clamp((T - i * 0.3) / 0.5)); if (k <= 0) return; c.save(); c.globalAlpha *= k; c.translate(0, (1 - k) * 50); rmCut(c, s, i, r[0], r[1], r[2], r[3], t, d, { rot: r[4], seed: 1961 + i, bw: s.opts.bw }); c.restore(); });
+      const lp = ease(clamp((T - 0.9) / 0.4)); if (lp > 0 && fill(s.texts.label)) { c.save(); c.globalAlpha *= lp; rmTorn(c, 160, 900, 560, 100, RMC.orange, -0.03, 1963); c.restore(); txt(c, fill(s.texts.label), 440, 950, RMH(72), RMC.paper, lp, { k: 'label' }); }
+      rmStar(c, 1760, 150, 70, null, 'dots', 0.2, pop(T, 1.0, 0.4)); rmStar(c, 980, 120, 40, RMC.ink, 'spike', 0, pop(T, 1.2, 0.4));
+    }); } },
+  rmtrio: { name: '레트로 콜라주 사진 세 장 (주황 종이)', slots: 3, weight: 6, fields: [['word', '손글씨', 'our days']], opts: [...RM_OPTS, ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'orange'); const n = autoN(s, 3);
+      [[110, 120, 600, 640, -5], [700, 80, 560, 600, 3], [1250, 180, 600, 640, -2]].slice(0, n).forEach((r, i) => { const k = ease(clamp((T - i * 0.25) / 0.5)); if (k <= 0) return; c.save(); c.globalAlpha *= k; c.translate(0, (1 - k) * 50); rmCut(c, s, i, r[0], r[1], r[2], r[3], t, d, { rot: r[4], seed: 1971 + i, bw: s.opts.bw }); c.restore(); });
+      txt(c, fill(s.texts.word), 960, 950, RMH(120), RMC.paper, fade(T, 1.0, 0.5), { k: 'word', shadow: 'rgba(0,0,0,.25)', blur: 6 });
+      rmStar(c, 260, 900, 60, null, 'dots', 0.2, pop(T, 1.1, 0.4)); rmStar(c, 1700, 140, 44, RMC.ink, 'spike', 0, pop(T, 1.3, 0.4));
+    }); } },
+  rmstrip: { name: '레트로 콜라주 오린 사진 네 장 줄', slots: 4, weight: 6, fields: [['label', '위 종이띠 글', '기억하고 싶은 순간들']], opts: [...RM_OPTS, ['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'char'); const n = autoN(s, 4), w = 400, g = 30, x0 = (W - (n * w + (n - 1) * g)) / 2;
+      const lp = ease(clamp(T / 0.4)); if (fill(s.texts.label)) { c.save(); c.globalAlpha *= lp; rmTorn(c, 560, 110, 800, 110, RMC.paper, -0.02, 1981); c.restore(); txt(c, fill(s.texts.label), 960, 165, RMH(76), RMC.ink, lp, { k: 'label' }); }
+      for (let i = 0; i < n; i++) { const k = ease(clamp((T - 0.3 - i * 0.2) / 0.45)); if (k <= 0) continue; c.save(); c.globalAlpha *= k; c.translate(0, (1 - k) * -60); rmCut(c, s, i, x0 + i * (w + g), 300, w, 560, t, d, { rot: [-3, 2, -2, 3][i], seed: 1982 + i, bw: s.opts.bw }); c.restore(); }
+      rmStar(c, 1760, 940, 60, RMC.orange, 'burst', 0.3, pop(T, 1.3, 0.4));
+    }); } },
+  rmend: { name: '레트로 콜라주 엔딩 (Thank you 카드)', slots: 2, weight: 9, fields: [['big', '큰 손글씨', 'Thank you!'], ['names', '이름', '{신랑} & {신부}'], ['date', '날짜', '{DATE}']], opts: [...RM_OPTS, ['bw', '오린 사진 흑백', true]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'blush'); const cp = ease(clamp(T / 0.5)); c.save(); c.globalAlpha *= cp; rmTorn(c, 520, 220, 880, 620, RMC.cream, 0.02, 1991); c.restore(); rmScribble(c, 560, 260, 800, 540, clamp((T - 0.4) / 1.0), 1992);
+      txt(c, fill(s.texts.big), 960, 470, RMH(150), RMC.ink, fade(T, 0.7, 0.6), { k: 'big' });
+      txt(c, fill(s.texts.names), 960, 620, RMH(70), RMC.orange, fade(T, 1.1, 0.6), { k: 'names' });
+      txt(c, fill(s.texts.date), 960, 700, RMH(46), RMC.ink, fade(T, 1.3, 0.6), { k: 'date' });
+      if (s.media[0] && s.media[0].id) { const k = pop(T, 0.4, 0.5); c.save(); c.globalAlpha *= clamp(k); rmCut(c, s, 0, 80, 520, 480, 520, t, d, { rot: -7, seed: 1993, bw: s.opts.bw }); c.restore(); }
+      if (s.media[1] && s.media[1].id) { const k = pop(T, 0.7, 0.5); c.save(); c.globalAlpha *= clamp(k); rmCut(c, s, 1, 1380, 60, 460, 500, t, d, { rot: 6, seed: 1994, bw: s.opts.bw }); c.restore(); }
+      rmStar(c, 1420, 830, 70, null, 'dots', 0.2, pop(T, 1.4, 0.4)); rmStar(c, 520, 200, 44, RMC.orange, 'burst', 0, pop(T, 1.5, 0.4));
+      const end = clamp((t - (d - 1.6)) / 1.4); if (end > 0) { c.fillStyle = `rgba(20,14,10,${ease(end)})`; c.fillRect(0, 0, W, H); }
+    }); } }
+});
+['rmprofile'].forEach(k => { LAYOUTS[k].cutout = true; });
+CATS.push(['레트로 매거진 콜라주 (고객 요청 8타입)', ['rmtitle', 'rmcard', 'rmprofile', 'rmquote', 'rmwindow', 'rmduo', 'rmtrio', 'rmstrip', 'rmend']]);
+TEMPLATES.R = {
+  custom: true, code: '8', name: 'A타입 레트로 에디션', desc: 'A타입(클래식 모던) 구성을 그대로 살리고, 영상 전체에 따뜻한 필름 톤·노이즈·먼지·깜빡임을 입힌 레트로 버전. 중간중간 잡지에서 오려 다이어리에 붙인 듯한 콜라주 장면이 섞여요. 약 3분',
+  tags: ['레트로', '잡지 콜라주', '필름 효과', '스톱모션'], preview: 0,
+  make: () => {
+    const list0 = [
+      ['rmtitle', {}, 7],
+      ['rmcard', {}, 6], ['rmcard', { texts: { text: '지금부터 저희의\n이야기를 잠시\n들려드릴게요' } }, 6],
+      ['rmduo', { texts: { label: '우리 두 사람' } }, 6],
+      ['rmprofile', {}, 7], ['rmprofile', { opts: { flip: true }, texts: { kicker: '세상에서 가장 아름다운', name: '{신부}', line: '작은 일에도 크게 웃는 사람' } }, 7],
+      ['rmquote', {}, 6],
+      ['rmwindow', { texts: { cap: '처음 함께한 계절' } }, 5], ['rmstrip', {}, 6], ['rmwindow', {}, 5], ['rmduo', { texts: { label: '우리의 여름' } }, 6], ['rmtrio', {}, 6],
+      ['rmquote', { texts: { text: '그리고 이제, 같은 곳을 바라보려 해요' } }, 6],
+      ['rmwindow', { opts: { bw: true } }, 5], ['rmtrio', { texts: { word: 'forever' } }, 6], ['rmstrip', { texts: { label: '우리가 사랑한 날들' } }, 6], ['rmduo', { texts: { label: 'just married' } }, 6], ['rmwindow', { texts: { cap: '오늘, 우리' } }, 5],
+      ['rmend', {}, 9]
+    ];
+    const A = (k, o) => [k, o || {}, 0];
+    const list = [
+      A('title'), A('typing', { texts: { footer: 'with love' } }), A('typing', { texts: { text: '지금부터 저희의 이야기를\n잠시 들려드릴게요', footer: '' } }),
+      A('vignette2'), A('profile', { texts: { line3: '{신부} 앞에서만 웃음이 많은 사람' } }),
+      A('profile', { opts: { flip: true }, texts: { eyebrow: 'Bride', title: '신부 {신부}', line1: '밝고 따뜻한 사람', line2: '작은 일에도 크게 웃는 사람', line3: '{신랑}을 가장 잘 아는 사람' } }),
+      ['rmcard', { opts: { retro: false, stop: false } }, 6],
+      A('typing', { opts: { dark: true }, texts: { text: '그렇게 서로를 만나', footer: '' } }),
+      A('vignette1', { caption: '처음 함께한 계절' }), A('filmstrip'), ['rmwindow', { opts: { retro: false, stop: false }, texts: { cap: '우리의 첫 여행' } }, 5], A('duo'), A('triptych'),
+      ['rmduo', { opts: { retro: false, stop: false }, texts: { label: '우리의 여름' } }, 6], A('vignette2'), A('polaroid'), A('filmstrip'),
+      A('typing', { texts: { text: '그리고 이제,\n같은 곳을 바라보려 합니다', footer: '' } }),
+      A('full', { opts: { bw: true } }), ['rmtrio', { opts: { retro: false, stop: false }, texts: { word: 'forever' } }, 6], A('triptych'), A('duo', { texts: { top: '' } }), A('polaroid'),
+      ['rmstrip', { opts: { retro: false, stop: false }, texts: { label: '우리가 사랑한 날들' } }, 6], ['rmwindow', { opts: { retro: false, stop: false }, texts: { cap: '오늘, 우리' } }, 5], A('full', { texts: { text: '' } }), A('ending')
+    ];
+    const sc = list.map(([k, o, w]) => { const sx = makeScene(k, o); if (w) sx.weight = w; return sx; });
+    const tot = sc.reduce((a, x) => a + (+x.weight || 5), 0), f = 178 / tot; sc.forEach(x => x.weight = Math.round((+x.weight || 5) * f * 10) / 10);
+    const TR = ['dissolve', 'dissolve', 'cut', 'dissolve', 'slide', 'dissolve'];
+    sc.forEach((s, i) => { if (i) s.tr = s.tr || TR[i % TR.length]; });
+    return baseProj('R', sc, { lyricFx: '', retroFx: true });
+  }
+};
+/* ---- type 8: every A-type scene re-made as a magazine cut-out pasted in a diary ---- */
+function rmDiary() { // cream diary page with a faint grid and a margin line
+  if (rmCache.diary) return rmCache.diary; const base = rmPaper('cream'), cv = document.createElement('canvas'); cv.width = 960; cv.height = 540; const p = cv.getContext('2d');
+  p.drawImage(base, 0, 0); p.strokeStyle = 'rgba(120,110,95,.13)'; p.lineWidth = 1; for (let x = 0; x < 960; x += 24) { p.beginPath(); p.moveTo(x + 0.5, 0); p.lineTo(x + 0.5, 540); p.stroke(); } for (let y = 0; y < 540; y += 24) { p.beginPath(); p.moveTo(0, y + 0.5); p.lineTo(960, y + 0.5); p.stroke(); }
+  p.strokeStyle = 'rgba(214,110,90,.35)'; p.beginPath(); p.moveTo(60.5, 0); p.lineTo(60.5, 540); p.stroke(); rmCache.diary = cv; return cv;
+}
+function rmBgS(c, s, def) { const k = (s && s.opts && s.opts.paper) || def; if (k === 'diary') c.drawImage(rmDiary(), 0, 0, W, H); else rmBg(c, k); }
+const RM_PAPERS = [['diary', '다이어리 모눈'], ['cream', '크림'], ['blush', '연핑크'], ['orange', '주황'], ['char', '구겨진 검정']];
+function rmTape(c, x, y, w, rot) { c.save(); c.translate(x, y); c.rotate(rot || 0); c.fillStyle = 'rgba(236,226,200,.78)'; c.shadowColor = 'rgba(0,0,0,.12)'; c.shadowBlur = 4 * R.S; c.beginPath(); c.moveTo(-w / 2, -16); for (let i = 0; i <= 6; i++) c.lineTo(-w / 2 + w * i / 6, -16 + (i % 2 ? 2 : -2)); c.lineTo(w / 2, 16); for (let i = 6; i >= 0; i--) c.lineTo(-w / 2 + w * i / 6, 16 + (i % 2 ? -2 : 2)); c.closePath(); c.fill(); c.restore(); }
+function rmPrint(c, x, y, w, h) { // magazine print: fine halftone dots over the cut photo
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.globalCompositeOperation = 'multiply'; c.fillStyle = 'rgba(60,40,30,.10)';
+  for (let yy = y; yy < y + h; yy += 7) for (let xx = x + ((yy / 7) % 2 ? 3.5 : 0); xx < x + w; xx += 7) { c.beginPath(); c.arc(xx, yy, 1.4, 0, Math.PI * 2); c.fill(); } c.restore();
+}
+Object.assign(LAYOUTS, {
+  rmpage: { name: '레트로 콜라주 오린 사진 한 장 + 테이프 + 손글씨', slots: 1, weight: 6, fields: [['word', '오린 글자 (잡지 글자)', 'LOVE'], ['cap', '손글씨', '처음 함께한 계절']], opts: [...RM_OPTS, ['paper', '종이', 'diary'], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'diary'); const k = ease(clamp(T / 0.6));
+      c.save(); c.globalAlpha *= k; c.translate(0, (1 - k) * 40); rmCut(c, s, 0, 330, 90, 1000, 760, t, d, { rot: -2.5, seed: 2001, bw: s.opts.bw }); rmPrint(c, 360, 120, 940, 700); c.restore();
+      if (k > 0.5) { rmTape(c, 420, 110, 200, -0.5); rmTape(c, 1250, 120, 180, 0.45); }
+      const w = fill(s.texts.word); if (w) mkRansom(c, w, 1560, 820, 70, T, 0.7, 'word');
+      txt(c, fill(s.texts.cap), 600, 960, RMH(76), RMC.ink, fade(T, 1.0, 0.5), { k: 'cap' });
+      rmStar(c, 1600, 210, 54, RMC.orange, 'burst', 0.2, pop(T, 1.2, 0.4)); rmStar(c, 230, 300, 36, RMC.ink, 'spike', 0, pop(T, 1.4, 0.4));
+    }); } },
+  rmpola: { name: '레트로 콜라주 폴라로이드 세 장 + 테이프', slots: 3, weight: 6, fields: [['cap1', '첫 손글씨', 'summer'], ['cap2', '둘째 손글씨', 'trip'], ['cap3', '셋째 손글씨', 'us']], opts: [...RM_OPTS, ['paper', '종이', 'diary'], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
+      rmBgS(c, s, 'diary'); const n = autoN(s, 3), P = { 1: [[960, 520, -2]], 2: [[700, 520, -5], [1220, 540, 4]], 3: [[440, 540, -6], [960, 500, 2], [1480, 550, -3]] }[n];
+      P.forEach(([cx, cy, rot], i) => { const k = ease(clamp((T - i * 0.3) / 0.5)); if (k <= 0) return; c.save(); c.globalAlpha *= k; c.translate(cx, cy + (1 - k) * 50); c.rotate(rot * Math.PI / 180);
+        c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 18 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FBFAF6'; c.fillRect(-230, -290, 460, 580); c.restore();
+        const ho = hitOn; hitOn = false; coverIn(c, s, i, -205, -265, 410, 440, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho; rmPrint(c, -205, -265, 410, 440);
+        c.font = RMH(64); c.fillStyle = RMC.ink; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(fill(s.texts['cap' + (i + 1)]), 0, 228); rmTape(c, 0, -292, 170, (i - 1) * 0.15); c.restore();
+        addHit({ type: 'media', si: i, x: cx - 205, y: cy - 265, w: 410, h: 440, oy: 0 }); });
+      rmStar(c, 1760, 900, 60, null, 'dots', 0.2, pop(T, 1.2, 0.4));
+    }); } }
+});
+// paper choice on every type-8 scene, and calmer default papers in the A-type flow
+['rmtitle', 'rmcard', 'rmprofile', 'rmquote', 'rmduo', 'rmtrio', 'rmstrip', 'rmend', 'rmpage', 'rmpola'].forEach(k => { const L = LAYOUTS[k]; if (!L.opts.some(o => o[0] === 'paper')) L.opts = [...L.opts, ['paper', '종이', '']]; L.optSelects = Object.assign({}, L.optSelects || {}, { paper: [['', '기본'], ...RM_PAPERS] }); });
+LAYOUTS.rmprofile.fields = [['role', '오린 글자 (잡지 글자)', 'GROOM'], ...LAYOUTS.rmprofile.fields];
+{ const dr = LAYOUTS.rmprofile.draw; LAYOUTS.rmprofile.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); const r = fill(s.texts.role || ''); if (r) { const f = s.opts.flip, T = s.opts.stop === false ? t : Math.floor(t * 12) / 12; mkRansom(c, r, f ? 1500 : 420, 190, 60, T, 0.3, 'role'); } }; }
+CATS.find(c => c[0] === '레트로 매거진 콜라주 (고객 요청 8타입)')[1].push('rmpage', 'rmpola');
+TEMPLATES.R.desc = 'A타입(클래식 모던) 장면이 중심이고, 사이사이 잡지에서 오려 다이어리에 붙인 콜라주 페이지가 구겨진 종이가 펴지며 올라오듯 들어와요. 영상 전체에 따뜻한 필름 톤·노이즈·먼지로 레트로 느낌. 40장면, 약 3분';
+TEMPLATES.R.name = 'A타입 레트로 매거진';
+TEMPLATES.R.make = () => {
+  // A-type scenes lead (25 of 40); magazine cut-out pages come in between (15), each arriving as a crumpled page that rises and flattens
+  const P = paper => ({ paper }), A = (k, o) => ['A', k, o || {}], C = (k, o) => ['C', k, o || {}];
+  const list = [
+    A('title'), A('typing', { texts: { footer: 'with love' } }), C('rmcard', { opts: P('diary'), texts: { text: '지금부터 저희의\n이야기를 잠시\n들려드릴게요' } }),
+    A('vignette2'), C('rmprofile', { opts: P('cream') }), C('rmpage', { opts: P('cream'), texts: { word: 'BOY', cap: '어린 시절의 {신랑}' } }),
+    C('rmprofile', { opts: Object.assign({ flip: true }, P('blush')), texts: { role: 'BRIDE', kicker: '세상에서 가장 아름다운', name: '{신부}', line: '작은 일에도 크게 웃는 사람' } }), C('rmpage', { opts: P('blush'), texts: { word: 'GIRL', cap: '어린 시절의 {신부}' } }),
+    A('typing', { opts: { dark: true }, texts: { text: '그렇게 서로를 만나', footer: '' } }), A('vignette1', { caption: '처음 함께한 계절' }), C('rmduo', { opts: P('diary'), texts: { label: '우리의 시작' } }),
+    A('filmstrip'), A('duo'), C('rmpola', {}), A('triptych'), A('vignette1'), C('rmstrip', { opts: P('cream'), texts: { label: '기억하고 싶은 순간들' } }),
+    A('polaroid'), A('full'), C('rmtrio', { opts: P('blush'), texts: { word: 'our days' } }), A('duo'), C('rmpage', { opts: P('diary'), texts: { word: 'YES', cap: '그리고 약속한 날' } }),
+    A('typing', { texts: { text: '그리고 이제,\n같은 곳을 바라보려 합니다', footer: '' } }), A('full', { opts: { bw: true } }), C('rmwindow', { texts: { cap: '우리의 웨딩' } }),
+    A('triptych'), A('vignette2'), C('rmduo', { opts: P('blush'), texts: { label: 'our wedding' } }), A('polaroid'), A('filmstrip'), C('rmpola', { opts: P('cream'), texts: { cap1: 'wedding', cap2: 'day', cap3: '♥' } }),
+    A('duo', { texts: { top: '' } }), A('full'), C('rmstrip', { texts: { label: '우리가 사랑한 날들' } }), A('vignette1'), C('rmpage', { opts: P('cream'), texts: { word: 'FOREVER', cap: '오늘, 우리' } }),
+    A('triptych'), C('rmwindow', { opts: { bw: true }, texts: { cap: '평생 함께할 우리' } }), A('full', { texts: { text: '' } }), A('ending')
+  ];
+  const sc = list.map(([g, k, o]) => { const x = makeScene(k, o); x._g = g; return x; });
+  sc.forEach((x, i) => { if (x._g === 'C') x.opts.stop = x.opts.stop === undefined ? true : x.opts.stop; x.weight = x.layout === 'title' ? 6 : x.layout === 'ending' ? 9 : x.layout === 'profile' || x.layout === 'rmprofile' ? 6 : x.layout === 'typing' ? 5 : 4.3;
+    if (i) x.tr = x._g === 'C' ? 'rise' : (sc[i - 1]._g === 'C' ? 'dissolve' : (x.layout === 'typing' ? 'black' : 'dissolve')); });
+  const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => { x.weight = Math.round(x.weight * f * 10) / 10; delete x._g; });
+  return baseProj('R', sc, { lyricFx: '', retroFx: true });
+};
+
+
+/* ---- transition: the next page comes up from the bottom as a crumpled sheet that flattens out, torn white edge on top ---- */
+TRANS.push(['rise', '구겨진 종이가 펴지며 위로 올라오기']);
+function riseTr(c, r, pr) {
+  const e = 1 - Math.pow(1 - pr, 3), y = H * (1 - e), sy = 0.86 + 0.14 * e, crum = Math.pow(1 - pr, 1.4);
+  const pts = []; for (let x = -20; x <= W + 20; x += 24) pts.push([x, y + (rnd(x, 2101) - 0.5) * 16 + Math.sin(x * 0.01) * 10]);
+  c.save(); c.beginPath(); c.moveTo(-20, H + 20); pts.forEach(([x, yy]) => c.lineTo(x, yy)); c.lineTo(W + 20, H + 20); c.closePath(); c.clip();
+  c.translate(0, y); c.scale(1, sy); c.drawImage(r.la, 0, 0, W, H);
+  if (crum > 0.01) { // creases fading away as the sheet straightens
+    for (let i = 0; i < 46; i++) { const x0 = rnd(i, 2102) * W, y0 = rnd(i, 2103) * H; c.fillStyle = rnd(i, 2104) > 0.5 ? `rgba(255,255,255,${0.18 * crum})` : `rgba(0,0,0,${0.2 * crum})`; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + (rnd(i, 2105) - 0.3) * 520, y0 + (rnd(i, 2106) - 0.5) * 360); c.lineTo(x0 + (rnd(i, 2107) - 0.7) * 520, y0 + (rnd(i, 2108) - 0.5) * 360); c.closePath(); c.fill(); }
+  }
+  c.restore();
+  // torn white paper edge riding on top
+  const inner = pts.map(([x, yy], i) => [x, yy + 10 + 10 * rnd(i, 2109)]);
+  c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 14 * R.S; c.shadowOffsetY = -4 * R.S; c.fillStyle = '#F5F2EB'; c.beginPath(); pts.forEach(([x, yy], i) => i ? c.lineTo(x, yy) : c.moveTo(x, yy)); for (let i = inner.length - 1; i >= 0; i--) c.lineTo(inner[i][0], inner[i][1]); c.closePath(); c.fill(); c.restore();
+}
+/* ---- E: retro film contact sheet — two rows of frames drifting past, amber edge print top and bottom ---- */
+LAYOUTS.efilmroll = { name: '레트로 필름 두 줄 (흘러가는 컷 + 주황 필름 글씨, 최대 8장)', slots: 8, weight: 7,
+  fields: [['edge', '필름 왼쪽 글씨', 'RETRO FILM 400'], ['brand', '필름 오른쪽 글씨', '{GROOM} & {BRIDE}'], ['num', '컷 번호 시작', '12']], opts: [['bw', '흑백', false], ['grain', '필름 노이즈', true]], cap: () => [960, 1045, 'dark'],
+  draw(c, s, t, d) {
+    bg(c, '#0A0A0A'); const n = Math.max(1, autoN(s, 8)), top = Math.ceil(n / 2), AMB = '#E07A2E', FW = 560, FH = 400, G = 34;
+    const edgeFont = px => `400 ${px}px "VT323", "IBM Plex Mono", monospace`, n0 = parseInt(fill(s.texts.num), 10) || 1;
+    // edge print rows
+    const band = (y, shift) => { c.save(); c.font = edgeFont(40); c.fillStyle = AMB; c.textBaseline = 'middle'; setSpacing(c, 10); c.textAlign = 'left'; c.fillText(fill(s.texts.edge), 80, y); setSpacing(c, 0);
+      for (let k = 0; k < 3; k++) { const x = 720 + k * 300 + Math.sin(shift * 0.01 + k) * 6; c.beginPath(); c.moveTo(x, y - 9); c.lineTo(x + 16, y); c.lineTo(x, y + 9); c.closePath(); c.fill(); c.font = edgeFont(34); c.fillText(String(n0 + k), x + 34, y + 1); }
+      c.font = `600 26px "IBM Plex Sans KR", sans-serif`; c.fillStyle = 'rgba(235,230,220,.8)'; setSpacing(c, 3); c.textAlign = 'right'; c.fillText(fill(s.texts.brand).toUpperCase(), 1840, y); setSpacing(c, 0); c.restore(); };
+    band(46, -t * 40); band(1034, t * 40);
+    // two rows of frames, drifting in opposite directions just enough to show every frame
+    [[0, top, 110, -1], [top, n, 570, 1]].forEach(([a, b, y, dir], ri) => {
+      const cnt = b - a; if (cnt <= 0) return; const rowW = cnt * FW + (cnt - 1) * G, view = W - 120, travel = Math.max(0, rowW - view), p = clamp((t - 0.2) / Math.max(0.5, d - 0.4));
+      const x0 = travel <= 0 ? (W - rowW) / 2 : (dir < 0 ? 60 - travel * p : 60 - travel * (1 - p));
+      for (let i = a; i < b; i++) { const x = x0 + (i - a) * (FW + G); if (x > W || x + FW < 0) continue;
+        c.save(); c.globalAlpha = fade(t, 0.1 + (i - a) * 0.12, 0.5); c.fillStyle = '#1A1A1A'; rr(c, x - 6, y - 6, FW + 12, FH + 12, 8); c.fill();
+        c.save(); rr(c, x, y, FW, FH, 6); c.clip(); cover(c, s, i, x, y, FW, FH, t, { bw: s.opts.bw, dark: true, zoom: 1.02 }); c.restore(); c.restore(); }
+      if (ri === 0) { c.save(); c.font = edgeFont(30); c.fillStyle = AMB; c.globalAlpha = 0.85; c.textBaseline = 'middle'; for (let k = 0; k < 4; k++) { const x = ((k * 520 + 180 - t * 25) % 2080 + 2080) % 2080 - 80; c.fillText(`${n0 + k}A  ▶`, x, 540); } c.restore(); }
+    });
+    if (s.opts.grain && typeof rmRetro === 'function' && !project.retroFx) rmRetro(c, t);
+  } };
+CATS[2][1].push('efilmroll');
+TEMPLATES.E.make = (o => () => { const p = o(); const at = (lay, nth) => { let k = -1; return p.scenes.findIndex(x => x.layout === lay && ++k === nth); };
+  const i1 = at('stack2', 0); if (i1 >= 0) p.scenes.splice(i1 + 1, 0, Object.assign(makeScene('efilmroll', { weight: 7 }), { tr: 'black' }));
+  const i2 = at('filmstrip', 0); if (i2 >= 0) p.scenes.splice(i2 + 1, 0, Object.assign(makeScene('efilmroll', { weight: 7, texts: { num: '24' } }), { tr: 'cut' }));
+  return p; })(TEMPLATES.E.make);
+/* ---- photo album (fabric cover + open pages + page turns + tiny doodles) — for the F type ---- */
+const ALB = { fabric: '#7E91B7', page: '#FBF8F2', ink: '#7C8FB8', pink: '#E59AAE' };
+function albFabric(c, x, y, w, h) {
+  c.save(); c.beginPath(); rr(c, x, y, w, h, 14); c.clip(); c.fillStyle = ALB.fabric; c.fillRect(x, y, w, h);
+  c.strokeStyle = 'rgba(255,255,255,.05)'; c.lineWidth = 1; for (let i = 0; i < h; i += 4) { c.beginPath(); c.moveTo(x, y + i); c.lineTo(x + w, y + i); c.stroke(); }
+  c.fillStyle = 'rgba(255,255,255,.72)'; for (let yy = y + 20, r = 0; yy < y + h; yy += 46, r++) for (let xx = x + 20 + (r % 2) * 23; xx < x + w; xx += 46) { c.save(); c.translate(xx, yy); c.beginPath(); for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? 2.4 : 6; i ? c.lineTo(Math.cos(a) * rr2, Math.sin(a) * rr2) : c.moveTo(Math.cos(a) * rr2, Math.sin(a) * rr2); } c.closePath(); c.fill(); c.restore(); }
+  const g = c.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, 'rgba(255,255,255,.10)'); g.addColorStop(1, 'rgba(0,0,0,.12)'); c.fillStyle = g; c.fillRect(x, y, w, h); c.restore();
+}
+function albBg(c) { bg(c, '#F1EFEB'); const g = c.createRadialGradient(960, 540, 300, 960, 540, 1100); g.addColorStop(0, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(150,140,125,.18)'); c.fillStyle = g; c.fillRect(0, 0, W, H); }
+const ALBP = { L: [255, 95, 700, 890], R: [965, 95, 700, 890] };
+function albPages(c) { // open album: fabric cover behind, two cream pages, soft gutter shadow
+  c.save(); c.shadowColor = 'rgba(60,50,40,.28)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 16 * R.S; c.fillStyle = ALB.fabric; rr(c, 225, 70, 1470, 940, 16); c.fill(); c.restore(); albFabric(c, 225, 70, 1470, 940);
+  [ALBP.L, ALBP.R].forEach(([x, y, w, h], k) => { c.fillStyle = ALB.page; c.fillRect(x, y, w, h); const g = c.createLinearGradient(k ? x : x + w, 0, k ? x + 90 : x + w - 90, 0); g.addColorStop(0, 'rgba(90,80,70,.18)'); g.addColorStop(1, 'rgba(90,80,70,0)'); c.fillStyle = g; c.fillRect(x, y, w, h); });
+  c.fillStyle = 'rgba(80,70,60,.25)'; c.fillRect(957, 95, 6, 890);
+}
+function albDoodle(c, kind, x, y, sc, p, col) { if (p <= 0) return; c.save(); c.translate(x, y); c.scale(sc, sc); c.strokeStyle = col || ALB.ink; c.fillStyle = col || ALB.ink; c.lineWidth = 2.2; c.lineCap = 'round'; c.setLineDash([600 * p, 2000]);
+  if (kind === 'star') { c.beginPath(); for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 6 : 15; i ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.stroke(); }
+  else if (kind === 'heart') { heartShape(c, 0, 0, 28); c.stroke(); }
+  else if (kind === 'spark') { [[0, -16, 0, 16], [-16, 0, 16, 0], [-9, -9, 9, 9], [-9, 9, 9, -9]].forEach(([a, b, d2, e]) => { c.beginPath(); c.moveTo(a * 0.6, b * 0.6); c.lineTo(d2 * 0.6, e * 0.6); c.stroke(); }); }
+  else if (kind === 'dots') { c.setLineDash([]); for (let i = 0; i < 9; i++) if (i / 9 < p) { c.beginPath(); c.arc(i * 14 - 56, Math.sin(i) * 4, 2, 0, Math.PI * 2); c.fill(); } }
+  c.restore(); }
+function albPhotos(c, s, list, t, d, area, seed) { // 1 or 2 photos on a page
+  const [x, y, w, h] = area, n = list.length;
+  const R2 = n <= 1 ? [[x + 90, y + 150, w - 180, h - 330, (rnd(1, seed) - 0.5) * 3]] : [[x + 70, y + 90, w - 220, (h - 260) / 2, -2.5 + rnd(2, seed) * 2], [x + 150, y + 90 + (h - 260) / 2 + 50, w - 220, (h - 260) / 2, 1.5 + rnd(3, seed) * 2]];
+  R2.forEach((r, i) => { const si = list[i], a = fade(t, 0.5 + i * 0.25, 0.6); if (a <= 0) return; c.save(); c.globalAlpha *= a; c.translate(r[0] + r[2] / 2, r[1] + r[3] / 2); c.rotate(r[4] * Math.PI / 180);
+    c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 10 * R.S; c.shadowOffsetY = 4 * R.S; c.fillStyle = '#fff'; c.fillRect(-r[2] / 2, -r[3] / 2, r[2], r[3]); c.restore();
+    const ho = hitOn; hitOn = false; coverIn(c, s, si, -r[2] / 2, -r[3] / 2, r[2], r[3], t, { bw: s.opts.bw, zoom: 1.02 }); hitOn = ho; c.restore(); addHit({ type: 'media', si, x: r[0], y: r[1], w: r[2], h: r[3], oy: 0 }); });
+}
+Object.assign(LAYOUTS, {
+  albumcover: { name: '포토 앨범 표지 (패브릭 + 사진 창, 끝에 열려요)', slots: 1, weight: 6, fields: [['title', '표지 글씨', 'Memories'], ['sub', '아래 작은 글씨', '{GROOM} & {BRIDE}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      albBg(c); const o = clamp((t - (d - 1.6)) / 1.5), slide = ease(clamp(o / 0.35)), flip = ease(clamp((o - 0.35) / 0.65));
+      const Wd = 700, Ht = 890, Y = 95, X = 610 + (965 - 610) * slide; // closed book drifts to where its right page will be, then the cover swings open over the spine
+      if (flip > 0) albPages(c);
+      const sx = Math.cos(flip * Math.PI);
+      c.save(); c.translate(960, 0); c.scale(flip > 0 ? sx : 1, 1); c.translate(-960, 0);
+      c.save(); c.shadowColor = 'rgba(60,50,40,.3)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 16 * R.S; c.fillStyle = ALB.fabric; rr(c, flip > 0 ? 965 : X, Y, Wd, Ht, 16); c.fill(); c.restore();
+      const CX = flip > 0 ? 965 : X; albFabric(c, CX, Y, Wd, Ht); c.fillStyle = 'rgba(40,50,80,.25)'; c.fillRect(CX, Y, 22, Ht);
+      if (sx > 0 || flip === 0) {
+        const wx = CX + 150, wy = Y + 250, ww = 400, wh = 340; c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 10 * R.S; c.fillStyle = '#EEE9E0'; c.fillRect(wx - 14, wy - 14, ww + 28, wh + 28); c.restore();
+        cover(c, s, 0, wx, wy, ww, wh, t, { bw: s.opts.bw, zoom: 1.03 });
+        txt(c, fill(s.texts.title), CX + Wd / 2, Y + 160, `italic 600 58px "Cormorant Garamond", serif`, 'rgba(255,255,255,.88)', fade(t, 0.5, 1.0), { k: 'title', shadow: 'rgba(20,30,60,.35)', blur: 2 });
+        txt(c, fill(s.texts.sub), CX + Wd / 2, Y + 720, UIF(22, 600), 'rgba(255,255,255,.78)', fade(t, 0.9, 0.8), { k: 'sub', sp: 6 });
+      } else { c.fillStyle = 'rgba(255,255,255,.08)'; c.fillRect(CX + 30, Y + 30, Wd - 60, Ht - 60); }
+      if (flip > 0) { c.fillStyle = `rgba(0,0,0,${0.18 * Math.sin(flip * Math.PI)})`; c.fillRect(CX, Y, Wd, Ht); }
+      c.restore();
+    } },
+  albumpage: { name: '포토 앨범 펼친 면 (넘어가는 페이지 + 사진 1~4장 + 낙서)', slots: 4, weight: 5, autoDefault: true, countOpts: [1, 2, 3, 4],
+    fields: [['note', '왼쪽 아래 손글씨', 'sweet memories'], ['note2', '오른쪽 아래 손글씨', '']], opts: [['turn', '페이지 넘김', true], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      albBg(c); albPages(c); const n = photoCount(s, 2), L = n === 1 ? [] : n === 2 ? [0] : n === 3 ? [0] : [0, 1], Rr = n === 1 ? [0] : n === 2 ? [1] : n === 3 ? [1, 2] : [2, 3];
+      const seed = (s.id || 'x').charCodeAt(0) * 7;
+      if (L.length) albPhotos(c, s, L, t, d, ALBP.L, seed); else albDoodle(c, 'heart', 600, 540, 2.2, clamp((t - 0.6) / 0.8), ALB.pink);
+      albPhotos(c, s, Rr, t, d, ALBP.R, seed + 3);
+      const dk = ['star', 'heart', 'spark', 'star'];
+      [[330, 160], [880, 200], [1050, 930], [1590, 160]].forEach(([x, y], i) => albDoodle(c, dk[(i + seed) % 4], x, y, 1, clamp((t - 0.9 - i * 0.15) / 0.6), i % 2 ? ALB.pink : ALB.ink));
+      txt(c, fill(s.texts.note), 600, 930, `italic 400 34px "Cormorant Garamond", "Gowun Batang", serif`, ALB.ink, fade(t, 1.0, 0.6), { k: 'note' }); albDoodle(c, 'dots', 600, 965, 1, clamp((t - 1.2) / 0.6));
+      txt(c, fill(s.texts.note2), 1310, 940, `italic 400 34px "Cormorant Garamond", "Gowun Batang", serif`, ALB.ink, fade(t, 1.1, 0.6), { k: 'note2' });
+      // the previous page turning over at the start
+      if (s.opts.turn) { const p = ease(clamp(t / 0.9)); if (p < 1) { const [x, y, w, h] = ALBP.R, cosv = Math.cos(p * Math.PI), pw = Math.abs(cosv) * w, left = cosv < 0;
+        c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 24 * R.S; const g = c.createLinearGradient(left ? 960 - pw : 960, 0, left ? 960 : 960 + pw, 0); g.addColorStop(0, left ? '#EFEBE3' : '#F7F3EC'); g.addColorStop(1, left ? '#F7F3EC' : '#E8E3D9'); c.fillStyle = g; c.fillRect(left ? 960 - pw : 960, y - 6 * Math.sin(p * Math.PI), pw, h + 12 * Math.sin(p * Math.PI)); c.restore(); } }
+    } }
+});
+CATS.push(['포토 앨범 (F타입 추천)', ['albumcover', 'albumpage']]);
+LAYOUTS.albumpage.noBulk = [2, 3];
+// F: open with the album cover and turn album pages through the middle (total length kept)
+TEMPLATES.F.make = (o => () => { const p = o(); const total = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0);
+  p.scenes.unshift(makeScene('albumcover', { weight: 6 }));
+  const mid = Math.floor(p.scenes.length / 2), notes = ['sweet memories', 'our little days', 'you & me', 'happy days', 'love always', 'forever'];
+  for (let k = 0; k < 6; k++) { const x = makeScene('albumpage', { weight: 5, texts: { note: notes[k] } }); x.tr = 'cut'; p.scenes.splice(mid + k, 0, x); }
+  p.scenes[1].tr = 'cut'; const now = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0), f = total / now; p.scenes.forEach(x => x.weight = Math.round((+x.weight || 5) * f * 10) / 10);
+  return p; })(TEMPLATES.F.make);
+// E: the theatre-marquee card is taken out
+TEMPLATES.E.make = (o => () => { const p = o(); const total = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0); p.scenes = p.scenes.filter(x => x.layout !== 'emarquee'); const now = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0), f = total / now; p.scenes.forEach(x => x.weight = Math.round((+x.weight || 5) * f * 10) / 10); return p; })(TEMPLATES.E.make);
+/* ---- F: one scene that opens a fabric photo album and turns through its pages ---- */
+function albCoverDraw(c, s, t, o, si) { // o: 0 closed (centred) → 1 cover swung open over the spine
+  const slide = ease(clamp(o / 0.35)), flip = ease(clamp((o - 0.35) / 0.65)), Wd = 700, Ht = 890, Y = 95, X = 610 + (965 - 610) * slide, sx = Math.cos(flip * Math.PI), CX = flip > 0 ? 965 : X;
+  c.save(); c.translate(960, 0); c.scale(flip > 0 ? sx : 1, 1); c.translate(-960, 0);
+  c.save(); c.shadowColor = 'rgba(60,50,40,.3)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 16 * R.S; c.fillStyle = ALB.fabric; rr(c, CX, Y, Wd, Ht, 16); c.fill(); c.restore();
+  albFabric(c, CX, Y, Wd, Ht); c.fillStyle = 'rgba(40,50,80,.25)'; c.fillRect(CX, Y, 22, Ht);
+  if (sx > 0 || flip === 0) { const wx = CX + 150, wy = Y + 250, ww = 400, wh = 340; c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 10 * R.S; c.fillStyle = '#EEE9E0'; c.fillRect(wx - 14, wy - 14, ww + 28, wh + 28); c.restore();
+    const ho = hitOn; hitOn = false; coverIn(c, s, si, wx, wy, ww, wh, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho;
+    txt(c, fill(s.texts.title), CX + Wd / 2, Y + 160, `italic 600 58px "Cormorant Garamond", serif`, 'rgba(255,255,255,.88)', fade(t, 0.5, 1.0), { k: 'title', shadow: 'rgba(20,30,60,.35)', blur: 2 });
+    txt(c, fill(s.texts.sub), CX + Wd / 2, Y + 720, UIF(22, 600), 'rgba(255,255,255,.78)', fade(t, 0.9, 0.8), { k: 'sub', sp: 6 });
+    if (flip === 0) addHit({ type: 'media', si, x: wx, y: wy, w: ww, h: wh, oy: 0 });
+  } else { c.fillStyle = 'rgba(255,255,255,.08)'; c.fillRect(CX + 30, Y + 30, Wd - 60, Ht - 60); }
+  if (flip > 0) { c.fillStyle = `rgba(0,0,0,${0.18 * Math.sin(flip * Math.PI)})`; c.fillRect(CX, Y, Wd, Ht); }
+  c.restore();
+}
+function albTurn(c, p) { if (p >= 1 || p <= 0) return; const [x, y, w, h] = ALBP.R, cosv = Math.cos(p * Math.PI), pw = Math.abs(cosv) * w, left = cosv < 0, lift = Math.sin(p * Math.PI);
+  c.save(); c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 24 * R.S; const g = c.createLinearGradient(left ? 960 - pw : 960, 0, left ? 960 : 960 + pw, 0); g.addColorStop(0, left ? '#EFEBE3' : '#F7F3EC'); g.addColorStop(1, left ? '#F7F3EC' : '#E8E3D9'); c.fillStyle = g; c.fillRect(left ? 960 - pw : 960, y - 6 * lift, pw, h + 12 * lift); c.restore(); }
+LAYOUTS.albumbook = { name: '포토 앨범 넘겨보기 (표지가 열리고 페이지가 넘어가요, 사진 최대 11장)', slots: 11, weight: 22,
+  slotNames: ['표지 사진', '1쪽', '2쪽', '3쪽', '4쪽', '5쪽', '6쪽', '7쪽', '8쪽', '9쪽', '10쪽'],
+  fields: [['title', '표지 글씨', 'Memories'], ['sub', '표지 아래 글씨', '{GROOM} & {BRIDE}'], ['notes', '페이지 손글씨 (줄마다 한 장씩)', 'sweet memories\nour little days\nyou & me\nhappy days\nlove always', true]],
+  opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+  draw(c, s, t, d) {
+    albBg(c);
+    let last = 0; for (let i = 1; i < 11; i++) if (s.media[i] && s.media[i].id) last = i;
+    const pages = Math.max(2, last + (last % 2)), spreads = pages / 2, coverT = Math.min(3.2, d * 0.16), openT = 1.5, start = coverT + openT, seg = Math.max(1.5, (d - start - 0.3) / spreads);
+    const notes = fill(s.texts.notes).split('\n');
+    if (t < start) { const o = clamp((t - coverT) / openT); if (o > 0.35) albPages(c); albCoverDraw(c, s, t, o, 0); return; }
+    const k = Math.min(spreads - 1, Math.floor((t - start) / seg)), lt = t - start - k * seg, seed = 11 + k * 5;
+    albPages(c);
+    const L = 1 + k * 2, Rr = L + 1;
+    albPhotos(c, s, [L], lt + 0.4, seg, ALBP.L, seed); albPhotos(c, s, [Rr], lt + 0.4, seg, ALBP.R, seed + 3);
+    const dk = ['star', 'heart', 'spark', 'star'];
+    [[330, 160], [880, 200], [1050, 930], [1590, 160]].forEach(([x, y], i) => albDoodle(c, dk[(i + k) % 4], x, y, 1, clamp((lt - 0.6 - i * 0.15) / 0.6), i % 2 ? ALB.pink : ALB.ink));
+    const nt = notes[k % Math.max(1, notes.length)] || ''; txt(c, nt, 600, 930, `italic 400 34px "Cormorant Garamond", "Gowun Batang", serif`, ALB.ink, fade(lt, 0.8, 0.6)); albDoodle(c, 'dots', 600, 965, 1, clamp((lt - 1.0) / 0.6));
+    if (k > 0) albTurn(c, ease(clamp(lt / 0.9))); else albTurn(c, 0);
+  } };
+LAYOUTS.albumbook.noBulk = [];
+CATS.find(c => c[0] === '포토 앨범 (F타입 추천)')[1].unshift('albumbook');
+// F: original intro back; one album scene in the middle instead of the cover + six pages
+TEMPLATES.F.make = (o => () => { const p = o(); const total = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0);
+  p.scenes = p.scenes.filter(x => x.layout !== 'albumcover' && x.layout !== 'albumpage');
+  const mid = Math.floor(p.scenes.length / 2), x = makeScene('albumbook', { weight: 22 }); x.tr = 'dissolve'; p.scenes.splice(mid, 0, x);
+  const now = p.scenes.reduce((a, y) => a + (+y.weight || 5), 0), f = total / now; p.scenes.forEach(y => { if (y.layout !== 'albumbook') y.weight = Math.round((+y.weight || 5) * (total - 22) / (now - 22) * 10) / 10; });
+  if (p.scenes[0]) p.scenes[0].tr = p.scenes[0].tr; return p; })(TEMPLATES.F.make);
+// album book removed again: F goes back to its original scenes, and the album scenes leave the scene menu
+TEMPLATES.F.make = (o => () => { const p = o(); const total = p.scenes.reduce((x, y) => x + (+y.weight || 5), 0); p.scenes = p.scenes.filter(x => !/^album/.test(x.layout)); const now = p.scenes.reduce((x, y) => x + (+y.weight || 5), 0), f = total / now; p.scenes.forEach(x => x.weight = Math.round((+x.weight || 5) * f * 10) / 10); return p; })(TEMPLATES.F.make);
+for (let i = CATS.length - 1; i >= 0; i--) if (CATS[i][0] === '포토 앨범 (F타입 추천)') CATS.splice(i, 1);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -9226,7 +9628,7 @@ function sceneAt(T) {
   for (let i = timeline.length - 1; i >= 0; i--) if (T >= timeline[i].start) return i;
   return 0;
 }
-const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' || tr === 'bars' ? 1.4 : tr === 'blur' || tr === 'push' ? 1.1 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
+const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' || tr === 'bars' ? 1.4 : tr === 'blur' || tr === 'push' || tr === 'rise' ? 1.1 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
 function lyricAt(T) {
   if (!project.lyricsOn) return null;
   for (const l of project.lyrics) if ((l.text || l.sub) && T >= l.start && T < l.end) return l;
@@ -9287,6 +9689,7 @@ function render(r, T, preview) {
       else if (tr === 'iris') { c.beginPath(); c.arc(960, 540, 1110 * e, 0, Math.PI * 2); c.clip(); c.drawImage(r.la, 0, 0, W, H); }
       else if (tr === 'wipe') { c.beginPath(); c.rect(0, 0, W * e, H); c.clip(); c.drawImage(r.la, 0, 0, W, H); }
       else if (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) paperTr(c, r, tr, pr);
+      else if (tr === 'rise' && typeof riseTr === 'function') riseTr(c, r, pr);
       else if (tr === 'blur') { c.save(); if ('filter' in c) c.filter = `blur(${Math.round(16 * (1 - e) * r.S)}px)`; c.globalAlpha = e; c.drawImage(r.la, 0, 0, W, H); c.restore(); }
       else if (tr === 'bars') { const h2 = H / 2; if (e < 0.5) { const k = ease(e / 0.5) * h2; c.fillStyle = '#000'; c.fillRect(0, 0, W, k); c.fillRect(0, H - k, W, k); } else { c.drawImage(r.la, 0, 0, W, H); const k = (1 - ease((e - 0.5) / 0.5)) * h2; c.fillStyle = '#000'; c.fillRect(0, 0, W, k); c.fillRect(0, H - k, W, k); } }
       else if (tr === 'push') { c.save(); c.fillStyle = `rgba(0,0,0,${0.5 * e})`; c.fillRect(0, 0, W, H); const y = H * (1 - e); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * r.S; c.drawImage(r.la, 0, y, W, H); c.restore(); }
@@ -9296,6 +9699,7 @@ function render(r, T, preview) {
       c.restore();
     }
   } else drawScene(c, i, t, preview);
+  if (project.retroFx && typeof rmRetro === 'function') { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,190,130,.22)'; c.fillRect(0, 0, W, H); c.restore(); rmRetro(c, T); }
   if (activeLyric) {
     const s = project.scenes[i], st = LAYOUTS[s.layout].cap(s)[2], ly = activeLyric, x = 960, y = 1012;
     const a = activeLyricA;
@@ -9680,6 +10084,7 @@ function buildScenePane() {
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
       <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label><label class="field" style="margin-top:8px"><span>자막 스타일</span><select id="fCapFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(s.capFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${colorRow('capCol', '자막 색', s.capCol)}${colorRow('capCol2', '둘째 줄 색', s.capCol2)}${styleCtl('caption', ts('caption'))}</div></div>
+    ${project.tpl === 'R' ? `<div class="group"><label class="ctl-row"><input type="checkbox" id="retroFx" ${project.retroFx ? 'checked' : ''}>레트로 필름 효과 (영상 전체: 따뜻한 톤·노이즈·먼지·깜빡임)</label></div>` : ''}
     ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 한 번에 넣기</h3><p class="hint" style="margin-top:0">편지 전체를 붙여넣으세요. <b>빈 줄로 나뉜 문단 하나가 장면 하나</b>가 되고, 장면 수와 길이가 자동으로 맞춰져요. 넣어둔 사진은 순서대로 그대로 들어가요.</p><textarea id="lpLetter" rows="6" style="width:100%;resize:vertical" placeholder="첫 문단\n\n둘째 문단\n\n…"></textarea><button type="button" class="btn small primary" id="lpLetterGo" style="margin-top:8px">장면마다 나눠 넣기</button></div>` : ''}
     ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 글씨 크기 (모든 장면 함께)</h3><div class="ctl-row" style="gap:10px"><input type="range" id="lpScale" min="60" max="130" step="1" value="${Math.round((project.lpScale || 1) * 100)}" style="flex:1"><span id="lpScaleV" style="width:48px;text-align:right">${Math.round((project.lpScale || 1) * 100)}%</span></div><p class="hint">편지 글, To./From. 같은 손글씨가 전체 장면에서 같이 커지고 작아져요.</p></div>` : ''}
     ${CUSTOMER ? '' : `<div class="group"><h3>길이</h3>
@@ -9699,6 +10104,7 @@ function buildScenePane() {
     s.tm = s.tm || {}; s.tm[b.dataset.tmnow] = v; sceneChanged(s); buildScenePane();
   });
   const tr0 = p.querySelector('[data-tmreset]'); if (tr0) tr0.onclick = () => { delete s.tm; sceneChanged(s); buildScenePane(); };
+    { const rf = p.querySelector('#retroFx'); if (rf) rf.onchange = e => { project.retroFx = e.target.checked; touch('info'); dirty = true; save(); project.scenes.forEach(x => queueThumb(x.id)); }; }
     { const lg = p.querySelector('#lpLetterGo'); if (lg) lg.onclick = () => { const v = p.querySelector('#lpLetter').value; if (!v.trim()) { toast('편지 내용을 붙여넣어 주세요'); return; } if (!confirm('지금 장면들의 편지 글이 새 편지로 바뀌고, 장면 수가 문단 수에 맞춰져요. 진행할까요?')) return; lpApplyLetter(v); }; }
     { const ls = p.querySelector('#lpScale'); if (ls) { ls.oninput = e => { project.lpScale = (+e.target.value || 100) / 100; p.querySelector('#lpScaleV').textContent = e.target.value + '%'; touch('lpScale'); dirty = true; }; ls.onchange = () => { project.scenes.forEach(x => { if (/^lp/.test(x.layout)) queueThumb(x.id); }); save(); }; } }
     p.querySelector('#fWeight').onchange = e => { touch(s.id); s.weight = Math.round(clamp(+e.target.value || 1, 0.5, 120) * 10) / 10; changed(true); select(sel); };
