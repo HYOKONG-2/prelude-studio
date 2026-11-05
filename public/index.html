@@ -7995,13 +7995,13 @@ TEMPLATES.M2.make = () => {
 LAYOUTS.edquote2 = {
   name: '인용 문장 + 사진 (따옴표 없음)', slots: 1, weight: 5,
   fields: [['quote', '인용 글', 'You are my\nfavorite chapter.', true], ['by', '작은 글씨', '— {GROOM} to {BRIDE}']],
-  opts: [['bw', '흑백', true]],
-  cap: () => [700, 1010, 'light'],
+  opts: [['flip', '사진 왼쪽 · 글씨 오른쪽', false], ['bw', '흑백', true]],
+  cap: s => [s.opts.flip ? 1220 : 700, 1010, 'light'],
   draw(c, s, t, d) {
-    bg(c, '#FFFFFF');
-    block(c, fill(s.texts.quote), 700, 500, PLAYF(84, 500, true), 104, '#1A1A1A', t, 0.4, 1, false, 'quote');
-    txt(c, fill(s.texts.by), 700, 760, F.serif(30, 500, false), '#8A8A8A', fade(t, 1.0, 0.8), { k: 'by', sp: 2 });
-    c.save(); c.globalAlpha = fade(t, 0.6, 1); cover(c, s, 0, 1320, 140, 480, 800, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+    bg(c, '#FFFFFF'); const f = s.opts.flip, tx = f ? 1220 : 700;
+    block(c, fill(s.texts.quote), tx, 500, PLAYF(84, 500, true), 104, '#1A1A1A', t, 0.4, 1, false, 'quote');
+    txt(c, fill(s.texts.by), tx, 760, F.serif(30, 500, false), '#8A8A8A', fade(t, 1.0, 0.8), { k: 'by', sp: 2 });
+    c.save(); c.globalAlpha = fade(t, 0.6, 1); cover(c, s, 0, f ? 120 : 1320, 140, 480, 800, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
   }
 };
 CATS[0][1].push('edquote2');
@@ -10199,8 +10199,8 @@ function buildSlots(s) {
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
-        <label class="ctl"><span>칸 가로</span><input type="range" min="-700" max="700" value="${Math.round(slot.fdx || 0)}" data-fk="fdx"></label>
-        <label class="ctl"><span>칸 세로</span><input type="range" min="-500" max="500" value="${Math.round(slot.fdy || 0)}" data-fk="fdy"></label>
+        <label class="ctl"><span>칸 가로</span><input type="range" min="-1800" max="1800" value="${Math.round(slot.fdx || 0)}" data-fk="fdx"></label>
+        <label class="ctl"><span>칸 세로</span><input type="range" min="-1000" max="1000" value="${Math.round(slot.fdy || 0)}" data-fk="fdy"></label>
         <label class="ctl"><span>칸 크기</span><input type="range" min="40" max="200" value="${Math.round((slot.fsc || 1) * 100)}" data-fk="fsc"></label>
         <label class="ctl"><span>보정</span><select data-look aria-label="사진 보정" style="min-width:0;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--surface)">${LOOKS.map(([k, n]) => `<option value="${k}" ${(slot.look || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <label class="ctl"><span>밝기</span><input type="range" min="-30" max="30" value="${slot.lb || 0}" data-lb aria-label="사진 밝기"></label>
