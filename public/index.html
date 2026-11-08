@@ -9357,6 +9357,109 @@ TEMPLATES.F.make = (o => () => { const p = o(); const total = p.scenes.reduce((a
 // album book removed again: F goes back to its original scenes, and the album scenes leave the scene menu
 TEMPLATES.F.make = (o => () => { const p = o(); const total = p.scenes.reduce((x, y) => x + (+y.weight || 5), 0); p.scenes = p.scenes.filter(x => !/^album/.test(x.layout)); const now = p.scenes.reduce((x, y) => x + (+y.weight || 5), 0), f = total / now; p.scenes.forEach(x => x.weight = Math.round((+x.weight || 5) * f * 10) / 10); return p; })(TEMPLATES.F.make);
 for (let i = CATS.length - 1; i >= 0; i--) if (CATS[i][0] === '포토 앨범 (F타입 추천)') CATS.splice(i, 1);
+/* ================= 고객 요청 9: "화이트 초크 다이어리" — chalk doodles, cloud photos, polaroids, gentle snow (Paul Kim - White) ================= */
+const CHK = { dark: '#141414', light: '#F2F1EE', pink: '#EFA7B3', blue: '#A9BEE6', yellow: '#F1D58A', lav: '#D6B4F0', white: '#F7F5F0' };
+const chCache = new Map();
+function chalkTextImg(str, px, col) { // handwriting with a chalky, speckled edge (cached)
+  const key = str + '|' + px + '|' + col; if (chCache.has(key)) return chCache.get(key);
+  const cv = document.createElement('canvas'), x = cv.getContext('2d'), f = `400 ${px}px "Nanum Pen Script", "Gaegu", sans-serif`;
+  x.font = f; const w = Math.ceil(x.measureText(str).width) + px, h = Math.ceil(px * 1.5); cv.width = Math.max(4, w); cv.height = h;
+  x.font = f; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillStyle = col; x.fillText(str, w / 2, h / 2); x.lineWidth = Math.max(1, px / 30); x.strokeStyle = col; x.strokeText(str, w / 2, h / 2);
+  x.globalCompositeOperation = 'destination-out'; for (let i = 0; i < w * h / 40; i++) { x.fillStyle = `rgba(0,0,0,${0.35 + 0.5 * rnd(i, 2201)})`; x.fillRect(rnd(i, 2202) * w, rnd(i, 2203) * h, 1.4, 1.4); }
+  if (chCache.size > 300) chCache.clear(); chCache.set(key, cv); return cv;
+}
+function chText(c, str, x, y, px, col, a, key, align) { if (!str || a <= 0.001) return; const im = chalkTextImg(str, px, col), w = im.width, h = im.height, sx = align === 'left' ? x - px / 2 : align === 'right' ? x - w + px / 2 : x - w / 2;
+  const st = key ? getStyle(key) : DEF, k = st.s || 1; c.save(); c.globalAlpha *= a; c.translate(sx + w / 2 + (st.x || 0), y + (st.y || 0)); c.scale(k, k); c.drawImage(im, -w / 2, -h / 2); c.restore(); if (key) addHit({ type: 'text', key, x: sx + (st.x || 0), y: y - h / 2 + (st.y || 0), w, h }); }
+function chLine(c, pts, col, w, p) { // a chalk stroke: a few rough passes
+  if (p <= 0 || pts.length < 2) return; const n = Math.max(2, Math.floor(pts.length * p)); c.save(); c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'round';
+  for (let k = 0; k < 3; k++) { c.globalAlpha = 0.45; c.lineWidth = w * (0.7 + 0.25 * k); c.beginPath(); for (let i = 0; i < n; i++) { const [x, y] = pts[i]; const jx = (rnd(i, 2210 + k) - 0.5) * w * 0.5, jy = (rnd(i, 2220 + k) - 0.5) * w * 0.5; i ? c.lineTo(x + jx, y + jy) : c.moveTo(x + jx, y + jy); } c.stroke(); } c.restore(); }
+function chShape(kind, x, y, s) { const P = [];
+  if (kind === 'star') { for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5 * 2 % (Math.PI * 2); const r = 30 * s; P.push([x + Math.cos(-Math.PI / 2 + i * 4 * Math.PI / 5) * r, y + Math.sin(-Math.PI / 2 + i * 4 * Math.PI / 5) * r]); } }
+  else if (kind === 'heart') { for (let i = 0; i <= 40; i++) { const t = i / 40 * Math.PI * 2; P.push([x + 16 * Math.pow(Math.sin(t), 3) * 2 * s, y - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 2 * s]); } }
+  else if (kind === 'cloud') { const bumps = [[-40, 6, 20], [-14, -10, 26], [18, -6, 22], [42, 6, 18]]; bumps.forEach(([bx, by, r]) => { for (let i = 0; i <= 10; i++) { const a = Math.PI + i / 10 * Math.PI; P.push([x + (bx + Math.cos(a) * r) * s, y + (by + Math.sin(a) * r) * s]); } }); P.push([x + 60 * s, y + 24 * s]); P.push([x - 58 * s, y + 24 * s]); P.push([x - 58 * s, y + 6 * s]); }
+  else if (kind === 'squiggle') { for (let i = 0; i <= 50; i++) { const t = i / 50; P.push([x + (t * 80 - 40) * s + Math.cos(t * 18) * 12 * s, y + Math.sin(t * 18) * 14 * s - t * 20 * s]); } }
+  else if (kind === 'zig') { for (let i = 0; i <= 6; i++) P.push([x + (i * 14 - 42) * s, y + (i % 2 ? -10 : 8) * s]); }
+  else if (kind === 'shoot') { for (let k = 0; k < 3; k++) { } for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * 4 * Math.PI / 5; P.push([x + Math.cos(a) * 24 * s, y + Math.sin(a) * 24 * s]); } }
+  return P; }
+function chDoodle(c, kind, x, y, s, col, p) { if (p <= 0) return; chLine(c, chShape(kind, x, y, s), col, 4.5 * Math.min(1.4, s), p); if (kind === 'shoot') [[0, 0], [10, 14], [20, 28]].forEach(([dx, dy]) => chLine(c, [[x + 30 * s + dx, y - 18 * s + dy], [x + 110 * s + dx, y - 70 * s + dy]], col, 4, clamp((p - 0.3) / 0.7))); }
+function chSnow(c, t, light) { for (let i = 0; i < 60; i++) { const sp = 30 + rnd(i, 2301) * 50, x = (rnd(i, 2302) * W + Math.sin(t * 0.6 + i) * 30) % W, y = ((rnd(i, 2303) * (H + 60)) + t * sp) % (H + 60) - 30, r = 1.5 + rnd(i, 2304) * 3.5; c.fillStyle = light ? `rgba(200,205,215,${0.55})` : `rgba(255,255,255,${0.5 + 0.3 * rnd(i, 2305)})`; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); } }
+function chBg(c, s, dark) { bg(c, dark ? CHK.dark : CHK.light); if (!dark) { const g = c.createRadialGradient(960, 540, 300, 960, 540, 1100); g.addColorStop(0, 'rgba(255,248,236,.45)'); g.addColorStop(1, 'rgba(0,0,0,.04)'); c.fillStyle = g; c.fillRect(0, 0, W, H); } }
+function chPhoto(c, s, si, x, y, w, h, t, d, o = {}) { const a = o.a == null ? 1 : o.a; if (a <= 0) return; c.save(); c.globalAlpha *= a; if (o.shadow !== false) { c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 12 * R.S; c.fillStyle = '#ddd'; c.fillRect(x, y, w, h); c.restore(); } cover(c, s, si, x, y, w, h, t, { bw: s.opts.bw || o.bw, zoom: 1.02 + 0.03 * clamp(t / d) }); c.restore(); }
+function chPola(c, s, si, cx, cy, w, h, rot, t, d, a, heartCol) { // polaroid with a little heart-print border
+  if (a <= 0) return; c.save(); c.globalAlpha *= a; c.translate(cx, cy); c.rotate(rot); const b = 26, bb = 90;
+  c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 16 * R.S; c.fillStyle = '#F8F8F6'; c.fillRect(-w / 2 - b, -h / 2 - b, w + 2 * b, h + b + bb); c.restore();
+  c.fillStyle = heartCol || 'rgba(110,150,205,.75)'; for (let i = 0; i < 14; i++) { const px = -w / 2 - b + rnd(i, 2311) * (w + 2 * b), py = rnd(i, 2312) > 0.5 ? h / 2 + 10 + rnd(i, 2313) * (bb - 30) : -h / 2 - b + rnd(i, 2314) * b; c.save(); c.translate(px, py); c.rotate((rnd(i, 2315) - 0.5) * 0.8); heartShape(c, 0, 0, 22); c.fill(); c.restore(); }
+  const ho = hitOn; hitOn = false; coverIn(c, s, si, -w / 2, -h / 2, w, h, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho; c.restore(); addHit({ type: 'media', si, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); }
+function cloudPath(c, x, y, w, h) { // fluffy cloud: lobes all around a soft centre
+  c.beginPath(); const B = [[0.15, 0.6, 0.13, 0.26], [0.3, 0.36, 0.16, 0.3], [0.5, 0.26, 0.18, 0.32], [0.7, 0.34, 0.15, 0.28], [0.86, 0.56, 0.13, 0.26], [0.72, 0.76, 0.14, 0.22], [0.5, 0.8, 0.16, 0.2], [0.29, 0.78, 0.14, 0.22]];
+  B.forEach(([bx, by, rx, ry]) => { c.moveTo(x + bx * w + rx * w, y + by * h); c.ellipse(x + bx * w, y + by * h, rx * w, ry * h, 0, 0, Math.PI * 2); }); c.moveTo(x + 0.84 * w, y + 0.56 * h); c.ellipse(x + 0.5 * w, y + 0.56 * h, 0.34 * w, 0.26 * h, 0, 0, Math.PI * 2); }
+const CH_OPTS = [['snow', '눈 내리기', true], ['bw', '흑백', false]];
+Object.assign(LAYOUTS, {
+  chopen: { name: '초크 오프닝 (흑백 사진 + 손글씨 이름 ♡)', slots: 1, weight: 7, fields: [['names', '이름', '{신랑} ♡ {신부}'], ['date', '날짜', '{DATE}']], opts: [['snow', '눈 내리기', true], ['bw', '흑백', true]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) { bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.06 - 0.04 * clamp(t / d) }); c.fillStyle = 'rgba(0,0,0,.38)'; c.fillRect(0, 0, W, H);
+      chText(c, fill(s.texts.names), 960, 500, 120, CHK.white, fade(t, 0.8, 1.0), 'names'); chText(c, fill(s.texts.date), 960, 610, 50, 'rgba(247,245,240,.8)', fade(t, 1.6, 0.8), 'date'); if (s.opts.snow) chSnow(c, t, false); } },
+  chprofile: { name: '초크 프로필 (하트 폴라로이드 + 해시태그)', slots: 1, weight: 7, fields: [['name', '이름', '신랑 {신랑}'], ['h1', '해시태그 1', '#ENFP'], ['h2', '해시태그 2', '#잠많음'], ['h3', '해시태그 3', '#장난꾸러기']], opts: [['flip', '사진 오른쪽 (신부용)', false], ['snow', '눈 내리기', true], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 560 : 1360, 1045, 'dark'],
+    draw(c, s, t, d) { chBg(c, s, true); const f = s.opts.flip, M = x => f ? W - x : x;
+      chLine(c, [[M(150), 150], [M(860), 152], [M(858), 960], [M(152), 958], [M(150), 150]], CHK.white, 6, clamp(t / 1.0));
+      chPola(c, s, 0, M(505), 520, 520, 560, 0, t, d, fade(t, 0.3, 0.6), f ? 'rgba(232,140,160,.75)' : 'rgba(110,150,205,.75)');
+      const cx = M(1380), fp = clamp((t - 0.8) / 0.8), fx = cx - 230, fy = 380; // little face doodle
+      chLine(c, Array.from({ length: 41 }, (_, i) => [fx + Math.cos(i / 40 * Math.PI * 2) * 38, fy + Math.sin(i / 40 * Math.PI * 2) * 36]), CHK.white, 5, fp);
+      chLine(c, Array.from({ length: 21 }, (_, i) => [fx - 38 + i * 3.8, fy - 30 - Math.abs(Math.sin(i * 0.9)) * 14]), CHK.white, 4, fp);
+      if (fp > 0.6) { c.fillStyle = CHK.white; c.beginPath(); c.arc(fx - 12, fy, 3.5, 0, Math.PI * 2); c.arc(fx + 12, fy, 3.5, 0, Math.PI * 2); c.fill(); chLine(c, Array.from({ length: 9 }, (_, i) => [fx - 12 + i * 3, fy + 14 + Math.sin(i / 8 * Math.PI) * 6]), CHK.white, 3, 1); }
+      chText(c, fill(s.texts.name), cx + 40, 380, 84, CHK.white, fade(t, 1.0, 0.6), 'name');
+      ['h1', 'h2', 'h3'].forEach((k, i) => chText(c, fill(s.texts[k]), cx, 500 + i * 100, 64, CHK.white, fade(t, 1.3 + i * 0.25, 0.5), k));
+      chDoodle(c, 'star', M(1100), 220, 0.6, CHK.yellow, clamp((t - 1.2) / 0.6)); chDoodle(c, 'star', M(1160), 280, 0.45, CHK.yellow, clamp((t - 1.3) / 0.6)); chDoodle(c, 'shoot', M(1680), 220, 1, CHK.lav, clamp((t - 1.5) / 0.8)); chDoodle(c, 'star', M(1720), 640, 0.9, CHK.yellow, clamp((t - 1.7) / 0.6)); chDoodle(c, 'squiggle', M(1650), 860, 1, CHK.white, clamp((t - 1.9) / 0.7)); chDoodle(c, 'zig', M(1080), 950, 1, CHK.white, clamp((t - 2.0) / 0.6));
+      if (s.opts.snow) chSnow(c, t, false); } },
+  chcloud: { name: '초크 구름 모양 사진 + 손글씨', slots: 1, weight: 5.5, fields: [['word', '손글씨', 'ㅋㅋㅋ']], opts: CH_OPTS, cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { chBg(c, s, false); const k = ease(clamp(t / 0.7)), x = 90, y = 130, w = 1740, h = 840;
+      c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 20 * R.S; cloudPath(c, x, y, w, h); c.fillStyle = '#ccc'; c.fill(); c.restore(); cloudPath(c, x, y, w, h); c.clip(); cover(c, s, 0, x, y - 80, w, h + 160, t, { bw: s.opts.bw, zoom: 1.03 + 0.03 * clamp(t / d) }); c.restore();
+      chText(c, fill(s.texts.word), 1360, 420, 110, CHK.white, fade(t, 0.9, 0.5), 'word'); if (s.opts.snow) chSnow(c, t, true); } },
+  chrow3: { name: '초크 사진 세 장 줄 + 하트 + 이름', slots: 3, weight: 5.5, fields: [['names', '아래 손글씨', '{GROOM} & {BRIDE}']], opts: CH_OPTS, cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = 540, g = 40, x0 = (W - (n * w + (n - 1) * g)) / 2;
+      for (let i = 0; i < n; i++) chPhoto(c, s, i, x0 + i * (w + g), 200, w, 720, t, d, { a: fade(t, i * 0.2, 0.6) });
+      [[230, 160, 1], [1730, 140, 0.9], [790, 470, 0.8], [1240, 900, 0.9], [200, 970, 1.1], [1750, 900, 1]].forEach(([x, y, sc], i) => chDoodle(c, 'heart', x, y, sc, CHK.pink, clamp((t - 0.8 - i * 0.12) / 0.6)));
+      chText(c, fill(s.texts.names).toUpperCase(), 960, 990, 76, CHK.blue, fade(t, 1.2, 0.6), 'names'); if (s.opts.snow) chSnow(c, t, true); } },
+  chgrid: { name: '초크 사진 여러 장 (4·6·8장)', slots: 8, weight: 5.5, autoDefault: true, countOpts: [4, 6, 8], fields: [['word', '손글씨 (비워도 돼요)', '']], opts: [['dark', '어두운 바탕', false], ['snow', '눈 내리기', true], ['bw', '흑백', false]], cap: s => [960, 1045, s.opts.dark ? 'dark' : 'light'],
+    draw(c, s, t, d) { const dk = s.opts.dark; chBg(c, s, dk); const n = photoCount(s, 6), cols = n <= 4 ? 2 : n <= 6 ? 3 : 4, rows = Math.ceil(n / cols), X = n <= 4 ? 420 : 150, Wd = n <= 4 ? 1080 : 1620, Y = 110, Ht = 840, g = 26, cw = (Wd - g * (cols - 1)) / cols, chh = (Ht - g * (rows - 1)) / rows;
+      for (let i = 0; i < n; i++) { const r = Math.floor(i / cols), cI = i % cols, inRow = r === rows - 1 ? n - r * cols : cols, off = (cols - inRow) * (cw + g) / 2; chPhoto(c, s, i, X + off + cI * (cw + g), Y + r * (chh + g), cw, chh, t, d, { a: fade(t, i * 0.12, 0.5) }); }
+      const col = dk ? CHK.white : CHK.pink; chDoodle(c, 'heart', 110, 120, 0.9, col, clamp((t - 0.9) / 0.6)); chDoodle(c, 'star', 1830, 130, 0.7, dk ? CHK.yellow : CHK.blue, clamp((t - 1.0) / 0.6)); chDoodle(c, 'squiggle', 1800, 980, 0.9, col, clamp((t - 1.1) / 0.6));
+      chText(c, fill(s.texts.word), 960, 1010, 64, dk ? CHK.white : CHK.blue, fade(t, 1.0, 0.6), 'word'); if (s.opts.snow) chSnow(c, t, !dk); } },
+  chpola3: { name: '초크 하트 폴라로이드 세 장 + 손글씨', slots: 3, weight: 5.5, fields: [['c1', '첫 손글씨', 'winter'], ['c2', '둘째 손글씨', 'with you'], ['c3', '셋째 손글씨', 'love']], opts: CH_OPTS, cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) { chBg(c, s, true); const n = autoN(s, 3), P = { 1: [[960, 470, -0.02]], 2: [[700, 470, -0.05], [1220, 480, 0.04]], 3: [[450, 480, -0.06], [960, 450, 0.02], [1470, 490, -0.04]] }[n];
+      P.forEach(([x, y, r], i) => { const a = fade(t, i * 0.25, 0.6); chPola(c, s, i, x, y, 400, 470, r, t, d, a, i % 2 ? 'rgba(232,140,160,.75)' : 'rgba(110,150,205,.75)'); chText(c, fill(s.texts['c' + (i + 1)]), x, y + 385, 62, CHK.white, fade(t, 0.9 + i * 0.2, 0.5), 'c' + (i + 1)); });
+      chDoodle(c, 'star', 160, 160, 0.7, CHK.yellow, clamp((t - 1.2) / 0.6)); chDoodle(c, 'shoot', 1700, 170, 0.9, CHK.lav, clamp((t - 1.4) / 0.7)); if (s.opts.snow) chSnow(c, t, false); } },
+  chduo: { name: '초크 사진 두 장 + 밑줄 손글씨', slots: 2, weight: 5.5, fields: [['word', '손글씨', '우리의 겨울']], opts: CH_OPTS, cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) { chBg(c, s, false); const n = autoN(s, 2); if (n <= 1) chPhoto(c, s, 0, 360, 110, 1200, 760, t, d); else { chPhoto(c, s, 0, 150, 110, 790, 760, t, d, { a: fade(t, 0, 0.6) }); chPhoto(c, s, 1, 980, 110, 790, 760, t, d, { a: fade(t, 0.25, 0.6) }); }
+      chText(c, fill(s.texts.word), 960, 950, 84, '#2B2A28', fade(t, 0.9, 0.6), 'word'); chLine(c, [[760, 1005], [960, 1012], [1160, 1000]], CHK.pink, 6, clamp((t - 1.2) / 0.6)); chDoodle(c, 'heart', 1260, 950, 0.7, CHK.pink, clamp((t - 1.4) / 0.6)); if (s.opts.snow) chSnow(c, t, true); } },
+  chbw: { name: '초크 흑백 풀사진 + 손글씨', slots: 1, weight: 5.5, fields: [['word', '손글씨', 'my love']], opts: [['snow', '눈 내리기', true], ['bw', '흑백', true]], cap: () => [960, 1045, 'photo'],
+    draw(c, s, t, d) { bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.04 * clamp(t / d) }); c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(0, 0, W, H);
+      chText(c, fill(s.texts.word), 960, 520, 110, CHK.white, fade(t, 0.8, 0.8), 'word'); chDoodle(c, 'heart', 1240, 500, 0.9, CHK.white, clamp((t - 1.3) / 0.7)); if (s.opts.snow) chSnow(c, t, false); } },
+  chend: { name: '초크 엔딩 (Thank you + 따뜻한 인사)', slots: 1, weight: 9, fields: [['big', '큰 손글씨', 'Thank you'], ['line', '아래 손글씨', '따뜻한 연말 보내세요'], ['names', '이름', '{신랑} ♡ {신부}']], opts: CH_OPTS, cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) { chBg(c, s, true); const x = 560, y = 120, w = 800, h = 470; c.save(); c.globalAlpha *= fade(t, 0, 0.8); cloudPath(c, x, y, w, h); c.clip(); cover(c, s, 0, x, y, w, h, t, { bw: s.opts.bw, zoom: 1.03 }); c.restore();
+      chText(c, fill(s.texts.big), 960, 700, 130, CHK.white, fade(t, 0.8, 0.8), 'big'); chText(c, fill(s.texts.line), 960, 820, 66, CHK.yellow, fade(t, 1.4, 0.7), 'line'); chText(c, fill(s.texts.names), 960, 910, 56, CHK.pink, fade(t, 1.8, 0.7), 'names');
+      chDoodle(c, 'star', 300, 300, 0.8, CHK.yellow, clamp((t - 1.0) / 0.6)); chDoodle(c, 'shoot', 1600, 220, 1, CHK.lav, clamp((t - 1.2) / 0.8)); chDoodle(c, 'heart', 1620, 760, 0.9, CHK.pink, clamp((t - 1.5) / 0.6)); chDoodle(c, 'squiggle', 300, 840, 1, CHK.white, clamp((t - 1.7) / 0.6));
+      if (s.opts.snow) chSnow(c, t, false); const end = clamp((t - (d - 1.8)) / 1.6); if (end > 0) { c.fillStyle = `rgba(0,0,0,${ease(end)})`; c.fillRect(0, 0, W, H); } } }
+});
+['chopen', 'chbw'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+LAYOUTS.chprofile.optSelects = {};
+CATS.push(['화이트 초크 다이어리 (고객 요청 9타입)', ['chopen', 'chprofile', 'chcloud', 'chrow3', 'chgrid', 'chpola3', 'chduo', 'chbw', 'chend']]);
+TEMPLATES.W = {
+  custom: true, code: '9', name: '화이트 초크 다이어리', desc: '흰 분필 손글씨와 파스텔 낙서(하트·별·구름·별똥별), 구름 모양 사진, 하트 무늬 폴라로이드, 흑백 사진 위 손글씨 이름에 포근하게 내리는 눈. 연애 사진 약 150장이 따뜻하게 흘러가는 연말 분위기 구성 (3분 56초)',
+  tags: ['연말·겨울', '초크 손글씨', '사진 약 150장', '3분 56초'], preview: 0,
+  make: () => {
+    const G = (n, dark, word) => ['chgrid', { count: n, opts: { dark: !!dark }, texts: { word: word || '' } }];
+    const flow = [['chrow3', {}], G(6), ['chcloud', {}], G(8, true), ['chpola3', {}], G(4, true, 'our days'), ['chduo', {}], G(6, false, 'with you'), ['chbw', {}], G(8)];
+    const words = ['ㅋㅋㅋ', '좋아', '행복', 'love', '헤헤'], pw = [['winter', 'with you', 'love'], ['우리', '둘이', '행복'], ['snow', 'day', '♡']], dw = ['우리의 겨울', '함께라서', '따뜻한 날들'], bw = ['my love', 'always', 'forever'];
+    const list = [['chopen', {}, 7], ['chprofile', {}, 7], ['chprofile', { opts: { flip: true }, texts: { name: '신부 {신부}', h1: '#ISFJ', h2: '#웃음많음', h3: '#다정함' } }, 7]];
+    for (let i = 0; i < 36; i++) { const [k, o] = flow[i % flow.length], cyc = Math.floor(i / flow.length), oo = JSON.parse(JSON.stringify(o)); oo.texts = oo.texts || {};
+      if (k === 'chcloud') oo.texts.word = words[cyc % words.length]; if (k === 'chpola3') { const w3 = pw[cyc % pw.length]; oo.texts.c1 = w3[0]; oo.texts.c2 = w3[1]; oo.texts.c3 = w3[2]; } if (k === 'chduo') oo.texts.word = dw[cyc % dw.length]; if (k === 'chbw') oo.texts.word = bw[cyc % bw.length];
+      list.push([k, oo, 5.75]); }
+    list.push(['chend', {}, 8]);
+    const sc = list.map(([k, o, w]) => { const x = makeScene(k, o); if (o.count) x.count = o.count; x.weight = w; return x; });
+    const tot = sc.reduce((a, x) => a + x.weight, 0), f = 236 / tot; sc.forEach((x, i) => { x.weight = Math.round(x.weight * f * 100) / 100; if (i) x.tr = i % 5 === 0 ? 'white' : 'dissolve'; });
+    return baseProj('W', sc, { lyricFx: '' });
+  }
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
