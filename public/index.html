@@ -9749,6 +9749,26 @@ TEMPLATES.IG.make = () => {
   const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
   return baseProj('IG', sc, { lyricFx: '', outCrop: 956 });
 };
+/* ---- type 9: childhood page — one childhood photo each, heart-print polaroids on the chalkboard ---- */
+LAYOUTS.chkids = { name: '초크 어린 시절 (신랑·신부 한 장씩)', slots: 2, weight: 7, slotNames: ['신랑 어린 시절', '신부 어린 시절'],
+  fields: [['title', '위 손글씨', '우리의 어린 시절'], ['l1', '왼쪽 손글씨', '꼬마 {신랑}'], ['l2', '오른쪽 손글씨', '꼬마 {신부}']], opts: CH_OPTS, cap: () => [960, 1045, 'dark'],
+  draw(c, s, t, d) {
+    chBg(c, s, true);
+    chText(c, fill(s.texts.title), 960, 140, 84, CHK.white, fade(t, 0.2, 0.7), 'title');
+    chLine(c, [[760, 196], [960, 204], [1160, 194]], CHK.yellow, 5, clamp((t - 0.6) / 0.6));
+    chPola(c, s, 0, 620, 530, 440, 480, -0.05, t, d, fade(t, 0.4, 0.6), 'rgba(110,150,205,.75)');
+    chPola(c, s, 1, 1300, 540, 440, 480, 0.045, t, d, fade(t, 0.7, 0.6), 'rgba(232,140,160,.75)');
+    chText(c, fill(s.texts.l1), 620, 900, 64, CHK.white, fade(t, 1.0, 0.6), 'l1'); chText(c, fill(s.texts.l2), 1300, 910, 64, CHK.white, fade(t, 1.2, 0.6), 'l2');
+    chDoodle(c, 'heart', 960, 560, 0.9, CHK.pink, clamp((t - 1.4) / 0.6)); chDoodle(c, 'star', 210, 300, 0.7, CHK.yellow, clamp((t - 1.5) / 0.6)); chDoodle(c, 'shoot', 1690, 230, 1, CHK.lav, clamp((t - 1.6) / 0.8));
+    chDoodle(c, 'cloud', 230, 800, 0.9, CHK.white, clamp((t - 1.7) / 0.7)); chDoodle(c, 'squiggle', 1720, 820, 1, CHK.white, clamp((t - 1.8) / 0.6)); chDoodle(c, 'star', 1640, 620, 0.5, CHK.yellow, clamp((t - 1.9) / 0.6));
+    if (s.opts.snow) chSnow(c, t, false);
+  } };
+CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].splice(2, 0, 'chkids');
+TEMPLATES.W.make = (o => () => { const p = o(); const total = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0);
+  let i = -1; p.scenes.forEach((x, k) => { if (x.layout === 'chprofile') i = k; });
+  const n = makeScene('chkids', { weight: 7 }); n.weight = 7; n.tr = 'dissolve'; p.scenes.splice(i >= 0 ? i + 1 : 1, 0, n);
+  const now = p.scenes.reduce((a, x) => a + (+x.weight || 5), 0), f = (total - 7) / (now - 7); p.scenes.forEach(x => { if (x !== n) x.weight = Math.round(x.weight * f * 100) / 100; });
+  return p; })(TEMPLATES.W.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
