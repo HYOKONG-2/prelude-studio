@@ -9460,6 +9460,295 @@ TEMPLATES.W = {
     return baseProj('W', sc, { lyricFx: '' });
   }
 };
+/* ================= 고객 요청 10: "비밀 인스타 스토리" — profile grid scroll → posts with letter captions → reels → proposal video ================= */
+const IGC = { ink: '#111', sub: '#737373', line: '#DBDBDB', blue: '#0095F6', red: '#FF3040' };
+const IGF = (px, w) => `${w || 400} ${px}px "IBM Plex Sans KR", "Noto Sans KR", -apple-system, sans-serif`;
+function igWrap(c, text, font, maxW) { c.save(); c.font = font; const out = []; String(text || '').split('\n').forEach(par => { let line = ''; for (const ch of Array.from(par)) { const t2 = line + ch; if (c.measureText(t2).width > maxW && line) { out.push(line); line = ch; } else line = t2; } out.push(line); }); c.restore(); return out; }
+function igAvatar(c, s, si, cx, cy, r, t, ring) { if (ring) { const g = c.createLinearGradient(cx - r, cy + r, cx + r, cy - r); g.addColorStop(0, '#F9CE34'); g.addColorStop(0.5, '#EE2A7B'); g.addColorStop(1, '#6228D7'); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, r + 7, 0, Math.PI * 2); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(cx, cy, r + 3, 0, Math.PI * 2); c.fill(); }
+  c.save(); c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.clip(); c.fillStyle = '#EFEFEF'; c.fillRect(cx - r, cy - r, 2 * r, 2 * r); const ho = hitOn; hitOn = false; if (s.media[si] && s.media[si].id) coverIn(c, s, si, cx - r, cy - r, 2 * r, 2 * r, t, { zoom: 1.02 }); hitOn = ho; c.restore(); }
+function igIcon(c, kind, x, y, sz, col, fillIt) { c.save(); c.translate(x, y); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 2.6; c.lineJoin = 'round'; c.lineCap = 'round'; const k = sz / 28; c.scale(k, k);
+  if (kind === 'heart') { heartShape(c, 0, 2, 26); fillIt ? c.fill() : c.stroke(); }
+  else if (kind === 'comment') { c.beginPath(); c.arc(0, 0, 12, 0.25 * Math.PI, 2.15 * Math.PI); c.lineTo(13, 13); c.closePath(); c.stroke(); }
+  else if (kind === 'send') { c.beginPath(); c.moveTo(-12, -10); c.lineTo(13, -10); c.lineTo(-2, 13); c.lineTo(-4, -2); c.closePath(); c.moveTo(-4, -2); c.lineTo(13, -10); c.stroke(); }
+  else if (kind === 'save') { c.beginPath(); c.moveTo(-9, -13); c.lineTo(9, -13); c.lineTo(9, 13); c.lineTo(0, 5); c.lineTo(-9, 13); c.closePath(); c.stroke(); }
+  else if (kind === 'more') { [-9, 0, 9].forEach(dx => { c.beginPath(); c.arc(dx, 0, 2.4, 0, Math.PI * 2); c.fill(); }); }
+  else if (kind === 'grid') { [-9, 0, 9].forEach(dx => [-9, 0, 9].forEach(dy => c.strokeRect(dx - 3.5, dy - 3.5, 7, 7))); }
+  c.restore(); }
+function igTap(c, x, y, t, t0) { const k = clamp((t - t0) / 0.6); if (k <= 0 || k >= 1) return; c.save(); c.globalAlpha = 1 - k; c.fillStyle = 'rgba(255,255,255,.45)'; c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 3; c.beginPath(); c.arc(x, y, 20 + 70 * ease(k), 0, Math.PI * 2); c.fill(); c.stroke(); c.restore(); }
+function igBg(c, s, si) { bg(c, '#0F0F10'); c.save(); c.globalAlpha = 0.9; softBg(c, s, si, false); c.restore(); c.fillStyle = 'rgba(10,10,12,.55)'; c.fillRect(0, 0, W, H); }
+Object.assign(LAYOUTS, {
+  igprofile: { name: '인스타 프로필 + 피드 스크롤 (게시물 12칸)', slots: 13, weight: 10, slotNames: ['프로필 사진', ...Array.from({ length: 12 }, (_, i) => `게시물 ${i + 1}`)],
+    fields: [['user', '아이디', 'our.secret.story'], ['name', '이름', '2년 동안 너 몰래 써온 우리의 기록'], ['bio', '소개글', '처음 만난 날부터 오늘까지 ♡\n언젠가 너에게 보여줄 날을 기다리며', true], ['posts', '게시물 수', '128'], ['overlay', '가운데 큰 글씨 (엔딩용, 비워도 돼요)', '']],
+    opts: [['scroll', '피드 아래로 스크롤', true], ['up', '거꾸로 (위로 올라가기)', false], ['tap', '마지막에 게시물 누르기', true]], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA'); const X = 300, Wd = 1320, cell = (Wd - 8) / 3, rows = 4, gridTop = 430, gridH = rows * (cell + 4), maxSc = Math.max(0, gridTop + gridH - H + 40);
+      const p = s.opts.scroll ? ease(clamp((t - 1.2) / Math.max(1, d - 2.6))) : 0, sc = (s.opts.up ? 1 - p : p) * maxSc;
+      c.save(); c.translate(0, -sc);
+      igAvatar(c, s, 0, X + 150, 200, 110, t, true);
+      txt(c, fill(s.texts.user), X + 340, 120, IGF(40, 500), IGC.ink, 1, { align: 'left', k: 'user' });
+      c.fillStyle = '#EFEFEF'; rr(c, X + 340 + 380, 96, 170, 50, 10); c.fill(); c.fillStyle = IGC.blue; rr(c, X + 340 + 560, 96, 170, 50, 10); c.fill();
+      txt(c, '팔로잉', X + 340 + 465, 121, IGF(24, 600), IGC.ink, 1); txt(c, '메시지', X + 340 + 645, 121, IGF(24, 600), '#fff', 1);
+      txt(c, `게시물 ${fill(s.texts.posts)}      팔로워 1      팔로잉 1`, X + 340, 200, IGF(28, 500), IGC.ink, 1, { align: 'left', k: 'posts' });
+      txt(c, fill(s.texts.name), X + 340, 258, IGF(28, 700), IGC.ink, 1, { align: 'left', k: 'name' });
+      fill(s.texts.bio).split('\n').forEach((l, i) => txt(c, l, X + 340, 300 + i * 40, IGF(26, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'bio' }));
+      c.fillStyle = IGC.line; c.fillRect(X, 395, Wd, 1.5); c.fillStyle = IGC.ink; c.fillRect(X + Wd / 2 - 60, 394, 120, 3); igIcon(c, 'grid', X + Wd / 2, 413, 22, IGC.ink);
+      for (let i = 0; i < 12; i++) { const r = Math.floor(i / 3), cI = i % 3, x = X + cI * (cell + 4), y = gridTop + r * (cell + 4); c.fillStyle = '#E9E9E9'; c.fillRect(x, y, cell, cell); if (s.media[i + 1] && s.media[i + 1].id) { const ho = hitOn; hitOn = false; coverIn(c, s, i + 1, x, y, cell, cell, t, { zoom: 1.01 }); hitOn = ho; } addHit({ type: 'media', si: i + 1, x, y: y - sc, w: cell, h: cell, oy: 0 }); }
+      c.restore();
+      if (s.opts.tap) { const i = s.opts.up ? 0 : 9, r = Math.floor(i / 3), cI = i % 3, x = X + cI * (cell + 4) + cell / 2, y = gridTop + r * (cell + 4) + cell / 2 - sc; igTap(c, x, y, t, d - 0.9); }
+      const ov = fill(s.texts.overlay); if (ov) { const a = fade(t, 1.0, 0.8); c.fillStyle = `rgba(0,0,0,${0.55 * a})`; c.fillRect(0, 0, W, H); igWrap(c, ov, IGF(72, 700), 1400).forEach((l, i, A) => txt(c, l, 960, 540 + (i - (A.length - 1) / 2) * 100, IGF(72, 700), '#fff', a, { k: i ? null : 'overlay' })); }
+    } },
+  igpost: { name: '인스타 게시물 (사진·영상 + 편지 글 캡션 + 좋아요)', slots: 2, weight: 7.5, slotNames: ['게시물 사진·영상', '프로필 사진 (비워도 돼요)'],
+    fields: [['user', '아이디', 'our.secret.story'], ['text', '캡션 (편지 글)', '처음 만난 날, 너는 하늘색 니트를 입고 있었어.\n그날부터 이 계정을 시작했어.', true], ['date', '날짜', '2023년 3월 14일'], ['likes', '좋아요', '좋아요 1개']],
+    opts: [['like', '사진 두 번 탭 하트', true]], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const k = ease(clamp(t / 0.5)), X = 300, Y = 100, S2 = 880, PW = 440;
+      c.save(); c.globalAlpha *= k; c.translate(960, 540); c.scale(0.96 + 0.04 * k, 0.96 + 0.04 * k); c.translate(-960, -540);
+      c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#fff'; c.fillRect(X, Y, S2 + PW, S2); c.restore();
+      c.fillStyle = '#000'; c.fillRect(X, Y, S2, S2); cover(c, s, 0, X, Y, S2, S2, t, { zoom: 1.0 + 0.03 * clamp(t / d) });
+      if (s.opts.like) { const hk = clamp((t - 1.0) / 0.9); if (hk > 0 && hk < 1) { const sz = 220 * (hk < 0.3 ? backOut(hk / 0.3) : 1); c.save(); c.globalAlpha *= hk < 0.7 ? 1 : 1 - (hk - 0.7) / 0.3; c.fillStyle = '#fff'; c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 20 * R.S; heartShape(c, X + S2 / 2, Y + S2 / 2, sz); c.fill(); c.restore(); } }
+      const RX = X + S2 + 24; igAvatar(c, s, s.media[1] && s.media[1].id ? 1 : 0, RX + 26, Y + 42, 22, t, true); txt(c, fill(s.texts.user), RX + 64, Y + 42, IGF(24, 600), IGC.ink, 1, { align: 'left', k: 'user' }); igIcon(c, 'more', X + S2 + PW - 30, Y + 42, 26, IGC.ink);
+      c.fillStyle = IGC.line; c.fillRect(X + S2, Y + 84, PW, 1.5);
+      const f = IGF(29, 400), lines = igWrap(c, fill(s.texts.text), f, PW - 60); igAvatar(c, s, s.media[1] && s.media[1].id ? 1 : 0, RX + 26, Y + 130, 22, t, false);
+      txt(c, fill(s.texts.user), RX + 64, Y + 130, IGF(24, 700), IGC.ink, 1, { align: 'left' });
+      lines.forEach((l, i) => txt(c, l, RX + 8, Y + 190 + i * 44, f, IGC.ink, fade(t, 0.5 + i * 0.35, 0.5), { align: 'left', k: i ? null : 'text' }));
+      c.fillStyle = IGC.line; c.fillRect(X + S2, Y + S2 - 170, PW, 1.5);
+      const liked = t > 1.2; igIcon(c, 'heart', RX + 20, Y + S2 - 128, 30 * (liked && t < 1.5 ? 1 + 0.25 * Math.sin((t - 1.2) / 0.3 * Math.PI) : 1), liked ? IGC.red : IGC.ink, liked); igIcon(c, 'comment', RX + 78, Y + S2 - 128, 30, IGC.ink); igIcon(c, 'send', RX + 136, Y + S2 - 128, 30, IGC.ink); igIcon(c, 'save', X + S2 + PW - 36, Y + S2 - 128, 30, IGC.ink);
+      txt(c, fill(s.texts.likes), RX + 6, Y + S2 - 74, IGF(25, 700), IGC.ink, 1, { align: 'left', k: 'likes' });
+      txt(c, fill(s.texts.date), RX + 6, Y + S2 - 34, IGF(21, 400), IGC.sub, 1, { align: 'left', k: 'date' });
+      c.restore();
+    } },
+  igreel: { name: '인스타 릴스 (세로 영상 + 옆 편지 글)', slots: 2, weight: 10, slotNames: ['릴스 영상·사진', '프로필 사진 (비워도 돼요)'],
+    fields: [['user', '아이디', 'our.secret.story'], ['cap', '릴스 캡션', '우리의 첫 여행 ✈️'], ['side', '옆 큰 글씨 (편지)', '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.', true], ['music', '음악 표시', '♪ 우리의 노래']],
+    opts: [['flip', '글씨 왼쪽', false]], cap: s => [s.opts.flip ? 1400 : 520, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const f = s.opts.flip, h = 1000, w = Math.round(h * 9 / 16), x = f ? 1260 - w / 2 + 120 : 660 - w / 2 + 300, y = 40, k = ease(clamp(t / 0.6));
+      const vx = f ? 1200 : 1100 - 0; const RX = f ? 260 : 1180;
+      const px = f ? 1180 : 420; // reel position
+      c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#000'; rr(c, px, y, w, h, 28); c.fill(); c.restore();
+      c.save(); rr(c, px, y, w, h, 28); c.clip(); cover(c, s, 0, px, y, w, h, t, { zoom: 1.0 });
+      const g = c.createLinearGradient(0, y + h * 0.6, 0, y + h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.6)'); c.fillStyle = g; c.fillRect(px, y, w, h);
+      txt(c, '릴스', px + 30, y + 50, IGF(30, 700), '#fff', 1, { align: 'left' });
+      [['heart', '1'], ['comment', ''], ['send', ''], ['more', '']].forEach(([ic, n], i) => { igIcon(c, ic, px + w - 44, y + h - 400 + i * 86, 34, '#fff', ic === 'heart' && t > 1.5); if (n) txt(c, n, px + w - 44, y + h - 362 + i * 86, IGF(18, 600), '#fff', 1); });
+      igAvatar(c, s, s.media[1] && s.media[1].id ? 1 : 0, px + 46, y + h - 160, 22, t, false); txt(c, fill(s.texts.user), px + 82, y + h - 160, IGF(22, 600), '#fff', 1, { align: 'left', k: 'user' });
+      txt(c, fill(s.texts.cap), px + 30, y + h - 108, IGF(23, 400), '#fff', 1, { align: 'left', k: 'cap' }); txt(c, fill(s.texts.music), px + 30, y + h - 66, IGF(20, 400), 'rgba(255,255,255,.85)', 1, { align: 'left', k: 'music' });
+      c.fillStyle = 'rgba(255,255,255,.3)'; c.fillRect(px, y + h - 6, w, 4); c.fillStyle = '#fff'; c.fillRect(px, y + h - 6, w * clamp(t / d), 4);
+      c.restore(); c.restore();
+      const sideX = f ? 300 : 1060, lines = igWrap(c, fill(s.texts.side), IGF(46, 500), 700);
+      lines.forEach((l, i) => txt(c, l, sideX, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 500), '#fff', fade(t, 0.8 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side', shadow: 'rgba(0,0,0,.4)', blur: 10 }));
+    } }
+});
+['igpost', 'igreel'].forEach(k => { LAYOUTS[k].noBulk = [1]; });
+CATS.push(['비밀 인스타 스토리 (고객 요청 10타입)', ['igprofile', 'igpost', 'igreel']]);
+TEMPLATES.IG = {
+  custom: true, code: '10', name: '비밀 인스타 스토리', desc: '신부 몰래 2년 동안 써온 인스타 계정 콘셉트. 프로필 피드가 아래로 스크롤되고 게시물을 누르면 사진·영상과 편지 글 캡션이 열려요. 중간중간 릴스가 재생되고, 마지막은 프로포즈 영상 릴스로. 식중영상 180초, 1920×956 출력 지원',
+  tags: ['식중영상', '인스타 피드', '편지 캡션', '1920×956'], preview: 0,
+  make: () => {
+    const P = (text, date) => ['igpost', { texts: { text, date } }, 7.4], RL = (cap, side, w) => ['igreel', { texts: { cap, side } }, w || 10];
+    const list = [
+      ['igprofile', {}, 10],
+      P('2023년 겨울, 친구들 모임에서 처음 만난 날.\n그날부터 이 계정을 시작했어.', '2023년 12월 9일'),
+      P('두 번째 만남. 하루 종일 웃던 너를 보고\n이 사람이다 싶었어.', '2023년 12월 23일'),
+      P('우리가 처음 손잡은 날.\n심장이 터지는 줄 알았던 건 비밀이야.', '2024년 1월 6일'),
+      RL('우리의 첫 여행 ✈️', '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.'),
+      P('네가 좋아하는 것들을 하나씩 알아가는 중.\n딸기, 고양이, 그리고 나.', '2024년 4월 2일'),
+      P('벚꽃 아래에서.\n내년에도, 그다음 해에도 같이 보자.', '2024년 4월 10일'),
+      P('다툰 날. 그래도 결국\n먼저 웃어주는 너라서 고마워.', '2024년 7월 21일'),
+      P('여름 바다. 오늘의 너는\n세상에서 제일 예뻤어.', '2024년 8월 15일'),
+      RL('1주년 🎂', '함께한 지 1년.\n너와 함께라면\n평범한 날도 특별해져.'),
+      P('너 몰래 이 계정을 쓴 지 1년.\n아직 들키지 않았어 ㅎㅎ', '2024년 12월 9일'),
+      P('추운 날 내 주머니에 넣어주던 손.\n그 온기가 아직 남아 있어.', '2025년 1월 18일'),
+      P('언제부턴가 미래를 이야기할 때\n늘 네가 있더라.', '2025년 5월 3일'),
+      P('반지를 고르던 날.\n너 몰래 하느라 정말 떨렸어.', '2025년 9월 27일'),
+      ['igprofile', { opts: { up: true, tap: false }, texts: { bio: '2년 동안 쌓인 우리의 기록 ♡\n그리고 오늘, 마지막 게시물' } }, 6],
+      RL('Will you marry me? 💍', '2년 동안 몰래 써온 이 계정,\n오늘 너에게 보여줄게.\n나랑 결혼해줄래?', 34),
+      ['igprofile', { opts: { scroll: false, tap: false }, texts: { overlay: '2025년 12월 5일\n우리 결혼합니다 ♡' } }, 9]
+    ];
+    const sc = list.map(([k, o, w]) => { const x = makeScene(k, o); x.weight = w; return x; });
+    sc.forEach((x, i) => { if (!i) return; const P2 = sc[i - 1].layout; x.tr = P2 === 'igprofile' ? 'zoom' : x.layout === 'igprofile' ? 'dissolve' : x.layout === 'igreel' ? 'zoom' : 'slide'; });
+    const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
+    return baseProj('IG', sc, { lyricFx: '', outCrop: 956 });
+  }
+};
+/* ---- type 10: more Instagram scenes (story, carousel, DM, text post, highlights) and a fuller 3-minute flow ---- */
+Object.assign(LAYOUTS, {
+  igstory: { name: '인스타 스토리 (세로 + 위 진행 막대 + 글씨 스티커)', slots: 1, weight: 6, fields: [['user', '아이디', 'our.secret.story'], ['when', '올린 시간', '2년 전'], ['sticker', '사진 위 글씨', '오늘의 너 🤍'], ['side', '옆 큰 글씨', '네가 웃으면\n나도 하루 종일 웃게 돼.', true]],
+    opts: [['flip', '글씨 왼쪽', false]], cap: s => [s.opts.flip ? 1400 : 520, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const f = s.opts.flip, h = 960, w = Math.round(h * 9 / 16), px = f ? 1180 : 420, y = 60, k = ease(clamp(t / 0.5));
+      c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#000'; rr(c, px, y, w, h, 24); c.fill(); c.restore();
+      c.save(); rr(c, px, y, w, h, 24); c.clip(); cover(c, s, 0, px, y, w, h, t, { zoom: 1.02 + 0.05 * clamp(t / d) });
+      const g = c.createLinearGradient(0, y, 0, y + 160); g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(px, y, w, 160);
+      [0, 1, 2].forEach(i => { const bx = px + 14 + i * ((w - 28) / 3), bw = (w - 28) / 3 - 6; c.fillStyle = 'rgba(255,255,255,.35)'; rr(c, bx, y + 14, bw, 5, 3); c.fill(); const fp = i < 1 ? 1 : i === 1 ? clamp(t / d) : 0; c.fillStyle = '#fff'; rr(c, bx, y + 14, bw * fp, 5, 3); c.fill(); });
+      igAvatar(c, s, 0, px + 40, y + 60, 20, t, false); txt(c, fill(s.texts.user), px + 72, y + 60, IGF(22, 600), '#fff', 1, { align: 'left', k: 'user' }); txt(c, fill(s.texts.when), px + 72 + 200, y + 60, IGF(20, 400), 'rgba(255,255,255,.75)', 1, { align: 'left', k: 'when' });
+      const st = fill(s.texts.sticker); if (st) { const sk = backOut(clamp((t - 0.6) / 0.5)); if (sk > 0) { c.save(); c.translate(px + w / 2, y + h * 0.62); c.rotate(-0.06); c.scale(sk, sk); c.font = IGF(40, 700); const tw = c.measureText(st).width + 50; c.fillStyle = '#fff'; rr(c, -tw / 2, -36, tw, 72, 14); c.fill(); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(st, 0, 2); c.restore(); } }
+      c.restore(); c.restore();
+      const sideX = f ? 300 : 1060, lines = igWrap(c, fill(s.texts.side), IGF(46, 500), 700);
+      lines.forEach((l, i) => txt(c, l, sideX, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 500), '#fff', fade(t, 0.8 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side', shadow: 'rgba(0,0,0,.4)', blur: 10 }));
+    } },
+  igcarousel: { name: '인스타 여러 장 게시물 (사진이 옆으로 넘어가요, 2~4장)', slots: 4, weight: 8, fields: [['user', '아이디', 'our.secret.story'], ['text', '캡션 (편지 글)', '여행 사진 정리하다가\n또 한참 웃었어.', true], ['date', '날짜', '2024년 6월 2일']], opts: [], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const n = Math.max(1, autoN(s, 4)), X = 300, Y = 100, S2 = 880, PW = 440, k = ease(clamp(t / 0.5));
+      c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#fff'; c.fillRect(X, Y, S2 + PW, S2); c.restore();
+      const seg = d / n, pos = Math.min(n - 1, t / seg), cur = Math.floor(pos), fr = ease(clamp((pos - cur - 0.82) / 0.18)), off = (cur + (cur < n - 1 ? fr : 0)) * S2;
+      c.save(); c.beginPath(); c.rect(X, Y, S2, S2); c.clip(); c.fillStyle = '#000'; c.fillRect(X, Y, S2, S2);
+      for (let i = 0; i < n; i++) { const x = X + i * S2 - off; if (x > X + S2 || x + S2 < X) continue; const ho = hitOn; hitOn = false; coverIn(c, s, i, x, Y, S2, S2, t, { zoom: 1.01 }); hitOn = ho; }
+      c.restore();
+      if (n > 1) { for (let i = 0; i < n; i++) { c.fillStyle = i === Math.round(cur + fr) ? IGC.blue : '#C8C8C8'; c.beginPath(); c.arc(X + S2 / 2 + (i - (n - 1) / 2) * 16, Y + S2 + 0 - 24, 4.5, 0, Math.PI * 2); c.fill(); } c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, X + S2 - 90, Y + 20, 70, 36, 18); c.fill(); txt(c, `${Math.round(cur + fr) + 1}/${n}`, X + S2 - 55, Y + 38, IGF(20, 600), '#fff', 1); }
+      for (let i = 0; i < n; i++) addHit({ type: 'media', si: i, x: X, y: Y, w: S2, h: S2, oy: 0 });
+      const RX = X + S2 + 24; igAvatar(c, s, 0, RX + 26, Y + 42, 22, t, true); txt(c, fill(s.texts.user), RX + 64, Y + 42, IGF(24, 600), IGC.ink, 1, { align: 'left', k: 'user' }); c.fillStyle = IGC.line; c.fillRect(X + S2, Y + 84, PW, 1.5);
+      const f = IGF(29, 400), lines = igWrap(c, fill(s.texts.text), f, PW - 60); lines.forEach((l, i) => txt(c, l, RX + 8, Y + 150 + i * 44, f, IGC.ink, fade(t, 0.5 + i * 0.35, 0.5), { align: 'left', k: i ? null : 'text' }));
+      c.fillStyle = IGC.line; c.fillRect(X + S2, Y + S2 - 170, PW, 1.5); igIcon(c, 'heart', RX + 20, Y + S2 - 128, 30, t > 1.2 ? IGC.red : IGC.ink, t > 1.2); igIcon(c, 'comment', RX + 78, Y + S2 - 128, 30, IGC.ink); igIcon(c, 'send', RX + 136, Y + S2 - 128, 30, IGC.ink); igIcon(c, 'save', X + S2 + PW - 36, Y + S2 - 128, 30, IGC.ink);
+      txt(c, '좋아요 1개', RX + 6, Y + S2 - 74, IGF(25, 700), IGC.ink, 1, { align: 'left' }); txt(c, fill(s.texts.date), RX + 6, Y + S2 - 34, IGF(21, 400), IGC.sub, 1, { align: 'left', k: 'date' }); c.restore();
+    } },
+  igdm: { name: '인스타 DM 대화 (말풍선이 하나씩)', slots: 1, weight: 8, slotNames: ['상대 프로필 사진'], fields: [['who', '대화 상대 이름', '{신부}'], ['msgs', '대화 (줄마다 하나, 내 말은 > 로 시작)', '안녕하세요! 오늘 반가웠어요 :)\n>저도요! 혹시 이번 주말에 시간 있어요?\n헉 좋아요 ㅎㅎ\n>그럼 토요일에 봐요!', true]], opts: [], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA'); const X = 560, Wd = 800; c.fillStyle = '#fff'; c.fillRect(X, 0, Wd, H); c.fillStyle = IGC.line; c.fillRect(X, 0, 1.5, H); c.fillRect(X + Wd, 0, 1.5, H); c.fillRect(X, 150, Wd, 1.5);
+      igAvatar(c, s, 0, X + 70, 105, 30, t, false); txt(c, fill(s.texts.who), X + 120, 105, IGF(28, 700), IGC.ink, 1, { align: 'left', k: 'who' });
+      const M = fill(s.texts.msgs).split('\n').filter(Boolean); let y = 220;
+      M.forEach((m, i) => { const me = m.startsWith('>'), tx = me ? m.slice(1).trim() : m, a = fade(t, 0.5 + i * 0.9, 0.35); if (a <= 0) return; const lines = igWrap(c, tx, IGF(30, 400), 580), bh = lines.length * 42 + 28, bw = Math.min(630, Math.max(...lines.map(l => { c.font = IGF(30, 400); return c.measureText(l).width; })) + 44);
+        const bx = me ? X + Wd - 40 - bw : X + 100; c.save(); c.globalAlpha *= a; c.translate(0, (1 - ease(a)) * 16); c.fillStyle = me ? '#3797F0' : '#EFEFEF'; rr(c, bx, y, bw, bh, 26); c.fill(); if (!me) igAvatar(c, s, 0, X + 62, y + bh - 20, 18, t, false);
+        lines.forEach((l, j) => txt(c, l, bx + 22, y + 34 + j * 42, IGF(30, 400), me ? '#fff' : IGC.ink, 1, { align: 'left', k: i || j ? null : 'msgs' })); c.restore(); y += bh + 18; });
+      c.fillStyle = '#fff'; rr(c, X + 30, H - 110, Wd - 60, 64, 32); c.fill(); c.strokeStyle = IGC.line; c.lineWidth = 2; rr(c, X + 30, H - 110, Wd - 60, 64, 32); c.stroke(); txt(c, '메시지 보내기...', X + 70, H - 78, IGF(24, 400), IGC.sub, 1, { align: 'left' });
+    } },
+  igtextpost: { name: '인스타 글 게시물 (색 배경 위 편지 문장)', slots: 0, weight: 5, fields: [['text', '문장', '너는 내 하루의\n가장 좋은 부분이야.', true], ['date', '날짜', '2024년 10월 3일']], opts: [['tone', '배경 색', 'peach']], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#111'); const T = { peach: ['#F7C8B4', '#F3A9A0'], sky: ['#C9DDF5', '#A9C1EC'], lilac: ['#E2D3F3', '#C8B5EC'], cream: ['#F4EBDD', '#E9D9C2'] }[s.opts.tone] || ['#F7C8B4', '#F3A9A0'];
+      const X = 520, Y = 100, S2 = 880, k = ease(clamp(t / 0.5)); c.save(); c.globalAlpha *= k; const g = c.createLinearGradient(X, Y, X + S2, Y + S2); g.addColorStop(0, T[0]); g.addColorStop(1, T[1]); c.fillStyle = g; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillRect(X, Y, S2, S2); c.restore();
+      const lines = igWrap(c, fill(s.texts.text), IGF(56, 600), S2 - 160); lines.forEach((l, i) => txt(c, l, 960, 540 + (i - (lines.length - 1) / 2) * 84, IGF(56, 600), '#3A2E2B', fade(t, 0.4 + i * 0.4, 0.6), { k: i ? null : 'text' }));
+      txt(c, fill(s.texts.date), 960, Y + S2 - 60, IGF(24, 500), 'rgba(58,46,43,.7)', fade(t, 1.0, 0.5), { k: 'date' });
+    } },
+  ighighlight: { name: '인스타 하이라이트 (동그란 스토리 모음)', slots: 5, weight: 6, fields: [['user', '아이디', 'our.secret.story'], ['labels', '하이라이트 이름 (줄마다)', '첫 만남\n여행\n기념일\n일상\n우리', true]], opts: [], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA'); txt(c, fill(s.texts.user), 960, 220, IGF(44, 600), IGC.ink, fade(t, 0, 0.5), { k: 'user' }); txt(c, '하이라이트', 960, 290, IGF(26, 500), IGC.sub, fade(t, 0.2, 0.5));
+      const L = fill(s.texts.labels).split('\n'), n = Math.max(1, Math.min(5, Math.max(autoN(s, 5), L.filter(Boolean).length))), gap = 300, x0 = 960 - (n - 1) * gap / 2;
+      for (let i = 0; i < n; i++) { const x = x0 + i * gap, a = backOut(clamp((t - 0.4 - i * 0.18) / 0.5)); if (a <= 0) continue; c.save(); c.translate(x, 540); c.scale(a, a); c.translate(-x, -540); c.strokeStyle = IGC.line; c.lineWidth = 3; c.beginPath(); c.arc(x, 540, 118, 0, Math.PI * 2); c.stroke(); igAvatar(c, s, i, x, 540, 108, t, false); c.restore(); addHit({ type: 'media', si: i, x: x - 108, y: 432, w: 216, h: 216, oy: 0 }); txt(c, L[i] || '', x, 710, IGF(28, 500), IGC.ink, fade(t, 0.7 + i * 0.18, 0.4)); }
+      igTap(c, x0 + 1 * gap, 540, t, d - 0.9);
+    } }
+});
+LAYOUTS.igtextpost.optSelects = { tone: [['peach', '피치'], ['sky', '하늘'], ['lilac', '라일락'], ['cream', '크림']] };
+CATS.find(c => c[0] === '비밀 인스타 스토리 (고객 요청 10타입)')[1].push('igstory', 'igcarousel', 'igdm', 'igtextpost', 'ighighlight');
+TEMPLATES.IG.make = () => {
+  const P = (text, date) => ['igpost', { texts: { text, date } }, 6.4], C = (text, date) => ['igcarousel', { texts: { text, date } }, 8], ST = (sticker, side, when) => ['igstory', { texts: { sticker, side, when } }, 6], TX = (text, date, tone) => ['igtextpost', { texts: { text, date }, opts: { tone } }, 5], RL = (cap, side, w) => ['igreel', { texts: { cap, side } }, w || 9];
+  const list = [
+    ['igprofile', {}, 9],
+    ['ighighlight', {}, 6],
+    P('2023년 겨울, 친구들 모임에서 처음 만난 날.\n그날부터 이 계정을 시작했어.', '2023년 12월 9일'),
+    ['igdm', {}, 8],
+    P('두 번째 만남. 하루 종일 웃던 너를 보고\n이 사람이다 싶었어.', '2023년 12월 23일'),
+    ST('첫 데이트 🎞', '영화보다\n옆자리 네가 더 궁금했던 날.', '2년 전'),
+    P('우리가 처음 손잡은 날.\n심장이 터지는 줄 알았던 건 비밀이야.', '2024년 1월 6일'),
+    TX('너는 내 하루의\n가장 좋은 부분이야.', '2024년 2월 14일', 'peach'),
+    C('첫 여행 사진 정리하다가\n또 한참 웃었어.', '2024년 3월 9일'),
+    RL('우리의 첫 여행 ✈️', '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.'),
+    P('벚꽃 아래에서.\n내년에도, 그다음 해에도 같이 보자.', '2024년 4월 10일'),
+    ST('오늘의 너 🤍', '네가 웃으면\n나도 하루 종일 웃게 돼.', '1년 전'),
+    P('다툰 날. 그래도 결국\n먼저 웃어주는 너라서 고마워.', '2024년 7월 21일'),
+    C('여름 바다, 그리고 너.', '2024년 8월 15일'),
+    TX('같이 있으면\n시간이 너무 빨리 가.', '2024년 9월 30일', 'sky'),
+    RL('1주년 🎂', '함께한 지 1년.\n너와 함께라면\n평범한 날도 특별해져.'),
+    P('너 몰래 이 계정을 쓴 지 1년.\n아직 들키지 않았어 ㅎㅎ', '2024년 12월 9일'),
+    ST('눈 오는 날 ❄️', '추운 날 내 주머니에\n넣어주던 네 손.', '10개월 전'),
+    C('우리의 겨울, 우리의 봄.', '2025년 3월 22일'),
+    TX('언제부턴가 미래를 이야기할 때\n늘 네가 있더라.', '2025년 5월 3일', 'lilac'),
+    P('반지를 고르던 날.\n너 몰래 하느라 정말 떨렸어.', '2025년 9월 27일'),
+    ['igprofile', { opts: { up: true, tap: false }, texts: { bio: '2년 동안 쌓인 우리의 기록 ♡\n그리고 오늘, 마지막 게시물' } }, 5],
+    RL('Will you marry me? 💍', '2년 동안 몰래 써온 이 계정,\n오늘 너에게 보여줄게.\n나랑 결혼해줄래?', 30),
+    ['igprofile', { opts: { scroll: false, tap: false }, texts: { overlay: '2025년 12월 5일\n우리 결혼합니다 ♡' } }, 8]
+  ];
+  const sc = list.map(([k, o, w]) => { const x = makeScene(k, o); x.weight = w; return x; });
+  const TR = { igpost: 'slide', igcarousel: 'slide', igstory: 'zoom', igreel: 'zoom', igtextpost: 'dissolve', igdm: 'slide', ighighlight: 'dissolve', igprofile: 'dissolve' };
+  sc.forEach((x, i) => { if (!i) return; x.tr = sc[i - 1].layout === 'igprofile' || sc[i - 1].layout === 'ighighlight' ? 'zoom' : TR[x.layout] || 'dissolve'; });
+  const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
+  return baseProj('IG', sc, { lyricFx: '', outCrop: 956 });
+};
+/* ---- type 10: more Instagram-native scenes (home feed scroll, explore grid, "on this day" memory, comments) ---- */
+Object.assign(LAYOUTS, {
+  igfeed: { name: '인스타 홈 피드 스크롤 (게시물이 위로 지나가요, 1~4장)', slots: 4, weight: 8, fields: [['user', '아이디', 'our.secret.story'], ['caps', '게시물 캡션 (줄마다 하나)', '오늘도 너랑 웃은 날\n같이 먹은 첫 떡볶이\n비 오는 날의 데이트\n너의 생일 🎂', true], ['side', '옆 큰 글씨', '스크롤을 내릴 때마다\n네가 있었어.', true]], opts: [], cap: () => [1400, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA'); const n = Math.max(1, autoN(s, 4)), X = 330, Wd = 640, postH = 64 + Wd + 150, caps = fill(s.texts.caps).split('\n');
+      c.fillStyle = '#fff'; c.fillRect(X - 20, 0, Wd + 40, H); c.fillStyle = IGC.line; c.fillRect(X - 20, 0, 1.5, H); c.fillRect(X + Wd + 20, 0, 1.5, H);
+      const total = n * postH, travel = Math.max(0, total - (H - 220)), sc = travel * ease(clamp((t - 0.6) / Math.max(1, d - 1.2)));
+      c.save(); c.beginPath(); c.rect(X - 20, 0, Wd + 40, H); c.clip(); c.translate(0, 150 - sc);
+      for (let i = 0; i < n; i++) { const y = i * postH; igAvatar(c, s, i, X + 26, y + 32, 20, t, true); txt(c, fill(s.texts.user), X + 58, y + 32, IGF(22, 600), IGC.ink, 1, { align: 'left', k: i ? null : 'user' }); igIcon(c, 'more', X + Wd - 20, y + 32, 24, IGC.ink);
+        c.fillStyle = '#EEE'; c.fillRect(X, y + 64, Wd, Wd); const ho = hitOn; hitOn = false; coverIn(c, s, i, X, y + 64, Wd, Wd, t, { zoom: 1.01 }); hitOn = ho; addHit({ type: 'media', si: i, x: X, y: y + 64 + 150 - sc, w: Wd, h: Wd, oy: 0 });
+        const ay = y + 64 + Wd + 34, lk = t > 1 + i * 1.2; igIcon(c, 'heart', X + 18, ay, 28, lk ? IGC.red : IGC.ink, lk); igIcon(c, 'comment', X + 70, ay, 28, IGC.ink); igIcon(c, 'send', X + 122, ay, 28, IGC.ink); igIcon(c, 'save', X + Wd - 20, ay, 28, IGC.ink);
+        txt(c, '좋아요 1개', X + 2, ay + 44, IGF(22, 700), IGC.ink, 1, { align: 'left' }); txt(c, `${fill(s.texts.user)}  ${caps[i] || ''}`, X + 2, ay + 82, IGF(22, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'caps' }); }
+      c.restore();
+      c.fillStyle = '#fff'; c.fillRect(X - 20, 0, Wd + 40, 140); c.fillStyle = IGC.line; c.fillRect(X - 20, 140, Wd + 40, 1.5); txt(c, 'Our Story', X + 4, 104, `italic 600 34px "Playfair Display", serif`, IGC.ink, 1, { align: 'left' });
+      const lines = igWrap(c, fill(s.texts.side), IGF(46, 600), 760); lines.forEach((l, i) => txt(c, l, 1080, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 600), IGC.ink, fade(t, 0.8 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side' }));
+    } },
+  igexplore: { name: '인스타 탐색 탭 (모자이크 사진들이 흘러가요, 최대 9장)', slots: 9, weight: 7, fields: [['search', '검색창 글씨', '우리의 2년']], opts: [], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA'); const n = Math.max(1, autoN(s, 9)), X = 360, Wd = 1200, g = 6, cw = (Wd - 2 * g) / 3, sc = 220 * ease(clamp((t - 0.6) / Math.max(1, d - 1)));
+      const T = [[0, 0, 1, 2], [1, 0, 1, 1], [2, 0, 1, 1], [1, 1, 1, 1], [2, 1, 1, 1], [0, 2, 1, 1], [1, 2, 1, 1], [2, 2, 1, 2], [0, 3, 1, 1]];
+      c.save(); c.beginPath(); c.rect(X, 150, Wd, H - 150); c.clip(); c.translate(0, 160 - sc);
+      for (let i = 0; i < n; i++) { const [cx, cy, sw, shh] = T[i], x = X + cx * (cw + g), y = cy * (cw + g), w = cw * sw + g * (sw - 1), h = cw * shh + g * (shh - 1), a = fade(t, i * 0.08, 0.4); c.save(); c.globalAlpha *= a; c.fillStyle = '#E6E6E6'; c.fillRect(x, y, w, h); const ho = hitOn; hitOn = false; coverIn(c, s, i, x, y, w, h, t, { zoom: 1.01 }); hitOn = ho; c.restore(); addHit({ type: 'media', si: i, x, y: y + 160 - sc, w, h, oy: 0 }); if (shh === 2) { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x + w - 40, y + 22); c.lineTo(x + w - 22, y + 32); c.lineTo(x + w - 40, y + 42); c.closePath(); c.fill(); } }
+      c.restore();
+      c.fillStyle = '#EFEFEF'; rr(c, X, 76, Wd, 60, 14); c.fill(); txt(c, '⌕', X + 36, 104, IGF(30, 400), IGC.sub, 1); txt(c, fill(s.texts.search), X + 70, 106, IGF(26, 500), IGC.ink, 1, { align: 'left', k: 'search' });
+    } },
+  igmemory: { name: '인스타 "n년 전 오늘" 추억 카드 + 옆 글씨', slots: 1, weight: 7, fields: [['ago', '위 글씨', '1년 전 오늘'], ['date', '날짜', '2024년 5월 18일'], ['side', '옆 큰 글씨', '1년 전 오늘도\n우리는 이렇게 웃고 있었네.', true]], opts: [['flip', '카드 오른쪽', false]], cap: s => [s.opts.flip ? 520 : 1400, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const f = s.opts.flip, cw = 620, ch = 860, cx = f ? 1240 : 680, x = cx - cw / 2, y = 110, k = ease(clamp(t / 0.6));
+      c.save(); c.globalAlpha *= k; c.translate(0, (1 - k) * 30); c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#fff'; rr(c, x, y, cw, ch, 26); c.fill(); c.restore();
+      txt(c, fill(s.texts.ago), cx, y + 70, IGF(36, 700), IGC.ink, 1, { k: 'ago' }); txt(c, fill(s.texts.date), cx, y + 116, IGF(22, 400), IGC.sub, 1, { k: 'date' });
+      c.save(); rr(c, x + 40, y + 160, cw - 80, cw - 80, 14); c.clip(); cover(c, s, 0, x + 40, y + 160, cw - 80, cw - 80, t, { zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
+      const bx = x + 40, by = y + ch - 110; const g = c.createLinearGradient(bx, 0, bx + cw - 80, 0); g.addColorStop(0, '#F9CE34'); g.addColorStop(0.5, '#EE2A7B'); g.addColorStop(1, '#6228D7'); c.fillStyle = g; rr(c, bx, by, cw - 80, 64, 14); c.fill(); txt(c, '추억 공유하기', cx, by + 33, IGF(26, 700), '#fff', 1);
+      c.restore();
+      const sx = f ? 220 : 1100, lines = igWrap(c, fill(s.texts.side), IGF(46, 500), 640); lines.forEach((l, i) => txt(c, l, sx, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 500), '#fff', fade(t, 0.9 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side', shadow: 'rgba(0,0,0,.4)', blur: 10 }));
+    } },
+  igcomments: { name: '인스타 게시물 + 댓글이 하나씩 달려요', slots: 1, weight: 8, fields: [['user', '아이디', 'our.secret.story'], ['text', '캡션', '처음으로 같이 본 바다.', true], ['cmts', '댓글 (줄마다 "아이디: 내용")', 'our.secret.story: 언젠가 이 글을 너도 보겠지?\nour.secret.story: 그날까지 몰래 쌓아둘게 🤫\nour.secret.story: 오늘도 고마워, 사랑해', true], ['date', '날짜', '2024년 8월 3일']], opts: [], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const X = 300, Y = 100, S2 = 880, PW = 440, k = ease(clamp(t / 0.5)); c.save(); c.globalAlpha *= k;
+      c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#fff'; c.fillRect(X, Y, S2 + PW, S2); c.restore(); c.fillStyle = '#000'; c.fillRect(X, Y, S2, S2); cover(c, s, 0, X, Y, S2, S2, t, { zoom: 1.0 + 0.03 * clamp(t / d) });
+      const RX = X + S2 + 24; igAvatar(c, s, 0, RX + 26, Y + 42, 22, t, true); txt(c, fill(s.texts.user), RX + 64, Y + 42, IGF(24, 600), IGC.ink, 1, { align: 'left', k: 'user' }); c.fillStyle = IGC.line; c.fillRect(X + S2, Y + 84, PW, 1.5);
+      let yy = Y + 130; igWrap(c, fill(s.texts.text), IGF(27, 400), PW - 60).forEach((l, i) => { txt(c, l, RX + 8, yy, IGF(27, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'text' }); yy += 40; }); yy += 24;
+      fill(s.texts.cmts).split('\n').filter(Boolean).forEach((m, i) => { const a = fade(t, 0.9 + i * 1.1, 0.4); if (a <= 0) return; const sp = m.indexOf(':'), who = sp > 0 ? m.slice(0, sp).trim() : '', body = sp > 0 ? m.slice(sp + 1).trim() : m;
+        c.save(); c.globalAlpha *= a; c.translate(0, (1 - ease(a)) * 12); igAvatar(c, s, 0, RX + 22, yy + 4, 18, t, false); txt(c, who, RX + 52, yy, IGF(22, 700), IGC.ink, 1, { align: 'left', k: i ? null : 'cmts' });
+        igWrap(c, body, IGF(24, 400), PW - 110).forEach((l, j) => txt(c, l, RX + 52, yy + 34 + j * 34, IGF(24, 400), IGC.ink, 1, { align: 'left' })); igIcon(c, 'heart', X + S2 + PW - 30, yy + 14, 18, IGC.sub); c.restore(); yy += 34 + igWrap(c, body, IGF(24, 400), PW - 110).length * 34 + 22; });
+      c.fillStyle = IGC.line; c.fillRect(X + S2, Y + S2 - 120, PW, 1.5); igIcon(c, 'heart', RX + 20, Y + S2 - 80, 30, IGC.red, true); igIcon(c, 'comment', RX + 78, Y + S2 - 80, 30, IGC.ink); igIcon(c, 'send', RX + 136, Y + S2 - 80, 30, IGC.ink);
+      txt(c, fill(s.texts.date), RX + 6, Y + S2 - 30, IGF(21, 400), IGC.sub, 1, { align: 'left', k: 'date' }); c.restore();
+    } }
+});
+LAYOUTS.igexplore.noBulk = []; LAYOUTS.igfeed.noBulk = [];
+{ const cat = CATS.find(c => c[0] === '비밀 인스타 스토리 (고객 요청 10타입)'); cat[1] = cat[1].filter(k => k !== 'igtextpost'); cat[1].push('igfeed', 'igexplore', 'igmemory', 'igcomments'); }
+TEMPLATES.IG.make = () => {
+  const P = (text, date) => ['igpost', { texts: { text, date } }, 6.4], C = (text, date) => ['igcarousel', { texts: { text, date } }, 8], ST = (sticker, side, when) => ['igstory', { texts: { sticker, side, when } }, 6], RL = (cap, side, w) => ['igreel', { texts: { cap, side } }, w || 9];
+  const MEM = (ago, date, side, flip) => ['igmemory', { texts: { ago, date, side }, opts: { flip: !!flip } }, 6.5], FD = (side) => ['igfeed', { texts: { side } }, 8], CM = (text, cmts, date) => ['igcomments', { texts: { text, cmts, date } }, 8];
+  const list = [
+    ['igprofile', {}, 9], ['ighighlight', {}, 6],
+    P('2023년 겨울, 친구들 모임에서 처음 만난 날.\n그날부터 이 계정을 시작했어.', '2023년 12월 9일'),
+    ['igdm', {}, 8],
+    P('두 번째 만남. 하루 종일 웃던 너를 보고\n이 사람이다 싶었어.', '2023년 12월 23일'),
+    ST('첫 데이트 🎞', '영화보다\n옆자리 네가 더 궁금했던 날.', '2년 전'),
+    P('우리가 처음 손잡은 날.\n심장이 터지는 줄 알았던 건 비밀이야.', '2024년 1월 6일'),
+    FD('스크롤을 내릴 때마다\n네가 있었어.'),
+    C('첫 여행 사진 정리하다가\n또 한참 웃었어.', '2024년 3월 9일'),
+    RL('우리의 첫 여행 ✈️', '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.'),
+    P('벚꽃 아래에서.\n내년에도, 그다음 해에도 같이 보자.', '2024년 4월 10일'),
+    ST('오늘의 너 🤍', '네가 웃으면\n나도 하루 종일 웃게 돼.', '1년 전'),
+    CM('처음으로 같이 본 바다.', 'our.secret.story: 언젠가 이 글을 너도 보겠지?\nour.secret.story: 그날까지 몰래 쌓아둘게 🤫\nour.secret.story: 오늘도 고마워, 사랑해', '2024년 8월 3일'),
+    ['igexplore', {}, 7],
+    RL('1주년 🎂', '함께한 지 1년.\n너와 함께라면\n평범한 날도 특별해져.'),
+    MEM('1년 전 오늘', '2024년 12월 9일', '1년 전 오늘,\n우리가 처음 만났어.'),
+    ST('눈 오는 날 ❄️', '추운 날 내 주머니에\n넣어주던 네 손.', '10개월 전'),
+    C('우리의 겨울, 우리의 봄.', '2025년 3월 22일'),
+    FD('함께한 모든 날이\n나에겐 게시물이었어.'),
+    MEM('2년 전 오늘', '2025년 5월 18일', '언제부턴가 미래를 이야기할 때\n늘 네가 있더라.', true),
+    P('반지를 고르던 날.\n너 몰래 하느라 정말 떨렸어.', '2025년 9월 27일'),
+    ['igprofile', { opts: { up: true, tap: false }, texts: { bio: '2년 동안 쌓인 우리의 기록 ♡\n그리고 오늘, 마지막 게시물' } }, 5],
+    RL('Will you marry me? 💍', '2년 동안 몰래 써온 이 계정,\n오늘 너에게 보여줄게.\n나랑 결혼해줄래?', 26),
+    // closing for a ceremony video: thanks to both families, then to every guest
+    ['igstory', { texts: { sticker: '사랑하는 부모님께 💐', side: '저희를 사랑으로 키워주셔서\n진심으로 감사합니다.\n받은 사랑만큼 행복하게 살게요.', when: '방금' } }, 8],
+    ['igstory', { opts: { flip: true }, texts: { sticker: '양가 부모님 🤍', side: '이제 서로의 부모님께도\n든든한 자녀가 되겠습니다.\n존경하고, 사랑합니다.', when: '방금' } }, 8],
+    ['igcomments', { texts: { text: '오늘 이 자리를 빛내주신\n모든 분들께 감사드립니다.', cmts: 'our.secret.story: 바쁘신 와중에도 와주셔서 감사합니다 🙏\nour.secret.story: 보내주신 축복 잊지 않을게요\nour.secret.story: 예쁘게, 행복하게 잘 살겠습니다 ♡', date: '2025년 12월 5일' } }, 8.5],
+    ['igprofile', { opts: { scroll: false, tap: false }, texts: { bio: '2025.12.05 우리 결혼합니다 ♡', overlay: '함께해 주셔서 감사합니다\n행복하게 잘 살겠습니다 ♡' } }, 8]
+  ];
+  const sc = list.map(([k, o, w]) => { const x = makeScene(k, o); x.weight = w; return x; });
+  const TR = { igpost: 'slide', igcarousel: 'slide', igstory: 'zoom', igreel: 'zoom', igdm: 'slide', ighighlight: 'dissolve', igprofile: 'dissolve', igfeed: 'push', igexplore: 'dissolve', igmemory: 'zoom', igcomments: 'slide' };
+  sc.forEach((x, i) => { if (!i) return; x.tr = sc[i - 1].layout === 'igprofile' || sc[i - 1].layout === 'ighighlight' || sc[i - 1].layout === 'igexplore' ? 'zoom' : TR[x.layout] || 'dissolve'; });
+  const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
+  return baseProj('IG', sc, { lyricFx: '', outCrop: 956 });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -9802,6 +10091,7 @@ function render(r, T, preview) {
       c.restore();
     }
   } else drawScene(c, i, t, preview);
+  if (preview && project.outCrop === 956) { c.save(); c.setLineDash([14, 10]); c.strokeStyle = 'rgba(255,90,120,.85)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 62); c.lineTo(W, 62); c.moveTo(0, 1018); c.lineTo(W, 1018); c.stroke(); c.restore(); }
   if (project.retroFx && typeof rmRetro === 'function') { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,190,130,.22)'; c.fillRect(0, 0, W, H); c.restore(); rmRetro(c, T); }
   if (activeLyric) {
     const s = project.scenes[i], st = LAYOUTS[s.layout].cap(s)[2], ly = activeLyric, x = 960, y = 1012;
@@ -11048,7 +11338,7 @@ function rtMime() {
 }
 async function pickVideoCfg(S) {
   if (!window.VideoEncoder || !window.VideoFrame) return null;
-  const w = W * S, h = H * S;
+  const w = CROP ? CROP.w : W * S, h = CROP ? CROP.h : H * S;
   const codecs = S > 1 ? ['avc1.640034', 'avc1.640033', 'avc1.4d0034', 'avc1.4d0033'] : ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640029'];
   for (const codec of codecs) for (const hw of ['prefer-hardware', 'no-preference']) {
     const cfg = { codec, width: w, height: h, bitrate: S > 1 ? 24e6 : 8e6, framerate: 30, hardwareAcceleration: hw, avc: { format: 'avc' } };
@@ -11126,7 +11416,8 @@ async function exportFast(S) {
   }
   const fps = 30, nF = Math.ceil(total * fps);
   ER = makeR(S);
-  const mux = createMp4(W * S, H * S, fps, acfg && acfg.kind);
+  const mux = createMp4(CROP ? CROP.w : W * S, CROP ? CROP.h : H * S, fps, acfg && acfg.kind);
+  const cropCv = CROP ? Object.assign(document.createElement('canvas'), { width: CROP.w, height: CROP.h }) : null, cropX = cropCv && cropCv.getContext('2d');
   let err = null;
   const venc = new VideoEncoder({ output: (c, m) => mux.addVideo(c, m), error: e => { err = e; } });
   venc.configure(vcfg);
@@ -11154,7 +11445,8 @@ async function exportFast(S) {
     const T = f / fps;
     for (const [v, t] of videosAt(T)) await seekVideo(v, t);
     render(ER, T, false);
-    const vf = new VideoFrame(ER.canvas, { timestamp: Math.round(f * 1e6 / fps), duration: Math.round(1e6 / fps) });
+    if (cropX) cropX.drawImage(ER.canvas, 0, (H * S - CROP.h) / 2, CROP.w, CROP.h, 0, 0, CROP.w, CROP.h);
+    const vf = new VideoFrame(cropCv || ER.canvas, { timestamp: Math.round(f * 1e6 / fps), duration: Math.round(1e6 / fps) });
     venc.encode(vf, { keyFrame: f % (fps * 2) === 0 }); vf.close();
     pushAudio(T + 1);
     if (aenc) await waitQueue(aenc, 30);
@@ -11205,11 +11497,14 @@ $('exportBtn').onclick = () => {
     <div class="res">
       <label><input type="radio" name="res" value="1" checked><span>FHD 1920×1080<small>대부분의 예식장 화면에 충분해요. 빨리 만들어져요.</small></span></label>
       <label><input type="radio" name="res" value="2"><span>4K 3840×2160<small>큰 스크린용이에요. 시간이 더 걸리고 파일이 커요.</small></span></label>
+      <label><input type="radio" name="res" value="956" ${project.outCrop === 956 ? 'checked' : ''}><span>1920×956<small>예식장에서 이 크기를 요청할 때. 화면 위아래가 조금씩(62px) 잘려요. 미리보기의 점선 안이 실제로 나와요.</small></span></label>
     </div>
     <p style="margin-top:12px">${fast ? '영상 길이보다 빠르게 만들어져요. 사진이 많으면 몇 분 걸릴 수 있어요.' : `이 브라우저는 영상 길이(${fmt(total)})만큼 실시간으로 녹화해요.`}</p>`;
   ask('영상 만들기', '', [['취소'], ['만들기', true, () => runExport(+document.querySelector('input[name=res]:checked').value)]], html);
 };
+let CROP = null;
 async function runExport(S) {
+  if (S === 956) { CROP = { w: 1920, h: 956 }; S = 1; } else CROP = null;
   pause(); cancelled = false; exporting = true; editSel = null;
   if (abuf || hasSfx()) getCtx().resume();
   await loadFontsFor(allText());
