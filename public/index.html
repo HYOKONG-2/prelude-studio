@@ -10790,7 +10790,7 @@ function buildInfoPane() {
     ${fields.map(f => `<label class="field"><span>${f[1]}${CUSTOMER ? '' : ` <code style="font-size:11px">${f[2]}</code>`}</span><input type="text" data-info="${f[0]}" value="${esc(i[f[0]])}"></label>`).join('')}
     <div class="group"><h3>사진 한 번에 넣기</h3>
       <p class="hint">여러 장을 고르면 비어 있는 칸에 장면 순서대로 채워져요.</p>
-      <div class="row" style="margin-top:10px"><button class="btn small" id="bulkBtn">사진 여러 장 고르기</button></div></div>
+      <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap"><button class="btn small" id="bulkBtn">사진 여러 장 고르기</button><button class="btn small" id="clearPhotosBtn" title="장면 구성·길이·글씨·음원은 그대로 두고 넣은 사진과 영상만 모두 빼요">넣은 사진만 모두 빼기</button></div></div>
     ${CUSTOMER ? `<div class="group"><h3>처음부터 다시</h3><p class="hint">넣은 사진, 음원, 글씨를 모두 지우고 처음 상태로 돌아가요.</p><div class="row" style="margin-top:10px"><button class="btn small" id="resetBtn2">처음 상태로</button></div></div>` : ''}`;
   $('pane-info').querySelectorAll('[data-info]').forEach(inp => inp.oninput = () => {
     project.info[inp.dataset.info] = inp.value; loadFontsFor(inp.value); touch('info');
@@ -10801,6 +10801,15 @@ function buildInfoPane() {
     project.scenes.forEach(s => queueThumb(s.id)); dirty = true; save();
   });
   $('bulkBtn').onclick = () => { $('bulkInput').value = ''; $('bulkInput').click(); };
+  $('clearPhotosBtn').onclick = () => {
+    const n = project.scenes.reduce((a, s) => a + s.media.filter(m => m && m.id).length, 0);
+    if (!n) { toast('넣은 사진이 없어요'); return; }
+    if (!confirm(`넣은 사진·영상 ${n}개를 모두 뺄까요?\n장면 구성, 장면 길이, 글씨, 음원은 그대로 남아요.`)) return;
+    // keep every scene, its length, texts and options; only empty the photo slots (positions/edits reset with them)
+    project.scenes.forEach(s => { s.media = s.media.map(() => ({ id: null })); touch(s.id); queueThumb(s.id); });
+    changed(true); select(sel); dirty = true; save();
+    toast(`사진 ${n}개를 뺐어요. 장면과 음원은 그대로예요`);
+  };
   if ($('fTitle')) $('fTitle').oninput = e => { project.title = e.target.value; touch('info'); save(); };
   if ($('resetBtn2')) $('resetBtn2').onclick = askReset;
 }
