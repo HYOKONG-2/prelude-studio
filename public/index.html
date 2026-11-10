@@ -709,7 +709,7 @@ function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub =
   c.save(); c.translate(x + st.x, y + st.y); c.scale(st.s, st.s);
   c.globalAlpha *= a * (style === 'dark' ? 0.92 : 1);
   if (rmode === 'box' && fx !== 'label') { c.save(); c.shadowColor = 'transparent'; c.fillStyle = 'rgba(20,18,18,.42)'; rr(c, -bw / sk / 2, -(bh / sk) + px * 0.75, bw / sk, bh / sk, 16); c.fill(); c.restore(); }
-  const wantOutline = fx !== 'label' && fx !== 'cute' && fx !== 'movie' && (rmode === 'outline' || (rmode === 'auto' && bgL));
+  const wantOutline = fx !== 'label' && fx !== 'cute' && fx !== 'movie' && fx !== 'goldline' && (rmode === 'outline' || (rmode === 'auto' && bgL));
   if (wantOutline) {
     c.fillText = function (t2, x2, y2) {
       const fl = styleLum(this.fillStyle), need = rmode === 'outline' || Math.abs(fl - bgL.avg) < 0.42 || (fl > 0.6 && bgL.max > 0.85 && bgL.avg > 0.55);
@@ -735,6 +735,12 @@ function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub =
     const lh2 = px * 1.3, y0 = -(ls.length - 1) * lh2;
     const f1k = (fx === 'gold' && !st.f) ? `700 ${Math.round(px * 1.05)}px "Gowun Batang", "Nanum Myeongjo", serif` : f1;
     ls.forEach((l, i) => { c.font = i ? f2 : (/[가-힣]/.test(l) ? f1k : f1); c.fillStyle = i ? c2 : c1; c.fillText(l, 0, y0 + i * lh2); mw = Math.max(mw, c.measureText(l).width); });
+  } else if (fx === 'goldline') { // heavy italic gold English + rounded white Korean, both with a thick dark outline
+    const f1 = st.f ? withFont(F.kr(Math.round(px * 1.15)), st.f) : PLAYF(Math.round(px * 1.12), 700, true), f2 = `400 ${Math.round(px * 1.0)}px "Jua", "Gowun Dodum", sans-serif`;
+    const f1k = st.f ? f1 : `400 ${Math.round(px * 1.1)}px "Jua", "Gowun Dodum", sans-serif`;
+    const lh2 = px * 1.42, y0 = -(ls.length - 1) * lh2; c.shadowColor = 'transparent'; c.lineJoin = 'round'; c.miterLimit = 2;
+    ls.forEach((l, i) => { c.font = i ? f2 : (/[가-힣]/.test(l) ? f1k : f1); c.strokeStyle = '#1E2928'; c.lineWidth = Math.max(5, px * 0.17); c.strokeText(l, 0, y0 + i * lh2);
+      c.fillStyle = i ? (col2 || '#FFFFFF') : (col1 || '#C9A04B'); c.fillText(l, 0, y0 + i * lh2); mw = Math.max(mw, c.measureText(l).width); });
   } else if (fx === 'label') {
     c.save(); c.shadowColor = 'transparent'; c.fillStyle = 'rgba(60,52,52,.58)';
     ls.forEach((l, i) => { const w2 = c.measureText(l).width, yy = -(ls.length - 1 - i) * lh; rr(c, -w2 / 2 - 20, yy - px * 0.62, w2 + 40, px * 1.24, 8); c.fill(); }); c.restore();
@@ -10089,7 +10095,7 @@ function drawScene(c, i, t, hit) {
     const [x, y, st] = L.cap(s);
     let yo = 0;
     if (activeLyric && Math.abs(x - 960) < 200) yo = -(((activeLyric.text || '').split('\n').length + (activeLyric.sub ? 1 : 0)) * 52 + 18) * (project.lstyle.s || 1) * activeLyricA;
-    caption(c, fill(s.caption), x, y + yo, ['neon', 'cute', 'movie', 'label', 'gold', 'yellow'].includes(s.capFx) ? 'photo' : st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption', 40, s.capFx, [s.capCol, s.capCol2]);
+    caption(c, fill(s.caption), x, y + yo, ['neon', 'cute', 'movie', 'label', 'gold', 'goldline', 'yellow'].includes(s.capFx) ? 'photo' : st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption', 40, s.capFx, [s.capCol, s.capCol2]);
   }
   hitOn = false; curScene = null; curBgLum = null;
 }
@@ -10145,7 +10151,7 @@ function render(r, T, preview) {
     curIdx = i; hitOn = preview;
     curBgLum = (s.bgc && !LAYOUTS[s.layout].bgHidden) ? colorLum(s.bgc) : null;
     const lst = curBgLum != null ? (curBgLum > 0.5 ? 'light' : 'photo') : (st === 'dark' ? 'photo' : st);
-    caption(c, fill(ly.text), x, y, (project.lyricSame || ['neon', 'cute', 'movie', 'label', 'gold', 'yellow'].includes(project.lyricFx)) ? 'photo' : lst, a, ly.own ? 'lyric:' + ly.id : 'lyrics', 40, project.lyricFx, [project.lcol, project.lcol2], fill(ly.sub || ''));
+    caption(c, fill(ly.text), x, y, (project.lyricSame || ['neon', 'cute', 'movie', 'label', 'gold', 'goldline', 'yellow'].includes(project.lyricFx)) ? 'photo' : lst, a, ly.own ? 'lyric:' + ly.id : 'lyrics', 40, project.lyricFx, [project.lcol, project.lcol2], fill(ly.sub || ''));
     curBgLum = null;
     hitOn = false;
   }
@@ -10477,7 +10483,7 @@ function wireStyle(root, getSt, onChange, onReset) {
     d.querySelector('[data-sreset]').onclick = () => onReset(key);
   });
 }
-const CAPFX = [['', '기본'], ['neon', '네온 핑크'], ['hand', '손글씨'], ['cute', '러블리 (둥근 글씨)'], ['movie', '영화 자막'], ['label', '라벨 (어두운 바탕)'], ['bilingual', '두 줄 (영문 손글씨 + 한글)'], ['gold', '골드 영문 + 한글'], ['yellow', '노랑 영문 + 흰 한글']];
+const CAPFX = [['', '기본'], ['neon', '네온 핑크'], ['hand', '손글씨'], ['cute', '러블리 (둥근 글씨)'], ['movie', '영화 자막'], ['label', '라벨 (어두운 바탕)'], ['bilingual', '두 줄 (영문 손글씨 + 한글)'], ['gold', '골드 영문 + 한글'], ['goldline', '골드 굵은 영문 + 흰 한글 (진한 테두리)'], ['yellow', '노랑 영문 + 흰 한글']];
 const CAPCOL_SW = ['#FFFFFF', '#222020', '#EBC46B', '#FFE9F0', '#FF8FB1', '#A8C8FF'];
 function colorRow(id, label, val) {
   return `<div class="bgrow" style="margin-top:8px"><span class="hint" style="margin:0;min-width:76px">${label}</span>${CAPCOL_SW.map(c => `<button type="button" class="swb${val === c ? ' on' : ''}" style="background:${c}" data-cr="${id}" data-v="${c}" aria-label="${label} ${c}"></button>`).join('')}<input type="color" data-crp="${id}" value="${val || '#ffffff'}" aria-label="${label} 직접 고르기"><button type="button" class="x" data-cr="${id}" data-v="">기본</button></div>`;
