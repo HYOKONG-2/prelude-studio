@@ -9488,7 +9488,7 @@ Object.assign(LAYOUTS, {
     opts: [['scroll', '피드 아래로 스크롤', true], ['up', '거꾸로 (위로 올라가기)', false], ['tap', '마지막에 게시물 누르기', true]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       bg(c, '#FAFAFA'); const X = 300, Wd = 1320, cell = (Wd - 8) / 3, rows = 4, gridTop = 430, gridH = rows * (cell + 4), maxSc = Math.max(0, gridTop + gridH - H + 40);
-      const p = s.opts.scroll ? ease(clamp((t - 1.2) / Math.max(1, d - 2.6))) : 0, sc = (s.opts.up ? 1 - p : p) * maxSc;
+      const hold = s.opts.up ? 0.8 : Math.min(4.5, d * 0.45), p = s.opts.scroll ? ease(clamp((t - hold) / Math.max(1, d - hold - 1.2))) : 0, sc = (s.opts.up ? 1 - p : p) * maxSc; // the profile stays put long enough to read before it scrolls
       c.save(); c.translate(0, -sc);
       igAvatar(c, s, 0, X + 150, 200, 110, t, true);
       txt(c, fill(s.texts.user), X + 340, 120, IGF(40, 500), IGC.ink, 1, { align: 'left', k: 'user' });
@@ -9801,6 +9801,101 @@ Object.assign(LAYOUTS, {
       if (s.opts.snow) chSnow(c, t, false); } }
 });
 CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chtall1', 'chtall2', 'chtall3', 'chtallpola');
+/* ---- type 10, plan 2: closer-to-real Instagram use (notification, tap-to-open, multi-story, typed comment, activity) ---- */
+function igNav(c, X, Wd, y, active) { // bottom tab bar
+  c.fillStyle = '#fff'; c.fillRect(X, y, Wd, 74); c.fillStyle = IGC.line; c.fillRect(X, y, Wd, 1.5);
+  const xs = [0.1, 0.3, 0.5, 0.7, 0.9].map(f => X + Wd * f), cy = y + 37; c.save(); c.strokeStyle = IGC.ink; c.fillStyle = IGC.ink; c.lineWidth = 2.6; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(xs[0] - 14, cy + 2); c.lineTo(xs[0], cy - 13); c.lineTo(xs[0] + 14, cy + 2); c.lineTo(xs[0] + 14, cy + 14); c.lineTo(xs[0] - 14, cy + 14); c.closePath(); active === 0 ? c.fill() : c.stroke();
+  c.beginPath(); c.arc(xs[1] - 3, cy - 3, 11, 0, Math.PI * 2); c.moveTo(xs[1] + 5, cy + 5); c.lineTo(xs[1] + 14, cy + 14); c.stroke();
+  rr(c, xs[2] - 14, cy - 14, 28, 28, 7); c.stroke(); c.beginPath(); c.moveTo(xs[2] - 4, cy - 6); c.lineTo(xs[2] + 6, cy); c.lineTo(xs[2] - 4, cy + 6); c.closePath(); c.fill();
+  rr(c, xs[3] - 13, cy - 10, 26, 24, 5); c.stroke(); c.beginPath(); c.arc(xs[3], cy - 10, 7, Math.PI, 0); c.stroke();
+  c.beginPath(); c.arc(xs[4], cy, 14, 0, Math.PI * 2); active === 4 ? c.fill() : c.stroke(); c.restore();
+}
+function igFinger(c, x, y, t, t0) { // a soft fingertip that comes down and presses
+  const k = clamp((t - t0 + 0.5) / 0.5), pr = clamp((t - t0) / 0.25); if (k <= 0 || t > t0 + 0.7) return;
+  c.save(); c.globalAlpha = Math.min(1, k) * (t > t0 + 0.45 ? 1 - (t - t0 - 0.45) / 0.25 : 1); const r = 34 - 6 * Math.sin(pr * Math.PI);
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 3; c.beginPath(); c.arc(x, y + (1 - k) * 60, r, 0, Math.PI * 2); c.fill(); c.stroke(); c.restore(); igTap(c, x, y, t, t0);
+}
+// profile: bottom tab bar and a fingertip on the post it opens
+{ const dr = LAYOUTS.igprofile.draw; LAYOUTS.igprofile.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (!fill(s.texts.overlay)) igNav(c, 300, 1320, H - 136, 4);
+  if (s.opts.tap) { const X = 300, Wd = 1320, cell = (Wd - 8) / 3, gridTop = 430, maxSc = Math.max(0, gridTop + 4 * (cell + 4) - H + 40), sc = s.opts.scroll ? (s.opts.up ? 0 : maxSc) : 0, i = s.opts.up ? 0 : 9; igFinger(c, X + (i % 3) * (cell + 4) + cell / 2, gridTop + Math.floor(i / 3) * (cell + 4) + cell / 2 - sc, t, d - 0.6); } }; }
+// reels: play button, tap, then it plays
+LAYOUTS.igreel.opts = [...LAYOUTS.igreel.opts, ['tapplay', '눌러서 재생 연출', true]];
+{ const dr = LAYOUTS.igreel.draw; LAYOUTS.igreel.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (!s.opts.tapplay) return; const h = 1000, w = Math.round(h * 9 / 16), px = s.opts.flip ? 1180 : 420, cx = px + w / 2, cy = 540;
+  const a = 1 - clamp((t - 0.9) / 0.3); if (a > 0) { c.save(); c.globalAlpha = a; c.fillStyle = 'rgba(0,0,0,.35)'; rr(c, px, 40, w, h, 28); c.fill(); c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.moveTo(cx - 28, cy - 38); c.lineTo(cx + 40, cy); c.lineTo(cx - 28, cy + 38); c.closePath(); c.fill(); c.restore(); }
+  igFinger(c, cx, cy, t, 0.75); }; }
+Object.assign(LAYOUTS, {
+  ignotify: { name: '인스타 알림이 도착하는 잠금화면 (오프닝용)', slots: 1, weight: 6, slotNames: ['배경 사진 (잠금화면)'], fields: [['time', '시간', '9:41'], ['date', '날짜', '12월 5일 금요일'], ['title', '알림 제목', 'Instagram'], ['msg', '알림 내용', 'our.secret.story님이 회원님을 태그했습니다: 2년 동안 너 몰래 써온 우리 이야기 ♡']], opts: [], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      bg(c, '#000'); c.save(); c.globalAlpha = 0.95; softBg(c, s, 0, false); c.restore(); c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(0, 0, W, H);
+      txt(c, fill(s.texts.date), 960, 170, IGF(34, 500), 'rgba(255,255,255,.9)', fade(t, 0, 0.6), { k: 'date' }); txt(c, fill(s.texts.time), 960, 300, IGF(180, 600), '#fff', fade(t, 0, 0.6), { k: 'time' });
+      // one line: the banner widens to the message, and the text shrinks only if it would still not fit
+      const msg = fill(s.texts.msg); c.save(); c.font = IGF(28, 400); const mw0 = c.measureText(msg).width; c.restore();
+      const bw = Math.min(1760, Math.max(1040, mw0 + 190)), mfs = Math.min(28, Math.floor(28 * (bw - 190) / Math.max(1, mw0))), k = backOut(clamp((t - 1.0) / 0.6)), bx = 960 - bw / 2, by = 430 - (1 - k) * 260, bh = 150;
+      if (k > 0) { c.save(); c.globalAlpha = clamp(k * 1.5); c.fillStyle = 'rgba(245,245,247,.88)'; c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 30 * R.S; rr(c, bx, by, bw, bh, 34); c.fill(); c.shadowColor = 'transparent';
+        const g = c.createLinearGradient(bx + 30, by + 105, bx + 110, by + 25); g.addColorStop(0, '#F9CE34'); g.addColorStop(0.5, '#EE2A7B'); g.addColorStop(1, '#6228D7'); c.fillStyle = g; rr(c, bx + 30, by + 35, 80, 80, 20); c.fill();
+        c.strokeStyle = '#fff'; c.lineWidth = 6; rr(c, bx + 48, by + 53, 44, 44, 13); c.stroke(); c.beginPath(); c.arc(bx + 70, by + 75, 11, 0, Math.PI * 2); c.stroke();
+        txt(c, fill(s.texts.title), bx + 140, by + 52, IGF(30, 700), IGC.ink, 1, { align: 'left', k: 'title' }); txt(c, '지금', bx + bw - 40, by + 52, IGF(24, 400), IGC.sub, 1, { align: 'right' });
+        txt(c, msg, bx + 140, by + 102, IGF(mfs, 400), IGC.ink, 1, { align: 'left', k: 'msg' }); c.restore(); }
+      igFinger(c, 960, by + bh / 2, t, d - 0.6);
+    } },
+  igstories: { name: '인스타 스토리 여러 장 (막대가 차며 다음 장으로 넘어가요, 2~4장)', slots: 4, weight: 9, fields: [['user', '아이디', 'our.secret.story'], ['stk', '장마다 스티커 글씨 (줄마다)', '첫 데이트 🎞\n오늘의 너 🤍\n같이 본 노을 🌅\n또 보고 싶다', true], ['side', '옆 큰 글씨', '너의 하루가 궁금해서\n매일 스토리를 올렸어.', true]], opts: [['flip', '글씨 왼쪽', false]], cap: s => [s.opts.flip ? 1400 : 520, 1045, 'dark'],
+    draw(c, s, t, d) {
+      const n = Math.max(1, autoN(s, 4)), seg = d / n, cur = Math.min(n - 1, Math.floor(t / seg)), lt = t - cur * seg; igBg(c, s, cur);
+      const f = s.opts.flip, h = 960, w = Math.round(h * 9 / 16), px = f ? 1180 : 420, y = 60, k = ease(clamp(t / 0.5)); c.save(); c.globalAlpha *= k;
+      c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#000'; rr(c, px, y, w, h, 24); c.fill(); c.restore();
+      c.save(); rr(c, px, y, w, h, 24); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, cur, px, y, w, h, t, { zoom: 1.02 + 0.04 * clamp(lt / seg) }); hitOn = ho;
+      const g = c.createLinearGradient(0, y, 0, y + 160); g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(px, y, w, 160);
+      for (let i = 0; i < n; i++) { const bx = px + 14 + i * ((w - 28) / n), bw = (w - 28) / n - 6, fp = i < cur ? 1 : i === cur ? clamp(lt / seg) : 0; c.fillStyle = 'rgba(255,255,255,.35)'; rr(c, bx, y + 14, bw, 5, 3); c.fill(); c.fillStyle = '#fff'; rr(c, bx, y + 14, bw * fp, 5, 3); c.fill(); }
+      igAvatar(c, s, 0, px + 40, y + 60, 20, t, false); txt(c, fill(s.texts.user), px + 72, y + 60, IGF(22, 600), '#fff', 1, { align: 'left', k: 'user' });
+      const st = fill(s.texts.stk).split('\n')[cur] || ''; if (st) { const sk = backOut(clamp((lt - 0.3) / 0.45)); if (sk > 0) { c.save(); c.translate(px + w / 2, y + h * 0.62); c.rotate(-0.06); c.scale(sk, sk); c.font = IGF(40, 700); const tw = c.measureText(st).width + 50; c.fillStyle = '#fff'; rr(c, -tw / 2, -36, tw, 72, 14); c.fill(); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(st, 0, 2); c.restore(); } }
+      c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 2; rr(c, px + 24, y + h - 84, w - 110, 56, 28); c.stroke(); txt(c, '메시지 보내기', px + 52, y + h - 56, IGF(22, 400), '#fff', 1, { align: 'left' }); igIcon(c, 'heart', px + w - 50, y + h - 56, 30, '#fff');
+      c.restore(); for (let i = 0; i < n; i++) addHit({ type: 'media', si: i, x: px, y, w, h, oy: 0 });
+      if (cur < n - 1) igTap(c, px + w - 70, y + h / 2, t, (cur + 1) * seg - 0.35);
+      const sideX = f ? 300 : 1060, lines = igWrap(c, fill(s.texts.side), IGF(46, 500), 700); lines.forEach((l, i) => txt(c, l, sideX, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 500), '#fff', fade(t, 0.8 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side', shadow: 'rgba(0,0,0,.4)', blur: 10 }));
+    } },
+  igcommentwrite: { name: '인스타 게시물에 댓글을 직접 써서 올려요', slots: 1, weight: 9, fields: [['user', '아이디', 'our.secret.story'], ['text', '캡션', '1년 전 오늘, 우리가 처음 만났어.', true], ['typing', '타자 치듯 써지는 댓글', '언젠가 네가 이 계정을 보게 되면, 그날 꼭 말할게. 사랑해.'], ['date', '날짜', '2024년 12월 9일']], opts: [], cap: () => [960, 1045, 'dark'],
+    draw(c, s, t, d) {
+      igBg(c, s, 0); const X = 300, Y = 100, S2 = 880, PW = 440; c.save(); c.globalAlpha *= ease(clamp(t / 0.5));
+      c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#fff'; c.fillRect(X, Y, S2 + PW, S2); c.restore(); c.fillStyle = '#000'; c.fillRect(X, Y, S2, S2); cover(c, s, 0, X, Y, S2, S2, t, { zoom: 1.0 + 0.03 * clamp(t / d) });
+      const RX = X + S2 + 24; igAvatar(c, s, 0, RX + 26, Y + 42, 22, t, true); txt(c, fill(s.texts.user), RX + 64, Y + 42, IGF(24, 600), IGC.ink, 1, { align: 'left', k: 'user' }); c.fillStyle = IGC.line; c.fillRect(X + S2, Y + 84, PW, 1.5);
+      igWrap(c, fill(s.texts.text), IGF(27, 400), PW - 60).forEach((l, i) => txt(c, l, RX + 8, Y + 130 + i * 40, IGF(27, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'text' }));
+      const full = Array.from(fill(s.texts.typing)), T0 = 1.0, T1 = Math.max(T0 + 1, d - 2.4), nch = Math.round(full.length * clamp((t - T0) / (T1 - T0))), typed = full.slice(0, nch).join(''), posted = t > T1 + 0.5;
+      if (posted) { const a = fade(t, T1 + 0.5, 0.4), yy = Y + 230; c.save(); c.globalAlpha *= a; igAvatar(c, s, 0, RX + 22, yy + 4, 18, t, false); txt(c, fill(s.texts.user), RX + 52, yy, IGF(22, 700), IGC.ink, 1, { align: 'left' }); igWrap(c, full.join(''), IGF(24, 400), PW - 110).forEach((l, j) => txt(c, l, RX + 52, yy + 34 + j * 34, IGF(24, 400), IGC.ink, 1, { align: 'left' })); c.restore(); }
+      c.fillStyle = IGC.line; c.fillRect(X + S2, Y + S2 - 160, PW, 1.5); igIcon(c, 'heart', RX + 20, Y + S2 - 124, 30, IGC.red, true); igIcon(c, 'comment', RX + 78, Y + S2 - 124, 30, IGC.ink); igIcon(c, 'send', RX + 136, Y + S2 - 124, 30, IGC.ink); txt(c, fill(s.texts.date), RX + 6, Y + S2 - 82, IGF(21, 400), IGC.sub, 1, { align: 'left', k: 'date' });
+      c.fillStyle = IGC.line; c.fillRect(X + S2, Y + S2 - 56, PW, 1.5); const box = posted ? '' : typed; const bl = igWrap(c, box || '댓글 달기...', IGF(23, 400), PW - 120); txt(c, bl[bl.length - 1], RX + 6, Y + S2 - 28, IGF(23, 400), box ? IGC.ink : IGC.sub, 1, { align: 'left' });
+      if (!posted && box && Math.floor(t * 2) % 2 === 0) { c.save(); c.font = IGF(23, 400); const cw = c.measureText(bl[bl.length - 1]).width; c.fillStyle = IGC.blue; c.fillRect(RX + 8 + cw, Y + S2 - 42, 2.5, 28); c.restore(); }
+      txt(c, '게시', X + S2 + PW - 30, Y + S2 - 28, IGF(23, 700), box && !posted ? IGC.blue : 'rgba(0,149,246,.4)', 1, { align: 'right' }); igFinger(c, X + S2 + PW - 52, Y + S2 - 28, t, T1 + 0.25);
+      c.restore();
+    } },
+  igactivity: { name: '인스타 알림 목록 (신부가 좋아요·댓글을 남겨요)', slots: 3, weight: 8, slotNames: ['신부 프로필 사진', '게시물 썸네일 1', '게시물 썸네일 2'], fields: [['who', '이름(아이디)', '{신부}'], ['items', '알림 (줄마다)', '님이 회원님을 팔로우하기 시작했습니다.\n님이 회원님의 게시물 128개를 좋아합니다.\n님이 댓글을 남겼습니다: 나도 2년 동안 몰래 사랑했어 ♡\n님이 댓글을 남겼습니다: 응, 결혼하자 💍', true]], opts: [], cap: () => [960, 1045, 'light'],
+    draw(c, s, t, d) {
+      bg(c, '#FAFAFA'); const X = 520, Wd = 880; c.fillStyle = '#fff'; c.fillRect(X, 0, Wd, H); c.fillStyle = IGC.line; c.fillRect(X, 0, 1.5, H); c.fillRect(X + Wd, 0, 1.5, H);
+      txt(c, '알림', X + 40, 120, IGF(40, 700), IGC.ink, 1, { align: 'left' }); txt(c, '오늘', X + 40, 200, IGF(26, 700), IGC.ink, 1, { align: 'left' });
+      fill(s.texts.items).split('\n').filter(Boolean).forEach((m, i) => { const a = fade(t, 0.6 + i * 1.0, 0.4); if (a <= 0) return; const y = 270 + i * 160; c.save(); c.globalAlpha *= a; c.translate((1 - ease(a)) * 40, 0);
+        igAvatar(c, s, 0, X + 76, y + 30, 38, t, true); const ls = igWrap(c, fill(s.texts.who) + m, IGF(27, 400), Wd - 300); ls.forEach((l, j) => txt(c, l, X + 140, y + 14 + j * 38, IGF(27, j ? 400 : 400), IGC.ink, 1, { align: 'left', k: i || j ? null : 'items' })); txt(c, `${i + 1}분`, X + 140, y + 14 + ls.length * 38, IGF(22, 400), IGC.sub, 1, { align: 'left' });
+        if (i === 0) { c.fillStyle = IGC.blue; rr(c, X + Wd - 190, y + 6, 150, 50, 10); c.fill(); txt(c, '맞팔로우', X + Wd - 115, y + 31, IGF(22, 700), '#fff', 1); }
+        else { const si = i % 2 ? 1 : 2; c.fillStyle = '#EEE'; c.fillRect(X + Wd - 110, y, 70, 70); if (s.media[si] && s.media[si].id) { const ho = hitOn; hitOn = false; coverIn(c, s, si, X + Wd - 110, y, 70, 70, t, {}); hitOn = ho; } }
+        c.restore(); });
+      igNav(c, X, Wd, H - 136, 3);
+    } }
+});
+['ignotify'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+CATS.find(c => c[0] === '비밀 인스타 스토리 (고객 요청 10타입)')[1].push('ignotify', 'igstories', 'igcommentwrite', 'igactivity');
+// transition: a post grows out of the grid cell that was tapped
+TRANS.push(['igopen', '누른 게시물에서 열리기']);
+function igOpenTr(c, r, pr, sc) { const e = 1 - Math.pow(1 - pr, 3), fr = (sc && sc.openFrom) || [W / 2 - 160, H / 2 - 160, 320, 320], x = fr[0] * (1 - e), y = fr[1] * (1 - e), w = fr[2] + (W - fr[2]) * e, h = fr[3] + (H - fr[3]) * e;
+  c.save(); c.globalAlpha = Math.min(1, pr * 3); c.beginPath(); rr(c, x, y, w, h, 24 * (1 - e)); c.clip(); c.drawImage(r.la, x, y, w, h); c.restore(); }
+TEMPLATES.IG.make = (o => () => { const p = o(); const sc = p.scenes;
+  const nt = makeScene('ignotify', { weight: 6 }); nt.weight = 6; sc.unshift(nt); if (sc[1]) sc[1].tr = 'zoom';
+  // profile taps the 10th post → the first post opens out of that cell; highlight taps the 2nd circle
+  sc.forEach((x, i) => { const P = sc[i - 1]; if (!P) return; if (P.layout === 'igprofile' && P.opts.tap && !P.opts.up) { x.tr = 'igopen'; x.openFrom = [300, 599, 437, 437]; } if (P.layout === 'ighighlight') { x.tr = 'igopen'; x.openFrom = [960 - 600 - 108 + 300, 432, 216, 216]; } });
+  // single stories become multi-photo stories; one post gets a typed comment; her reactions after the proposal
+  let st = 0; sc.forEach((x, i) => { if (x.layout === 'igstory' && st++ < 2) { const n = makeScene('igstories', { weight: 9 }); n.texts.side = x.texts.side; n.opts.flip = !!x.opts.flip; n.tr = x.tr; n.weight = 9; sc[i] = n; } });
+  const ci = sc.findIndex(x => x.layout === 'igcomments'); if (ci >= 0) { const n = makeScene('igcommentwrite', { weight: 9 }); n.tr = 'slide'; n.weight = 9; sc.splice(ci + 1, 0, n); }
+  const ri = sc.findIndex(x => x.layout === 'igreel' && /marry/i.test(x.texts.cap || '')); if (ri >= 0) { const n = makeScene('igactivity', { weight: 8 }); n.tr = 'slide'; n.weight = 8; sc.splice(ri + 1, 0, n); }
+  const tot = sc.reduce((a, x) => a + (+x.weight || 5), 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
+  return p; })(TEMPLATES.IG.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -9820,7 +9915,7 @@ function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
   if (p.tpl === 'K' && !p.trV2 && typeof kTransitions === 'function') { kTransitions(p); p.trV2 = true; }
   if (p.tpl === 'K') p.scenes.forEach(s => { if (s.layout === 'edcover' && LAYOUTS.savow) { s.layout = 'savow'; const L = LAYOUTS.savow; s.texts = {}; L.fields.forEach(f => s.texts[f[0]] = f[2]); s.opts = Object.assign({}, ...L.opts.map(o => ({ [o[0]]: o[2] }))); s.media = (s.media || []).slice(0, 1); } });
-  p.scenes.forEach(s => { s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
+  p.scenes.forEach(s => { if (s.openFrom && !Array.isArray(s.openFrom)) delete s.openFrom; s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
     if (LAYOUTS[s.layout].countOpts && !s.count && !LAYOUTS[s.layout].autoDefault) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
   p.title = p.title || ''; p.audio = p.audio || null; p.sfx = Array.isArray(p.sfx) ? p.sfx.filter(x => x && (x.key || x.fid)) : [];
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
@@ -10134,6 +10229,7 @@ function render(r, T, preview) {
       else if (tr === 'wipe') { c.beginPath(); c.rect(0, 0, W * e, H); c.clip(); c.drawImage(r.la, 0, 0, W, H); }
       else if (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) paperTr(c, r, tr, pr);
       else if (tr === 'rise' && typeof riseTr === 'function') riseTr(c, r, pr);
+      else if (tr === 'igopen' && typeof igOpenTr === 'function') igOpenTr(c, r, pr, project.scenes[i]);
       else if (tr === 'blur') { c.save(); if ('filter' in c) c.filter = `blur(${Math.round(16 * (1 - e) * r.S)}px)`; c.globalAlpha = e; c.drawImage(r.la, 0, 0, W, H); c.restore(); }
       else if (tr === 'bars') { const h2 = H / 2; if (e < 0.5) { const k = ease(e / 0.5) * h2; c.fillStyle = '#000'; c.fillRect(0, 0, W, k); c.fillRect(0, H - k, W, k); } else { c.drawImage(r.la, 0, 0, W, H); const k = (1 - ease((e - 0.5) / 0.5)) * h2; c.fillStyle = '#000'; c.fillRect(0, 0, W, k); c.fillRect(0, H - k, W, k); } }
       else if (tr === 'push') { c.save(); c.fillStyle = `rgba(0,0,0,${0.5 * e})`; c.fillRect(0, 0, W, H); const y = H * (1 - e); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * r.S; c.drawImage(r.la, 0, y, W, H); c.restore(); }
