@@ -9916,6 +9916,41 @@ LAYOUTS.chbgpola = { name: '초크 배경 사진·영상 + 폴라로이드 두 �
   } };
 LAYOUTS.chbgpola.bgHidden = true;
 CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chbgpola');
+/* ---- stickers: small cute stickers on any scene (drag to move, wheel / pinch to resize) ---- */
+const STICKERS = [['heart', '하트'], ['heartline', '하트 테두리'], ['star', '별'], ['sparkle', '반짝'], ['flower', '꽃'], ['cloud', '구름'], ['ribbon', '리본'], ['smile', '스마일'], ['note', '음표'], ['ring', '반지']];
+function drawSticker(c, kind, x, y, sz) {
+  c.save(); c.translate(x, y); const k = sz / 100; c.scale(k, k); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 6 * R.S; c.shadowOffsetY = 2 * R.S; c.lineJoin = 'round'; c.lineCap = 'round';
+  const outline = (fn, fillC) => { c.lineWidth = 12; c.strokeStyle = '#fff'; fn(); c.stroke(); c.shadowColor = 'transparent'; c.fillStyle = fillC; fn(); c.fill(); };
+  if (kind === 'heart') { outline(() => heartShape(c, 0, 0, 90), '#F27C95'); c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.ellipse(-18, -18, 9, 6, -0.6, 0, Math.PI * 2); c.fill(); }
+  else if (kind === 'heartline') { c.lineWidth = 10; c.strokeStyle = '#F27C95'; heartShape(c, 0, 0, 90); c.stroke(); }
+  else if (kind === 'star') { const P = () => { c.beginPath(); for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 20 : 46; i ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); }; outline(P, '#F7CB52'); }
+  else if (kind === 'sparkle') { const P = () => { c.beginPath(); c.moveTo(0, -48); c.quadraticCurveTo(6, -6, 48, 0); c.quadraticCurveTo(6, 6, 0, 48); c.quadraticCurveTo(-6, 6, -48, 0); c.quadraticCurveTo(-6, -6, 0, -48); c.closePath(); }; outline(P, '#FFFFFF'); c.strokeStyle = '#E8B7C4'; c.lineWidth = 3; P(); c.stroke(); }
+  else if (kind === 'flower') { const P = () => { c.beginPath(); for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5 - Math.PI / 2; c.moveTo(Math.cos(a) * 26 + 20, Math.sin(a) * 26); c.arc(Math.cos(a) * 26, Math.sin(a) * 26, 20, 0, Math.PI * 2); } }; outline(P, '#FFFFFF'); c.fillStyle = '#F6C547'; c.beginPath(); c.arc(0, 0, 14, 0, Math.PI * 2); c.fill(); }
+  else if (kind === 'cloud') { const P = () => { c.beginPath(); [[-26, 6, 22], [0, -10, 28], [28, 4, 22], [6, 14, 22]].forEach(([bx, by, r]) => { c.moveTo(bx + r, by); c.arc(bx, by, r, 0, Math.PI * 2); }); }; outline(P, '#CFE0F7'); }
+  else if (kind === 'ribbon') { const P = () => { c.beginPath(); c.moveTo(0, 0); c.bezierCurveTo(-30, -36, -54, -10, -40, 10); c.bezierCurveTo(-30, 22, -10, 8, 0, 0); c.bezierCurveTo(30, -36, 54, -10, 40, 10); c.bezierCurveTo(30, 22, 10, 8, 0, 0); c.moveTo(-6, 4); c.lineTo(-22, 44); c.lineTo(-8, 38); c.lineTo(0, 6); c.moveTo(6, 4); c.lineTo(22, 44); c.lineTo(8, 38); c.lineTo(0, 6); }; outline(P, '#F49AB0'); c.fillStyle = '#E9839C'; c.beginPath(); c.arc(0, 2, 8, 0, Math.PI * 2); c.fill(); }
+  else if (kind === 'smile') { outline(() => { c.beginPath(); c.arc(0, 0, 42, 0, Math.PI * 2); }, '#FFD95C'); c.fillStyle = '#3A2E2B'; c.beginPath(); c.arc(-14, -8, 5, 0, Math.PI * 2); c.arc(14, -8, 5, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#3A2E2B'; c.lineWidth = 5; c.beginPath(); c.arc(0, 4, 18, 0.2, Math.PI - 0.2); c.stroke(); }
+  else if (kind === 'note') { const P = () => { c.beginPath(); c.ellipse(-14, 26, 16, 12, -0.4, 0, Math.PI * 2); c.rect(-2, -40, 8, 66); c.moveTo(6, -40); c.quadraticCurveTo(34, -30, 30, -6); c.quadraticCurveTo(24, -20, 6, -22); c.closePath(); }; outline(P, '#7F9CD8'); }
+  else if (kind === 'ring') { c.lineWidth = 12; c.strokeStyle = '#fff'; c.beginPath(); c.arc(0, 12, 32, 0, Math.PI * 2); c.stroke(); c.shadowColor = 'transparent'; c.lineWidth = 7; c.strokeStyle = '#E3B55B'; c.beginPath(); c.arc(0, 12, 32, 0, Math.PI * 2); c.stroke(); outline(() => { c.beginPath(); c.moveTo(0, -46); c.lineTo(16, -30); c.lineTo(0, -16); c.lineTo(-16, -30); c.closePath(); }, '#CFE8FF'); }
+  c.restore();
+}
+function drawStickers(c, s, t) { (s.stickers || []).forEach(k => { const key = 'stk:' + k.id, st = getStyle(key), sz = 100 * (st.s || 1), x = (k.x || 960) + (st.x || 0), y = (k.y || 540) + (st.y || 0), a = fade(t, 0.3, 0.4); if (a <= 0) return; c.save(); c.globalAlpha *= a; drawSticker(c, k.kind, x, y, sz * (0.85 + 0.15 * backOut(clamp((t - 0.3) / 0.4)))); c.restore(); addHit({ type: 'text', key, x: x - sz / 2, y: y - sz / 2, w: sz, h: sz }); }); }
+// a doodle that can be dragged / resized like text (used for the hearts in the 3-photo chalk scene)
+function chDoodleK(c, kind, x, y, sc, col, p, key) { const st = getStyle(key), k = st.s || 1, X = x + (st.x || 0), Y = y + (st.y || 0); chDoodle(c, kind, X, Y, sc * k, col, p); const r = 40 * sc * k; addHit({ type: 'text', key, x: X - r, y: Y - r, w: 2 * r, h: 2 * r }); }
+{ const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = 540, g = 40, x0 = (W - (n * w + (n - 1) * g)) / 2;
+  for (let i = 0; i < n; i++) chPhoto(c, s, i, x0 + i * (w + g), 200, w, 720, t, d, { a: fade(t, i * 0.2, 0.6) });
+  [[230, 160, 1], [1730, 140, 0.9], [790, 470, 0.8], [1240, 900, 0.9], [200, 970, 1.1], [1750, 900, 1]].forEach(([x, y, sc], i) => chDoodleK(c, 'heart', x, y, sc, CHK.pink, clamp((t - 0.8 - i * 0.12) / 0.6), 'heart' + i));
+  chText(c, fill(s.texts.names).toUpperCase(), 960, 990, 76, CHK.blue, fade(t, 1.2, 0.6), 'names'); if (s.opts.snow) chSnow(c, t, true); }; }
+/* ---- type 9: big portrait video in the middle, photos appearing one by one around it ---- */
+LAYOUTS.chmix4 = { name: '초크 가운데 세로 영상 + 사진 세 장이 차례로', slots: 4, weight: 7, slotNames: ['가운데 세로 영상·사진', '사진 1 (왼쪽)', '사진 2 (오른쪽 위)', '사진 3 (오른쪽 아래)'],
+  fields: [['word', '손글씨 (비워도 돼요)', '']], opts: [['dark', '어두운 바탕', false], ['snow', '눈 내리기', true], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
+  draw(c, s, t, d) {
+    const dk = s.opts.dark; chBg(c, s, dk); const step = Math.max(0.8, Math.min(1.6, (d - 2) / 3));
+    const R4 = [[640, 50, 640, 960, 0], [90, 140, 480, 760, step * 0.6], [1350, 80, 480, 420, step * 1.6], [1350, 560, 480, 420, step * 2.6]];
+    R4.forEach(([x, y, w, h, st], i) => { const k = clamp((t - st) / 0.5); if (k <= 0) return; const e = backOut(k); c.save(); c.translate(x + w / 2, y + h / 2); c.scale(0.85 + 0.15 * e, 0.85 + 0.15 * e); c.translate(-(x + w / 2), -(y + h / 2)); chPhoto(c, s, i, x, y, w, h, t, d, { a: k }); c.restore(); });
+    const col = dk ? CHK.white : CHK.pink; chDoodleK(c, 'heart', 120, 110, 0.7, col, clamp((t - 0.6) / 0.6), 'dh1'); chDoodleK(c, 'star', 1830, 70, 0.5, dk ? CHK.yellow : CHK.blue, clamp((t - 1.0) / 0.6), 'dh2'); chDoodleK(c, 'squiggle', 1180, 1010, 0.8, col, clamp((t - 1.4) / 0.6), 'dh3');
+    chText(c, fill(s.texts.word), 330, 980, 70, dk ? CHK.white : CHK.blue, fade(t, 1.2, 0.6), 'word'); if (s.opts.snow) chSnow(c, t, !dk);
+  } };
+CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chmix4');
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
@@ -10206,6 +10241,7 @@ function drawScene(c, i, t, hit) {
   curBgLum = (s.bgc && !L.bgHidden) ? colorLum(s.bgc) : null;
   c.save(); L.draw(c, s, t, d); c.restore();
   c.save(); drawFrameFx(c, s, t); c.restore();
+  if (s.stickers && s.stickers.length && typeof drawStickers === 'function') { c.save(); drawStickers(c, s, t); c.restore(); }
   if (s.caption) {
     const [x, y, st] = L.cap(s);
     let yo = 0;
@@ -10645,6 +10681,7 @@ function buildScenePane() {
     ${L.fields.length ? `<div class="group"><h3>글씨</h3><p class="hint">{신랑}, {DATE} 같은 표시는 기본 정보에 적은 이름과 날짜로 바뀌어요.</p>${L.fields.map(f => `<div class="field"><label><span>${esc(f[1])}</span>${f[3] ? `<textarea data-text="${f[0]}" rows="3">${esc(s.texts[f[0]] || '')}</textarea>` : `<input type="text" data-text="${f[0]}" value="${esc(s.texts[f[0]] || '')}">`}</label>${styleCtl(f[0], ts(f[0]))}</div>`).join('')}</div>` : ''}
     <div class="group"><h3>자막</h3>
       <div class="field"><label><span>이 장면에 나오는 자막 (위치는 아래 ‘글씨 꾸미기’에서 옮겨요)</span><textarea id="fCaption" rows="2" placeholder="예: 처음 함께한 계절">${esc(s.caption || '')}</textarea></label><label class="field" style="margin-top:8px"><span>자막 스타일</span><select id="fCapFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(s.capFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>${colorRow('capCol', '자막 색', s.capCol)}${colorRow('capCol2', '둘째 줄 색', s.capCol2)}${styleCtl('caption', ts('caption'))}</div></div>
+    <div class="group"><h3>스티커</h3><p class="hint" style="margin-top:0">누르면 화면 가운데에 붙어요. 미리보기에서 끌어 옮기고, 휠·두 손가락으로 크기를 바꿔요.</p><div class="row" style="flex-wrap:wrap;gap:6px">${STICKERS.map(([k, n]) => `<button type="button" class="btn small" data-stk="${k}">${n}</button>`).join('')}</div>${(s.stickers || []).length ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${s.stickers.map((k, i) => `<span class="chip" style="display:inline-flex;gap:6px;align-items:center">${(STICKERS.find(x => x[0] === k.kind) || [0, k.kind])[1]}<button type="button" class="chip-x" data-stkdel="${i}">빼기</button></span>`).join('')}</div>` : ''}</div>
     ${project.tpl === 'R' ? `<div class="group"><label class="ctl-row"><input type="checkbox" id="retroFx" ${project.retroFx ? 'checked' : ''}>레트로 필름 효과 (영상 전체: 따뜻한 톤·노이즈·먼지·깜빡임)</label></div>` : ''}
     ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 한 번에 넣기</h3><p class="hint" style="margin-top:0">편지 전체를 붙여넣으세요. <b>빈 줄로 나뉜 문단 하나가 장면 하나</b>가 되고, 장면 수와 길이가 자동으로 맞춰져요. 넣어둔 사진은 순서대로 그대로 들어가요.</p><textarea id="lpLetter" rows="6" style="width:100%;resize:vertical" placeholder="첫 문단\n\n둘째 문단\n\n…"></textarea><button type="button" class="btn small primary" id="lpLetterGo" style="margin-top:8px">장면마다 나눠 넣기</button></div>` : ''}
     ${/^lp/.test(s.layout) ? `<div class="group"><h3>편지 글씨 크기 (모든 장면 함께)</h3><div class="ctl-row" style="gap:10px"><input type="range" id="lpScale" min="60" max="130" step="1" value="${Math.round((project.lpScale || 1) * 100)}" style="flex:1"><span id="lpScaleV" style="width:48px;text-align:right">${Math.round((project.lpScale || 1) * 100)}%</span></div><p class="hint">편지 글, To./From. 같은 손글씨가 전체 장면에서 같이 커지고 작아져요.</p></div>` : ''}
@@ -10665,6 +10702,8 @@ function buildScenePane() {
     s.tm = s.tm || {}; s.tm[b.dataset.tmnow] = v; sceneChanged(s); buildScenePane();
   });
   const tr0 = p.querySelector('[data-tmreset]'); if (tr0) tr0.onclick = () => { delete s.tm; sceneChanged(s); buildScenePane(); };
+    p.querySelectorAll('[data-stk]').forEach(b => b.onclick = () => { touch(s.id); s.stickers = s.stickers || []; const n = s.stickers.length; s.stickers.push({ id: uid(), kind: b.dataset.stk, x: 960 + (n % 5) * 130 - 260, y: 540 + Math.floor(n / 5) * 130 }); changed(false); dirty = true; save(); select(sel); queueThumb(s.id); });
+    p.querySelectorAll('[data-stkdel]').forEach(b => b.onclick = () => { touch(s.id); const k = s.stickers.splice(+b.dataset.stkdel, 1)[0]; if (k && s.tstyle) delete s.tstyle['stk:' + k.id]; changed(false); dirty = true; save(); select(sel); queueThumb(s.id); });
     { const rf = p.querySelector('#retroFx'); if (rf) rf.onchange = e => { project.retroFx = e.target.checked; touch('info'); dirty = true; save(); project.scenes.forEach(x => queueThumb(x.id)); }; }
     { const lg = p.querySelector('#lpLetterGo'); if (lg) lg.onclick = () => { const v = p.querySelector('#lpLetter').value; if (!v.trim()) { toast('편지 내용을 붙여넣어 주세요'); return; } if (!confirm('지금 장면들의 편지 글이 새 편지로 바뀌고, 장면 수가 문단 수에 맞춰져요. 진행할까요?')) return; lpApplyLetter(v); }; }
     { const ls = p.querySelector('#lpScale'); if (ls) { ls.oninput = e => { project.lpScale = (+e.target.value || 100) / 100; p.querySelector('#lpScaleV').textContent = e.target.value + '%'; touch('lpScale'); dirty = true; }; ls.onchange = () => { project.scenes.forEach(x => { if (/^lp/.test(x.layout)) queueThumb(x.id); }); save(); }; } }
