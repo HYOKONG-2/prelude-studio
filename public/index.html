@@ -9420,7 +9420,7 @@ Object.assign(LAYOUTS, {
       if (s.opts.snow) chSnow(c, t, false); } },
   chcloud: { name: '초크 구름 모양 사진 + 손글씨', slots: 1, weight: 5.5, fields: [['word', '손글씨', 'ㅋㅋㅋ']], opts: CH_OPTS, cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) { chBg(c, s, false); const k = ease(clamp(t / 0.7)), x = 90, y = 130, w = 1740, h = 840;
-      c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 20 * R.S; cloudPath(c, x, y, w, h); c.fillStyle = '#ccc'; c.fill(); c.restore(); cloudPath(c, x, y, w, h); c.clip(); cover(c, s, 0, x, y - 80, w, h + 160, t, { bw: s.opts.bw, zoom: 1.03 + 0.03 * clamp(t / d) }); c.restore();
+      slotWrap(c, s, 0, x, y, w, h, () => { c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 20 * R.S; cloudPath(c, x, y, w, h); c.fillStyle = '#ccc'; c.fill(); c.restore(); cloudPath(c, x, y, w, h); c.clip(); cover(c, s, 0, x, y - 80, w, h + 160, t, { bw: s.opts.bw, zoom: 1.03 + 0.03 * clamp(t / d) }); c.restore(); });
       chText(c, fill(s.texts.word), 1360, 420, 110, CHK.white, fade(t, 0.9, 0.5), 'word'); if (s.opts.snow) chSnow(c, t, true); } },
   chrow3: { name: '초크 사진 세 장 줄 + 하트 + 이름', slots: 3, weight: 5.5, fields: [['names', '아래 손글씨', '{GROOM} & {BRIDE}']], opts: CH_OPTS, cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = 540, g = 40, x0 = (W - (n * w + (n - 1) * g)) / 2;
@@ -9444,7 +9444,7 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) { bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, dark: true, zoom: 1.04 + 0.04 * clamp(t / d) }); c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(0, 0, W, H);
       chText(c, fill(s.texts.word), 960, 520, 110, CHK.white, fade(t, 0.8, 0.8), 'word'); chDoodle(c, 'heart', 1240, 500, 0.9, CHK.white, clamp((t - 1.3) / 0.7)); if (s.opts.snow) chSnow(c, t, false); } },
   chend: { name: '초크 엔딩 (Thank you + 따뜻한 인사)', slots: 1, weight: 9, fields: [['big', '큰 손글씨', 'Thank you'], ['line', '아래 손글씨', '따뜻한 연말 보내세요'], ['names', '이름', '{신랑} ♡ {신부}']], opts: CH_OPTS, cap: () => [960, 1045, 'dark'],
-    draw(c, s, t, d) { chBg(c, s, true); const x = 560, y = 120, w = 800, h = 470; c.save(); c.globalAlpha *= fade(t, 0, 0.8); cloudPath(c, x, y, w, h); c.clip(); cover(c, s, 0, x, y, w, h, t, { bw: s.opts.bw, zoom: 1.03 }); c.restore();
+    draw(c, s, t, d) { chBg(c, s, true); const x = 560, y = 120, w = 800, h = 470; slotWrap(c, s, 0, x, y, w, h, () => { c.save(); c.globalAlpha *= fade(t, 0, 0.8); cloudPath(c, x, y, w, h); c.clip(); cover(c, s, 0, x, y - 50, w, h + 100, t, { bw: s.opts.bw, zoom: 1.03 }); c.restore(); }); // the cloud itself moves / resizes with the photo box
       chText(c, fill(s.texts.big), 960, 700, 130, CHK.white, fade(t, 0.8, 0.8), 'big'); chText(c, fill(s.texts.line), 960, 820, 66, CHK.yellow, fade(t, 1.4, 0.7), 'line'); chText(c, fill(s.texts.names), 960, 910, 56, CHK.pink, fade(t, 1.8, 0.7), 'names');
       chDoodle(c, 'star', 300, 300, 0.8, CHK.yellow, clamp((t - 1.0) / 0.6)); chDoodle(c, 'shoot', 1600, 220, 1, CHK.lav, clamp((t - 1.2) / 0.8)); chDoodle(c, 'heart', 1620, 760, 0.9, CHK.pink, clamp((t - 1.5) / 0.6)); chDoodle(c, 'squiggle', 300, 840, 1, CHK.white, clamp((t - 1.7) / 0.6));
       if (s.opts.snow) chSnow(c, t, false); const end = clamp((t - (d - 1.8)) / 1.6); if (end > 0) { c.fillStyle = `rgba(0,0,0,${ease(end)})`; c.fillRect(0, 0, W, H); } } }
