@@ -519,7 +519,9 @@ function txt(c, s, x, y, font, color, a, o = {}) {
 }
 // per-slot frame offset/scale (the photo area itself can be moved and resized)
 let rectDone = false;
+let slotLock = false;
 function slotRect(scene, si, x, y, w, h) {
+  if (slotLock) return [x, y, w, h];
   const sl = scene && scene.media && scene.media[si];
   if (!sl || (!sl.fdx && !sl.fdy && !sl.fsc)) return [x, y, w, h];
   const k = sl.fsc || 1, cx = x + w / 2 + (sl.fdx || 0), cy = y + h / 2 + (sl.fdy || 0);
@@ -8343,8 +8345,8 @@ Object.assign(LAYOUTS, {
       saBg(c); const fr = s.opts.frame || 'kids', n = autoN(s, 2), ta = fade(t, 0.6, 0.9), end = clamp((t - (d - 0.7)) / 0.7);
       if (fr === 'kids') { // two old childhood prints, warm and soft
         const P = n === 1 ? [[960, 450, -0.015]] : [[640, 450, -0.03], [1280, 450, 0.025]], PW = 560, PH = 700, IW = 516, IH = 600;
-        P.forEach(([cx, cy, rot], i) => { const a = fade(t, i * 0.3, 0.8); if (a <= 0) return; c.save(); c.globalAlpha *= a; c.translate(cx, cy); c.rotate(rot); c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 28 * R.S; c.fillStyle = '#EFE7DA'; rr(c, -PW / 2, -PH / 2, PW, PH, 10); c.fill(); c.restore();
-          const ho = hitOn; hitOn = false; c.save(); rr(c, -IW / 2, -PH / 2 + 22, IW, IH, 8); c.clip(); coverIn(c, s, i, -IW / 2, -PH / 2 + 22, IW, IH, t, { bw: s.opts.bw, zoom: 1.03 }); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(230,170,100,.5)'; c.fillRect(-IW / 2, -PH / 2 + 22, IW, IH); c.restore(); hitOn = ho; c.restore(); addHit({ type: 'media', si: i, x: cx - IW / 2, y: cy - PH / 2 + 22, w: IW, h: IH, oy: 0 }); });
+        P.forEach(([cx, cy, rot], i) => { const a = fade(t, i * 0.3, 0.8); if (a <= 0) return; slotWrap(c, s, i, cx - IW / 2, cy - PH / 2 + 22, IW, IH, () => { c.save(); c.globalAlpha *= a; c.translate(cx, cy); c.rotate(rot); c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 28 * R.S; c.fillStyle = '#EFE7DA'; rr(c, -PW / 2, -PH / 2, PW, PH, 10); c.fill(); c.restore();
+          const ho = hitOn; hitOn = false; c.save(); rr(c, -IW / 2, -PH / 2 + 22, IW, IH, 8); c.clip(); coverIn(c, s, i, -IW / 2, -PH / 2 + 22, IW, IH, t, { bw: s.opts.bw, zoom: 1.03 }); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(230,170,100,.5)'; c.fillRect(-IW / 2, -PH / 2 + 22, IW, IH); c.restore(); hitOn = ho; c.restore(); addHit({ type: 'media', si: i, x: cx - IW / 2, y: cy - PH / 2 + 22, w: IW, h: IH, oy: 0 }); }); });
         block(c, fill(s.texts.text), 960, 950, KSERIF(54), 70, SA.ink, t, 0.8, 1, false, 'text');
       } else if (fr === 'slide') {
         if (n >= 2) { slideMount(c, s, 0, 320, 520, 540, -0.035, t, d, fade(t, 0, 0.8)); slideMount(c, s, 1, 880, 540, 540, 0.03, t, d, fade(t, 0.4, 0.8)); }
@@ -8453,11 +8455,11 @@ LAYOUTS.nspolaroid = { name: 'LOVE 큰 폴라로이드 (겹쳐 놓인 세 장)',
   draw(c, s, t, d) {
     nsBg(c); const n = autoN(s, 3), P = { 1: [[960, 540, -1.5]], 2: [[770, 545, -5], [1150, 530, 4]], 3: [[620, 560, -7], [1300, 560, 6], [960, 520, -1]] }[n], order = n === 3 ? [0, 1, 2] : [...Array(n).keys()];
     const lg = c.createRadialGradient(960, 520, 100, 960, 520, 900); lg.addColorStop(0, 'rgba(255,240,220,.07)'); lg.addColorStop(1, 'rgba(255,240,220,0)'); c.fillStyle = lg; c.fillRect(0, 0, W, H);
-    order.forEach(i => { const [cx, cy, rot] = P[i], e = ease(clamp((t - i * 0.45) / 1.2)); if (e <= 0) return; const pw = 600, ph = 720, iw = 540, ih = 560;
+    order.forEach(i => { const [cx, cy, rot] = P[i], e = ease(clamp((t - i * 0.45) / 1.2)); if (e <= 0) return; const pw = 600, ph = 720, iw = 540, ih = 560; slotWrap(c, s, i, cx - iw / 2, cy - ph / 2 + 30, iw, ih, () => {
       c.save(); c.globalAlpha *= e; c.translate(cx, cy + (1 - e) * 60); c.rotate(rot * Math.PI / 180);
       c.save(); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = 34 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#F6F3EC'; c.fillRect(-pw / 2, -ph / 2, pw, ph); c.restore();
       const ho = hitOn; hitOn = false; coverIn(c, s, i, -iw / 2, -ph / 2 + 30, iw, ih, t, { bw: s.opts.bw, zoom: 1.03 + 0.02 * clamp(t / d) }); hitOn = ho; c.restore();
-      addHit({ type: 'media', si: i, x: cx - iw / 2, y: cy - ph / 2 + 30, w: iw, h: ih, oy: 0 }); });
+      addHit({ type: 'media', si: i, x: cx - iw / 2, y: cy - ph / 2 + 30, w: iw, h: ih, oy: 0 }); }); });
   } };
 // the slide-film frame in the thank-you scenes: one large mount with a big window
 function slideMount(c, s, si, cx, cy, sz, rot, t, d, a) {
@@ -8495,8 +8497,8 @@ LAYOUTS.samat3 = { name: '순애보 세 장 흰 매트 액자 (밝은 배경)', 
   draw(c, s, t, d) {
     saTheme(s); saBg(c); const n = autoN(s, 3);
     const R3 = { 1: [[560, 110, 800, 820]], 2: [[230, 130, 700, 780], [990, 130, 700, 780]], 3: [[110, 170, 540, 700], [690, 130, 540, 780], [1270, 170, 540, 700]] }[n];
-    R3.forEach((r, i) => { const a = fade(t, i * 0.22, 0.7); if (a <= 0) return; c.save(); c.globalAlpha *= a; c.save(); c.shadowColor = 'rgba(90,70,40,.22)'; c.shadowBlur = 26 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(r[0] - 26, r[1] - 26, r[2] + 52, r[3] + 52); c.restore();
-      cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.strokeStyle = 'rgba(185,162,122,.6)'; c.lineWidth = 1.5; c.strokeRect(r[0] - 10, r[1] - 10, r[2] + 20, r[3] + 20); c.restore(); });
+    R3.forEach((r, i) => { const a = fade(t, i * 0.22, 0.7); if (a <= 0) return; slotWrap(c, s, i, r[0], r[1], r[2], r[3], () => { c.save(); c.globalAlpha *= a; c.save(); c.shadowColor = 'rgba(90,70,40,.22)'; c.shadowBlur = 26 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(r[0] - 26, r[1] - 26, r[2] + 52, r[3] + 52); c.restore();
+      cover(c, s, i, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.strokeStyle = 'rgba(185,162,122,.6)'; c.lineWidth = 1.5; c.strokeRect(r[0] - 10, r[1] - 10, r[2] + 20, r[3] + 20); c.restore(); }); });
     txt(c, fill(s.texts.cap), 960, 1015, UIF(22, 500), SA.sub, fade(t, 0.8, 0.6), { k: 'cap', sp: 6 }); saTheme(null);
   } };
 CATS.find(c => c[0] === '순애보 시네마 (K타입)')[1].push('samat3');
@@ -8636,12 +8638,12 @@ LAYOUTS.samsg.optSelects.frame.splice(1, 0, ['album', '옛날 사진 3~4장 앨�
       3: [[330, 530, 470, 700, -2], [830, 330, 430, 330, 3], [850, 730, 430, 330, -2.5]],
       4: [[350, 330, 450, 340, -3], [830, 340, 450, 340, 2.5], [360, 735, 450, 340, 2], [840, 745, 450, 340, -2.5]]
     }[Math.min(4, n)];
-    R4.forEach(([cx, cy, w, h, rot], i) => { const a = fade(t, i * 0.35, 0.9); if (a <= 0) return; const b = 18;
+    R4.forEach(([cx, cy, w, h, rot], i) => { const a = fade(t, i * 0.35, 0.9); if (a <= 0) return; const b = 18; slotWrap(c, s, i, cx - w / 2, cy - h / 2, w, h, () => {
       c.save(); c.globalAlpha *= a; c.translate(cx, cy + (1 - ease(clamp((t - i * 0.35) / 1.0))) * 30); c.rotate(rot * Math.PI / 180);
       c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 24 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#EFE7DA'; rr(c, -w / 2 - b, -h / 2 - b, w + 2 * b, h + 2 * b, 8); c.fill(); c.restore();
       const ho = hitOn; hitOn = false; c.save(); rr(c, -w / 2, -h / 2, w, h, 6); c.clip(); coverIn(c, s, i, -w / 2, -h / 2, w, h, t, { bw: s.opts.bw, zoom: 1.03 + 0.02 * clamp(t / d) });
       c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(230,170,100,.45)'; c.fillRect(-w / 2, -h / 2, w, h); c.restore(); hitOn = ho; c.restore();
-      addHit({ type: 'media', si: i, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); });
+      addHit({ type: 'media', si: i, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); }); });
     block(c, fill(s.texts.text), 1500, 540, KSERIF(52), 80, SA.ink, t, 0.9, 1, false, 'text');
     if (end > 0) { c.fillStyle = `rgba(12,12,13,${0.85 * end})`; c.fillRect(0, 0, W, H); }
     saTheme(null);
@@ -9162,11 +9164,11 @@ Object.assign(LAYOUTS, {
   rmpola: { name: '레트로 콜라주 폴라로이드 세 장 + 테이프', slots: 3, weight: 6, fields: [['cap1', '첫 손글씨', 'summer'], ['cap2', '둘째 손글씨', 'trip'], ['cap3', '셋째 손글씨', 'us']], opts: [...RM_OPTS, ['paper', '종이', 'diary'], ['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) { rmFrame(c, s, t, d, T => {
       rmBgS(c, s, 'diary'); const n = autoN(s, 3), P = { 1: [[960, 520, -2]], 2: [[700, 520, -5], [1220, 540, 4]], 3: [[440, 540, -6], [960, 500, 2], [1480, 550, -3]] }[n];
-      P.forEach(([cx, cy, rot], i) => { const k = ease(clamp((T - i * 0.3) / 0.5)); if (k <= 0) return; c.save(); c.globalAlpha *= k; c.translate(cx, cy + (1 - k) * 50); c.rotate(rot * Math.PI / 180);
+      P.forEach(([cx, cy, rot], i) => { const k = ease(clamp((T - i * 0.3) / 0.5)); if (k <= 0) return; slotWrap(c, s, i, cx - 205, cy - 265, 410, 440, () => { c.save(); c.globalAlpha *= k; c.translate(cx, cy + (1 - k) * 50); c.rotate(rot * Math.PI / 180);
         c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 18 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FBFAF6'; c.fillRect(-230, -290, 460, 580); c.restore();
         const ho = hitOn; hitOn = false; coverIn(c, s, i, -205, -265, 410, 440, t, { bw: s.opts.bw, zoom: 1.03 }); hitOn = ho; rmPrint(c, -205, -265, 410, 440);
         c.font = RMH(64); c.fillStyle = RMC.ink; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(fill(s.texts['cap' + (i + 1)]), 0, 228); rmTape(c, 0, -292, 170, (i - 1) * 0.15); c.restore();
-        addHit({ type: 'media', si: i, x: cx - 205, y: cy - 265, w: 410, h: 440, oy: 0 }); });
+        addHit({ type: 'media', si: i, x: cx - 205, y: cy - 265, w: 410, h: 440, oy: 0 }); }); });
       rmStar(c, 1760, 900, 60, null, 'dots', 0.2, pop(T, 1.2, 0.4));
     }); } }
 });
@@ -9433,7 +9435,7 @@ Object.assign(LAYOUTS, {
       chText(c, fill(s.texts.word), 960, 1010, 64, dk ? CHK.white : CHK.blue, fade(t, 1.0, 0.6), 'word'); if (s.opts.snow) chSnow(c, t, !dk); } },
   chpola3: { name: '초크 하트 폴라로이드 세 장 + 손글씨', slots: 3, weight: 5.5, fields: [['c1', '첫 손글씨', 'winter'], ['c2', '둘째 손글씨', 'with you'], ['c3', '셋째 손글씨', 'love']], opts: CH_OPTS, cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) { chBg(c, s, true); const n = autoN(s, 3), P = { 1: [[960, 470, -0.02]], 2: [[700, 470, -0.05], [1220, 480, 0.04]], 3: [[450, 480, -0.06], [960, 450, 0.02], [1470, 490, -0.04]] }[n];
-      P.forEach(([x, y, r], i) => { const a = fade(t, i * 0.25, 0.6); chPola(c, s, i, x, y, 400, 470, r, t, d, a, i % 2 ? 'rgba(232,140,160,.75)' : 'rgba(110,150,205,.75)'); chText(c, fill(s.texts['c' + (i + 1)]), x, y + 385, 62, CHK.white, fade(t, 0.9 + i * 0.2, 0.5), 'c' + (i + 1)); });
+      P.forEach(([x, y, r], i) => { const a = fade(t, i * 0.25, 0.6); slotWrap(c, s, i, x - 200, y - 235, 400, 470, () => { chPola(c, s, i, x, y, 400, 470, r, t, d, a, i % 2 ? 'rgba(232,140,160,.75)' : 'rgba(110,150,205,.75)'); chText(c, fill(s.texts['c' + (i + 1)]), x, y + 385, 62, CHK.white, fade(t, 0.9 + i * 0.2, 0.5), 'c' + (i + 1)); }); });
       chDoodle(c, 'star', 160, 160, 0.7, CHK.yellow, clamp((t - 1.2) / 0.6)); chDoodle(c, 'shoot', 1700, 170, 0.9, CHK.lav, clamp((t - 1.4) / 0.7)); if (s.opts.snow) chSnow(c, t, false); } },
   chduo: { name: '초크 사진 두 장 + 밑줄 손글씨', slots: 2, weight: 5.5, fields: [['word', '손글씨', '우리의 겨울']], opts: CH_OPTS, cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) { chBg(c, s, false); const n = autoN(s, 2); if (n <= 1) chPhoto(c, s, 0, 360, 110, 1200, 760, t, d); else { chPhoto(c, s, 0, 150, 110, 790, 760, t, d, { a: fade(t, 0, 0.6) }); chPhoto(c, s, 1, 980, 110, 790, 760, t, d, { a: fade(t, 0.25, 0.6) }); }
@@ -9902,12 +9904,12 @@ LAYOUTS.chbgpola = { name: '초크 배경 사진·영상 + 폴라로이드 두 �
   fields: [['word', '손글씨 (비워도 돼요)', ''], ['c1', '폴라로이드 1 아래 글씨', ''], ['c2', '폴라로이드 2 아래 글씨', '']], opts: [['hearts', '폴라로이드 테두리 하트 무늬', false], ['snow', '눈 내리기', false], ['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
   draw(c, s, t, d) {
     bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: 1.02 });
-    const pola = (si, cx, cy, w, h, rot, st, cap) => { const a = fade(t, st, 0.6); if (a <= 0) return; const e = ease(clamp((t - st) / 0.7)); c.save(); c.globalAlpha *= a; c.translate(cx, cy + (1 - e) * 40); c.rotate(rot);
+    const pola = (si, cx, cy, w, h, rot, st, cap) => slotWrap(c, s, si, cx - w / 2, cy - h / 2, w, h, () => { const a = fade(t, st, 0.6); if (a <= 0) return; const e = ease(clamp((t - st) / 0.7)); c.save(); c.globalAlpha *= a; c.translate(cx, cy + (1 - e) * 40); c.rotate(rot);
       if (s.opts.hearts) { c.restore(); chPola(c, s, si, cx, cy + (1 - e) * 40, w, h, rot, t, d, a, si === 1 ? 'rgba(110,150,205,.75)' : 'rgba(232,140,160,.75)'); return; }
       const b = 22, bb = 84; c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 22 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FBFBF9'; c.fillRect(-w / 2 - b, -h / 2 - b, w + 2 * b, h + b + bb); c.restore();
       const ho = hitOn; hitOn = false; coverIn(c, s, si, -w / 2, -h / 2, w, h, t, { bw: s.opts.bw, zoom: 1.02 }); hitOn = ho;
       if (cap) { const im = chalkTextImg(cap, 46, '#2B2A28'); c.drawImage(im, -im.width / 2, h / 2 + bb / 2 - im.height / 2 + 4); }
-      c.restore(); addHit({ type: 'media', si, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); };
+      c.restore(); addHit({ type: 'media', si, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); });
     pola(1, 470, 400, 440, 470, -0.035, 0.3, fill(s.texts.c1)); pola(2, 1460, 660, 420, 450, 0.04, 0.7, fill(s.texts.c2));
     // chalk doodles around them
     chDoodle(c, 'heart', 300, 980, 0.8, CHK.white, clamp((t - 1.1) / 0.6)); chDoodle(c, 'star', 820, 140, 0.55, CHK.white, clamp((t - 1.2) / 0.6)); chDoodle(c, 'star', 1640, 230, 0.5, CHK.white, clamp((t - 1.3) / 0.6));
@@ -9952,6 +9954,21 @@ LAYOUTS.chmix4 = { name: '초크 가운데 세로 영상 + 사진 세 장이 차
     chText(c, fill(s.texts.word), 330, 980, 70, dk ? CHK.white : CHK.blue, fade(t, 1.2, 0.6), 'word'); if (s.opts.snow) chSnow(c, t, !dk);
   } };
 CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chmix4');
+/* ---- every framed photo follows its slot box: move / resize the whole frame (photo + border + shadow + caption) together ---- */
+function slotWrap(c, s, si, x, y, w, h, fn) {
+  if (slotLock) return fn();
+  const [nx, ny, nw, nh] = slotRect(s, si, x, y, w, h);
+  if (nx === x && ny === y && nw === w && nh === h) { slotLock = true; try { fn(); } finally { slotLock = false; } return; }
+  c.save(); c.translate(nx + nw / 2, ny + nh / 2); c.scale(nw / w, nh / h); c.translate(-(x + w / 2), -(y + h / 2));
+  const ho = hitOn; hitOn = false; slotLock = true; try { fn(); } finally { slotLock = false; hitOn = ho; c.restore(); }
+  addHit({ type: 'media', si, x: nx, y: ny, w: nw, h: nh, oy: 0 });
+}
+keyline = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(keyline);
+slideMount = (prev => function (c, s, si, cx, cy, sz, rot, t, d, a) { slotWrap(c, s, si, cx - sz / 2, cy - sz * 0.43, sz, sz * 0.86, () => prev(c, s, si, cx, cy, sz, rot, t, d, a)); })(slideMount);
+chPola = (prev => function (c, s, si, cx, cy, w, h, rot, t, d, a, hc) { slotWrap(c, s, si, cx - w / 2, cy - h / 2, w, h, () => prev(c, s, si, cx, cy, w, h, rot, t, d, a, hc)); })(chPola);
+mkPiece = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(mkPiece);
+mkPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(mkPhoto);
+chPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(chPhoto);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
