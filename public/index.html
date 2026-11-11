@@ -9598,7 +9598,7 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       igBg(c, s, 0); const n = Math.max(1, autoN(s, 4)), X = 300, Y = 100, S2 = 880, PW = 440, k = ease(clamp(t / 0.5));
       c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#fff'; c.fillRect(X, Y, S2 + PW, S2); c.restore();
-      const seg = d / n, pos = Math.min(n - 1, t / seg), cur = Math.floor(pos), fr = ease(clamp((pos - cur - 0.82) / 0.18)), off = (cur + (cur < n - 1 ? fr : 0)) * S2;
+      const fl = s.opts.firstLong && n > 1, a0 = fl ? d * 0.55 : d / n, rest = fl ? (d - a0) / (n - 1) : d / n, pos = Math.min(n - 1, t < a0 ? t / a0 : 1 + (t - a0) / rest), cur = Math.floor(pos), fr = ease(clamp((pos - cur - (cur === 0 && fl ? 0.93 : 0.82)) / (cur === 0 && fl ? 0.07 : 0.18))), off = (cur + (cur < n - 1 ? fr : 0)) * S2;
       c.save(); c.beginPath(); c.rect(X, Y, S2, S2); c.clip(); c.fillStyle = '#000'; c.fillRect(X, Y, S2, S2);
       for (let i = 0; i < n; i++) { const x = X + i * S2 - off; if (x > X + S2 || x + S2 < X) continue; const ho = hitOn; hitOn = false; coverIn(c, s, i, x, Y, S2, S2, t, { zoom: 1.01 }); hitOn = ho; }
       c.restore();
@@ -9969,6 +9969,125 @@ chPola = (prev => function (c, s, si, cx, cy, w, h, rot, t, d, a, hc) { slotWrap
 mkPiece = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(mkPiece);
 mkPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(mkPhoto);
 chPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(chPhoto);
+/* ---- type 10, revision 1 (customer guide): real-Instagram profile with highlights, highlight → story, feed → swipe/scroll, proposal post, her story → wedding ---- */
+// softer fingertip everywhere (customer: click motion lighter)
+igFinger = function (c, x, y, t, t0) { const k = clamp((t - t0 + 0.45) / 0.45), pr = clamp((t - t0) / 0.25); if (k <= 0 || t > t0 + 0.65) return;
+  c.save(); c.globalAlpha = 0.55 * Math.min(1, k) * (t > t0 + 0.4 ? 1 - (t - t0 - 0.4) / 0.25 : 1); const r = 26 - 4 * Math.sin(pr * Math.PI);
+  c.fillStyle = 'rgba(255,255,255,.5)'; c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y + (1 - k) * 40, r, 0, Math.PI * 2); c.fill(); c.stroke(); c.restore();
+  const q = clamp((t - t0) / 0.5); if (q > 0 && q < 1) { c.save(); c.globalAlpha = 0.35 * (1 - q); c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 18 + 40 * ease(q), 0, Math.PI * 2); c.stroke(); c.restore(); } };
+const IGP = { X: 300, Wd: 1320, cell: (1320 - 8) / 3, hlY: 478, gridTop: 640 };
+function igProfileGeo(s, t, d) { const gridH = 4 * (IGP.cell + 4), maxSc = Math.max(0, IGP.gridTop + gridH - H + 120), mode = s.opts.move || 'hold';
+  const hold = Math.min(4.5, d * 0.45), p = mode === 'down' ? ease(clamp((t - hold) / Math.max(1, d - hold - 1.2))) : mode === 'quickdown' ? ease(clamp((t - 0.6) / Math.max(1, d - 1.8))) : mode === 'up' ? 1 - ease(clamp((t - 0.3) / Math.max(1, d - 1.4))) : 0;
+  return { sc: p * maxSc, maxSc }; }
+function igTapRect(s, d) { // where the fingertip lands on a profile (also where the next scene opens from)
+  const tw = s.opts.tapwhat || 'none'; if (tw === 'none') return null; const sc = igProfileGeo(s, d, d).sc;
+  if (/^hl/.test(tw)) { const i = +tw.slice(2) - 1, x = IGP.X + 120 + i * 190; return [x - 62, IGP.hlY - 62, 124, 124]; }
+  const i = tw === 'last' ? 11 : tw === 'p1' ? 0 : 9, x = IGP.X + (i % 3) * (IGP.cell + 4), y = IGP.gridTop + Math.floor(i / 3) * (IGP.cell + 4) - sc; return [x, y, IGP.cell, IGP.cell];
+}
+LAYOUTS.igprofile = { name: '인스타 프로필 (하이라이트 + 피드 12칸, 스크롤·누르기)', slots: 16, weight: 8,
+  slotNames: ['프로필 사진', ...Array.from({ length: 12 }, (_, i) => `게시물 ${i + 1}`), '하이라이트 1', '하이라이트 2', '하이라이트 3'],
+  fields: [['user', '아이디', 'our.secret.story'], ['name', '이름', '2년 동안 너 몰래 써온 우리의 기록'], ['bio', '소개글', '처음 만난 날부터 오늘까지 ♡\n언젠가 너에게 보여줄 날을 기다리며', true], ['posts', '게시물 수', '128'], ['hls', '하이라이트 이름 (줄마다)', '첫만남\n여행\n결혼', true], ['overlay', '가운데 큰 글씨 (비워도 돼요)', '']],
+  opts: [['move', '움직임', 'hold'], ['tapwhat', '마지막에 누르는 곳', 'none']], cap: () => [960, 1045, 'light'],
+  draw(c, s, t, d) {
+    bg(c, '#FAFAFA'); const { X, Wd, cell, gridTop, hlY } = IGP, { sc } = igProfileGeo(s, t, d);
+    c.fillStyle = '#fff'; c.fillRect(X - 30, 0, Wd + 60, H);
+    c.save(); c.translate(0, -sc);
+    igAvatar(c, s, 0, X + 150, 200, 110, t, true);
+    txt(c, fill(s.texts.user), X + 340, 120, IGF(40, 500), IGC.ink, 1, { align: 'left', k: 'user' });
+    c.fillStyle = '#EFEFEF'; rr(c, X + 720, 96, 170, 50, 10); c.fill(); c.fillStyle = IGC.blue; rr(c, X + 900, 96, 170, 50, 10); c.fill();
+    txt(c, '팔로잉', X + 805, 121, IGF(24, 600), IGC.ink, 1); txt(c, '메시지', X + 985, 121, IGF(24, 600), '#fff', 1);
+    txt(c, `게시물 ${fill(s.texts.posts)}      팔로워 1      팔로잉 1`, X + 340, 200, IGF(28, 500), IGC.ink, 1, { align: 'left', k: 'posts' });
+    txt(c, fill(s.texts.name), X + 340, 258, IGF(28, 700), IGC.ink, 1, { align: 'left', k: 'name' });
+    fill(s.texts.bio).split('\n').forEach((l, i) => txt(c, l, X + 340, 300 + i * 40, IGF(26, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'bio' }));
+    // highlights row (like the real app)
+    fill(s.texts.hls).split('\n').filter(Boolean).slice(0, 3).forEach((lab, i) => { const x = X + 120 + i * 190; c.strokeStyle = IGC.line; c.lineWidth = 3; c.beginPath(); c.arc(x, hlY, 62, 0, Math.PI * 2); c.stroke(); igAvatar(c, s, 13 + i, x, hlY, 55, t, false); if (!(s.media[13 + i] && s.media[13 + i].id)) { c.fillStyle = '#F2F2F2'; c.beginPath(); c.arc(x, hlY, 55, 0, Math.PI * 2); c.fill(); } addHit({ type: 'media', si: 13 + i, x: x - 55, y: hlY - 55 - sc, w: 110, h: 110, oy: 0 }); txt(c, lab, x, hlY + 88, IGF(24, 600), IGC.ink, 1); });
+    c.fillStyle = IGC.line; c.fillRect(X, gridTop - 44, Wd, 1.5); c.fillStyle = IGC.ink; c.fillRect(X + Wd / 2 - 60, gridTop - 45, 120, 3); igIcon(c, 'grid', X + Wd / 2, gridTop - 24, 22, IGC.ink);
+    for (let i = 0; i < 12; i++) { const r = Math.floor(i / 3), cI = i % 3, x = X + cI * (cell + 4), y = gridTop + r * (cell + 4); c.fillStyle = '#E9E9E9'; c.fillRect(x, y, cell, cell); if (s.media[i + 1] && s.media[i + 1].id) { const ho = hitOn; hitOn = false; coverIn(c, s, i + 1, x, y, cell, cell, t, { zoom: 1.01 }); hitOn = ho; } addHit({ type: 'media', si: i + 1, x, y: y - sc, w: cell, h: cell, oy: 0 }); }
+    c.restore();
+    igNav(c, X, Wd, H - 136, 4);
+    const tr = igTapRect(s, d); if (tr) { const ty = /^hl/.test(s.opts.tapwhat) ? tr[1] + tr[3] / 2 - sc : tr[1] + tr[3] / 2 + igProfileGeo(s, d, d).sc - sc; igFinger(c, tr[0] + tr[2] / 2, ty, t, d - 0.55); }
+    const ov = fill(s.texts.overlay); if (ov) { const a = fade(t, 1.0, 0.8); c.fillStyle = `rgba(0,0,0,${0.55 * a})`; c.fillRect(0, 0, W, H); igWrap(c, ov, IGF(72, 700), 1400).forEach((l, i, A) => txt(c, l, 960, 540 + (i - (A.length - 1) / 2) * 100, IGF(72, 700), '#fff', a, { k: i ? null : 'overlay' })); }
+  } };
+LAYOUTS.igprofile.optSelects = { move: [['hold', '멈춰 있기'], ['down', '잠시 보여준 뒤 아래로 스크롤'], ['quickdown', '바로 아래로 스크롤'], ['up', '위로 올라오기']], tapwhat: [['none', '누르지 않음'], ['hl1', '하이라이트 1'], ['hl2', '하이라이트 2'], ['hl3', '하이라이트 3'], ['p1', '첫 게시물'], ['p10', '10번째 게시물'], ['last', '마지막 게시물']] };
+LAYOUTS.igprofile.noBulk = [0, 13, 14, 15];
+// the next scene grows out of whatever the previous scene tapped
+igOpenTr = function (c, r, pr, sc) { const i = project.scenes.indexOf(sc), P = project.scenes[i - 1]; let fr = sc && Array.isArray(sc.openFrom) ? sc.openFrom : null;
+  if (!fr && P && P.layout === 'igprofile' && timeline[i - 1]) fr = igTapRect(P, timeline[i - 1].dur); if (!fr && P && P.layout === 'igactivity') fr = [520 + 76 - 40, 270 + 2 * 160 + 30 - 40, 80, 80]; if (!fr) fr = [W / 2 - 160, H / 2 - 160, 320, 320];
+  const e = 1 - Math.pow(1 - pr, 3), x = fr[0] * (1 - e), y = fr[1] * (1 - e), w = fr[2] + (W - fr[2]) * e, h = fr[3] + (H - fr[3]) * e;
+  c.save(); c.globalAlpha = Math.min(1, pr * 3); c.beginPath(); rr(c, x, y, w, h, Math.min(w, h) / 2 * (1 - e) * 0.9); c.clip(); c.drawImage(r.la, x, y, w, h); c.restore(); };
+// notification: Saturday 12:00 by default
+LAYOUTS.ignotify.fields = LAYOUTS.ignotify.fields.map(f => f[0] === 'time' ? ['time', '시간', '12:00'] : f[0] === 'date' ? ['date', '날짜', '12월 5일 토요일'] : f);
+// stories / memory card: with no side text they sit in the middle (lyrics carry the words)
+{ const dr = LAYOUTS.igstories.draw; LAYOUTS.igstories.draw = function (c, s, t, d) { if (fill(s.texts.side)) return dr.call(this, c, s, t, d); { const n = Math.max(1, autoN(s, 4)); igBg(c, s, Math.min(n - 1, Math.floor(t / (d / n)))); } /* full-width background first, so moving the story to the centre leaves no gap */ c.save(); c.translate(960 - (s.opts.flip ? 1180 : 420) - 270, 0); dr.call(this, c, s, t, d); c.restore(); }; }
+{ const dr = LAYOUTS.igmemory.draw; LAYOUTS.igmemory.draw = function (c, s, t, d) { if (fill(s.texts.side)) return dr.call(this, c, s, t, d); igBg(c, s, 0); c.save(); c.translate(960 - (s.opts.flip ? 1240 : 680), 0); dr.call(this, c, s, t, d); c.restore(); }; }
+// activity: three items, and the fingertip taps her (last) story ring at the end
+LAYOUTS.igactivity.fields = LAYOUTS.igactivity.fields.map(f => f[0] === 'items' ? ['items', '알림 (줄마다)', '님이 회원님을 팔로우하기 시작했습니다.\n님이 회원님의 게시물 128개를 좋아합니다.\n님이 댓글을 남겼습니다: 응, 결혼하자 💍', true] : f);
+{ const dr = LAYOUTS.igactivity.draw; LAYOUTS.igactivity.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); const n = fill(s.texts.items).split('\n').filter(Boolean).length; igFinger(c, 520 + 76, 270 + (n - 1) * 160 + 30, t, d - 0.55); }; }
+// carousel post: first item (e.g. the proposal video) can take most of the time
+LAYOUTS.igcarousel.opts = [['firstLong', '첫 장(영상)을 길게', false]];
+
+// thanks post with several wedding photos sliding
+LAYOUTS.igcomments.slots = 4; LAYOUTS.igcomments.noBulk = [];
+{ const L = LAYOUTS.igcomments, dr = L.draw; L.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); const n = autoN(s, 4); if (n < 2) return;
+  const X = 300, Y = 100, S2 = 880, seg = d / n, pos = Math.min(n - 1, t / seg), cur = Math.floor(pos), fr = ease(clamp((pos - cur - 0.82) / 0.18)), off = (cur + (cur < n - 1 ? fr : 0)) * S2;
+  c.save(); c.globalAlpha *= ease(clamp(t / 0.5)); c.beginPath(); c.rect(X, Y, S2, S2); c.clip(); c.fillStyle = '#000'; c.fillRect(X, Y, S2, S2);
+  for (let i = 0; i < n; i++) { const x = X + i * S2 - off; if (x > X + S2 || x + S2 < X) continue; const ho = hitOn; hitOn = false; coverIn(c, s, i, x, Y, S2, S2, t, { zoom: 1.01 }); hitOn = ho; } c.restore();
+  for (let i = 0; i < n; i++) { c.fillStyle = i === Math.round(cur + fr) ? IGC.blue : 'rgba(255,255,255,.7)'; c.beginPath(); c.arc(X + S2 / 2 + (i - (n - 1) / 2) * 16, Y + S2 - 24, 4.5, 0, Math.PI * 2); c.fill(); } }; }
+// home feed: each post swipes through its photos, then the feed scrolls to the next post (no side text)
+LAYOUTS.igfeedswipe = { name: '인스타 피드 넘겨보기 (게시물마다 옆으로 넘기고, 다음 게시물로 스크롤)', slots: 12, weight: 16, autoDefault: true,
+  fields: [['user', '아이디', 'our.secret.story'], ['caps', '게시물 캡션 (줄마다 하나)', '처음 손잡은 날\n벚꽃 아래에서\n여름 바다, 그리고 너', true], ['dates', '게시물 날짜 (줄마다)', '2025년 1월 6일\n2025년 4월 10일\n2025년 8월 15일', true]],
+  opts: [['per', '게시물당 사진 수', '3']], cap: () => [960, 1045, 'light'],
+  draw(c, s, t, d) {
+    bg(c, '#FAFAFA'); const per = Math.max(1, +s.opts.per || 3), total = Math.max(1, autoN(s, 12)), posts = Math.max(1, Math.ceil(total / per)), X = 640, Wd = 640, postH = 64 + Wd + 150, top = 160;
+    c.fillStyle = '#fff'; c.fillRect(X - 20, 0, Wd + 40, H); c.fillStyle = IGC.line; c.fillRect(X - 20, 0, 1.5, H); c.fillRect(X + Wd + 20, 0, 1.5, H);
+    const seg = d / posts, pi = Math.min(posts - 1, Math.floor(t / seg)), lt = t - pi * seg, scrollT = 0.9, swipeT = seg - (pi < posts - 1 ? scrollT : 0);
+    const sp = pi < posts - 1 ? ease(clamp((lt - swipeT) / scrollT)) : 0, sc = (pi + sp) * postH;
+    c.save(); c.beginPath(); c.rect(X - 20, 140, Wd + 40, H - 140); c.clip(); c.translate(0, top - sc);
+    const caps = fill(s.texts.caps).split('\n'), dates = fill(s.texts.dates).split('\n');
+    for (let p = 0; p < posts; p++) { const y = p * postH, a0 = p * per, cnt = Math.min(per, total - a0); if (y - sc > H || y + postH - sc < -200) continue;
+      igAvatar(c, s, a0, X + 26, y + 32, 20, t, true); txt(c, fill(s.texts.user), X + 58, y + 32, IGF(22, 600), IGC.ink, 1, { align: 'left', k: p ? null : 'user' }); igIcon(c, 'more', X + Wd - 20, y + 32, 24, IGC.ink);
+      const local = p === pi ? lt : p < pi ? swipeT : 0, k = cnt > 1 ? Math.min(cnt - 1, local / (swipeT / cnt)) : 0, cur = Math.floor(k), fr = ease(clamp((k - cur - 0.75) / 0.25)), off = (cur + (cur < cnt - 1 ? fr : 0)) * Wd;
+      c.save(); c.beginPath(); c.rect(X, y + 64, Wd, Wd); c.clip(); c.fillStyle = '#EEE'; c.fillRect(X, y + 64, Wd, Wd);
+      for (let i = 0; i < cnt; i++) { const x = X + i * Wd - off; if (x > X + Wd || x + Wd < X) continue; const ho = hitOn; hitOn = false; coverIn(c, s, a0 + i, x, y + 64, Wd, Wd, t, { zoom: 1.01 }); hitOn = ho; }
+      c.restore(); for (let i = 0; i < cnt; i++) addHit({ type: 'media', si: a0 + i, x: X, y: y + 64 + top - sc, w: Wd, h: Wd, oy: 0 });
+      if (cnt > 1) { c.fillStyle = 'rgba(0,0,0,.55)'; rr(c, X + Wd - 80, y + 82, 62, 32, 16); c.fill(); txt(c, `${Math.round(cur + fr) + 1}/${cnt}`, X + Wd - 49, y + 98, IGF(18, 600), '#fff', 1); }
+      const ay = y + 64 + Wd + 34, lk = p < pi || (p === pi && lt > 1); igIcon(c, 'heart', X + 18, ay, 28, lk ? IGC.red : IGC.ink, lk); igIcon(c, 'comment', X + 70, ay, 28, IGC.ink); igIcon(c, 'send', X + 122, ay, 28, IGC.ink); igIcon(c, 'save', X + Wd - 20, ay, 28, IGC.ink);
+      if (cnt > 1) for (let i = 0; i < cnt; i++) { c.fillStyle = i === Math.round(cur + fr) ? IGC.blue : '#C8C8C8'; c.beginPath(); c.arc(X + Wd / 2 + (i - (cnt - 1) / 2) * 14, ay, 4, 0, Math.PI * 2); c.fill(); }
+      txt(c, '좋아요 1개', X + 2, ay + 42, IGF(22, 700), IGC.ink, 1, { align: 'left' }); txt(c, `${fill(s.texts.user)}  ${caps[p] || ''}`, X + 2, ay + 78, IGF(22, 400), IGC.ink, 1, { align: 'left', k: p ? null : 'caps' }); txt(c, dates[p] || '', X + 2, ay + 110, IGF(18, 400), IGC.sub, 1, { align: 'left', k: p ? null : 'dates' }); }
+    c.restore();
+    c.fillStyle = '#fff'; c.fillRect(X - 20, 0, Wd + 40, 140); c.fillStyle = IGC.line; c.fillRect(X - 20, 140, Wd + 40, 1.5); txt(c, 'Our Story', X + 4, 104, `italic 600 34px "Playfair Display", serif`, IGC.ink, 1, { align: 'left' });
+  } };
+LAYOUTS.igfeedswipe.optSelects = { per: [['1', '1장'], ['2', '2장'], ['3', '3장'], ['4', '4장']] };
+{ const cat = CATS.find(c => c[0] === '비밀 인스타 스토리 (고객 요청 10타입)'); cat[1] = cat[1].filter(k => k !== 'igdm'); cat[1].push('igfeedswipe'); }
+TEMPLATES.IG.make = () => {
+  const PRO = (move, tapwhat, w) => ['igprofile', { opts: { move, tapwhat } }, w], STS = (o, w) => ['igstories', o, w || 9];
+  const list = [
+    ['ignotify', {}, 6],
+    PRO('hold', 'hl1', 8),
+    STS({ texts: { stk: '첫 만남 🎞\n그날의 너 🤍\n두 번째 만남\n또 보고 싶다', side: '' } }), STS({ texts: { stk: '처음 손잡은 날\n심장이 쿵\n우리의 첫 사진\n♡', side: '' } }),
+    PRO('hold', 'p1', 4),
+    ['igfeedswipe', { opts: { per: '3' } }, 16],
+    ['igmemory', { texts: { ago: '1년 전 오늘', date: '2025년 12월 9일', side: '' } }, 6],
+    ['igfeedswipe', { opts: { per: '3' }, texts: { caps: '다툰 날, 그래도 결국 웃는 우리\n너의 생일 🎂\n눈 오는 날 ❄️', dates: '2025년 7월 21일\n2025년 10월 3일\n2025년 12월 20일' } }, 16],
+    ['igmemory', { opts: { flip: true }, texts: { ago: '2년 전 오늘', date: '2026년 5월 18일', side: '' } }, 6],
+    ['igfeedswipe', { opts: { per: '3' }, texts: { caps: '우리의 봄\n같이 먹은 첫 떡볶이\n오늘도 너랑 웃은 날', dates: '2026년 3월 22일\n2026년 6월 2일\n2026년 8월 30일' } }, 16],
+    PRO('hold', 'hl2', 4),
+    STS({ texts: { stk: '첫 여행 ✈️\n바다 🌊\n노을 🌅\n또 가자', side: '' } }), STS({ texts: { stk: '여행 2일차\n맛집 투어 🍜\n우리 둘이\n♡', side: '' } }),
+    PRO('quickdown', 'last', 7),
+    ['igcarousel', { opts: { firstLong: true }, texts: { text: '반지를 고르던 날.\n너 몰래 하느라 정말 떨렸어.\n\n그리고 오늘, 나랑 결혼해줄래? 💍', date: '2026년 9월 27일' } }, 20],
+    ['igactivity', {}, 8],
+    STS({ texts: { user: '{신부}', stk: '결혼 💍\nwedding day\n우리 둘\n♡', side: '' } }), STS({ texts: { user: '{신부}', stk: '행복하게\n잘 살게요\n고마워\n사랑해', side: '' } }),
+    STS({ texts: { stk: '사랑하는 부모님께 💐\n감사합니다\n사랑합니다', side: '저희를 사랑으로 키워주셔서\n진심으로 감사합니다.\n받은 사랑만큼 행복하게 살게요.' } }, 8),
+    STS({ opts: { flip: true }, texts: { stk: '양가 부모님 🤍\n존경합니다\n사랑합니다', side: '이제 서로의 부모님께도\n든든한 자녀가 되겠습니다.\n존경하고, 사랑합니다.' } }, 8),
+    ['igcomments', { texts: { text: '오늘 이 자리를 빛내주신\n모든 분들께 감사드립니다.', cmts: 'our.secret.story: 바쁘신 와중에도 와주셔서 감사합니다 🙏\nour.secret.story: 보내주신 축복 잊지 않을게요\nour.secret.story: 예쁘게, 행복하게 잘 살겠습니다 ♡', date: '2026년 12월 5일' } }, 9]
+  ];
+  const sc = list.map(([k, o, w]) => { const x = makeScene(k, o); x.weight = w; return x; });
+  sc.forEach((x, i) => { if (!i) return; const P = sc[i - 1]; x.tr = (P.layout === 'igprofile' && P.opts.tapwhat !== 'none') || P.layout === 'igactivity' ? 'igopen' : x.layout === 'igprofile' ? 'dissolve' : x.layout === 'igstories' ? 'slide' : 'dissolve'; });
+  sc[1].tr = 'zoom';
+  sc.forEach(x => { if (x.layout === 'igstories') x.count = 'auto'; });
+  const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
+  return baseProj('IG', sc, { lyricFx: '', outCrop: 956 });
+};
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
