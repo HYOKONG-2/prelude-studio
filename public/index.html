@@ -555,7 +555,9 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const z = (mv ? mv.z : (o.zoom || 1)) * (slot.z || 1) * (ab ? ab.extraZoom : 1);
   const k = Math.max(w / sw, h / sh) * z;
   const dw = sw * k, dh = sh * k;
-  const vertical = dh / h > dw / w;
+  // decide from the source shape itself (not from the zoomed size), with a little tolerance: a photo the same shape as its frame
+  // used to flip between 'tall' and 'not tall' frame by frame from rounding, jumping up and down a few pixels (looked like shaking)
+  const vertical = sh * w > sw * h * 1.003;
   const oy = slot.oy == null ? (vertical ? (dh - h) / h * 0.12 : 0) : slot.oy;
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
