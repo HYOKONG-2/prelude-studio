@@ -10088,6 +10088,50 @@ TEMPLATES.IG.make = () => {
   const tot = sc.reduce((a, x) => a + x.weight, 0), f = 180 / tot; sc.forEach(x => x.weight = Math.round(x.weight * f * 10) / 10);
   return baseProj('IG', sc, { lyricFx: '', outCrop: 956 });
 };
+/* ---- type 9 revisions from a customer's feedback ---- */
+// 1) two photos in the "three in a row" scene get bigger boxes
+{ const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
+  for (let i = 0; i < n; i++) chPhoto(c, s, i, x0 + i * (w + g), y0, w, h, t, d, { a: fade(t, i * 0.2, 0.6) });
+  [[230, 160, 1], [1730, 140, 0.9], [790, 470, 0.8], [1240, 900, 0.9], [200, 970, 1.1], [1750, 900, 1]].forEach(([x, y, sc], i) => chDoodleK(c, 'heart', x, y, sc, CHK.pink, clamp((t - 0.8 - i * 0.12) / 0.6), 'heart' + i));
+  chText(c, fill(s.texts.names).toUpperCase(), 960, 1000, 76, CHK.blue, fade(t, 1.2, 0.6), 'names'); if (s.opts.snow) chSnow(c, t, true); }; }
+// 2) background + two polaroids: a chalk string with a heart loop connects them; the second one as big as the first
+LAYOUTS.chbgpola.opts = [['link', '하트 줄로 두 사진 잇기', true], ...LAYOUTS.chbgpola.opts];
+{ const L = LAYOUTS.chbgpola; L.draw = function (c, s, t, d) {
+  bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: 1.02 });
+  const pola = (si, cx, cy, w, h, rot, st, cap) => slotWrap(c, s, si, cx - w / 2, cy - h / 2, w, h, () => { const a = fade(t, st, 0.6); if (a <= 0) return; const e = ease(clamp((t - st) / 0.7));
+    if (s.opts.hearts) { chPola(c, s, si, cx, cy + (1 - e) * 40, w, h, rot, t, d, a, si === 1 ? 'rgba(110,150,205,.75)' : 'rgba(232,140,160,.75)'); return; }
+    c.save(); c.globalAlpha *= a; c.translate(cx, cy + (1 - e) * 40); c.rotate(rot); const b = 22, bb = 84; c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 22 * R.S; c.shadowOffsetY = 8 * R.S; c.fillStyle = '#FBFBF9'; c.fillRect(-w / 2 - b, -h / 2 - b, w + 2 * b, h + b + bb); c.restore();
+    const ho = hitOn; hitOn = false; coverIn(c, s, si, -w / 2, -h / 2, w, h, t, { bw: s.opts.bw, zoom: 1.02 }); hitOn = ho;
+    if (cap) { const im = chalkTextImg(cap, 46, '#2B2A28'); c.drawImage(im, -im.width / 2, h / 2 + bb / 2 - im.height / 2 + 4); }
+    c.restore(); addHit({ type: 'media', si, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); });
+  pola(1, 470, 400, 440, 470, -0.035, 0.3, fill(s.texts.c1)); pola(2, 1450, 640, 440, 470, 0.04, 0.7, fill(s.texts.c2));
+  if (s.opts.link) { // string from the first to the second, looping into a heart in the middle
+    const r1 = slotRect(s, 1, 470 - 220, 400 - 235, 440, 470), r2 = slotRect(s, 2, 1450 - 220, 640 - 235, 440, 470), ax = r1[0] + r1[2] + 22, ay = r1[1] + r1[3] * 0.62, bx = r2[0] - 22, by = r2[1] + r2[3] * 0.35, mx = (ax + bx) / 2, my = (ay + by) / 2 - 20, P = [];
+    for (let i = 0; i <= 30; i++) { const u = i / 30; P.push([ax + (mx - 30 - ax) * u, ay + (my + 60 - ay) * u + Math.sin(u * Math.PI) * 60]); }
+    for (let i = 0; i <= 40; i++) { const a = Math.PI / 2 + i / 40 * Math.PI * 2, hx = 16 * Math.pow(Math.sin(a), 3), hy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)); P.push([mx + hx * 5.2, my + hy * 5.2]); }
+    for (let i = 0; i <= 30; i++) { const u = i / 30; P.push([mx + 30 + (bx - mx - 30) * u, my + 60 + (by - my - 60) * u + Math.sin(u * Math.PI) * 50]); }
+    chLine(c, P, '#F27CC4', 8, clamp((t - 1.0) / 1.6));
+  }
+  chDoodle(c, 'heart', 300, 980, 0.8, CHK.white, clamp((t - 1.1) / 0.6)); chDoodle(c, 'star', 820, 140, 0.55, CHK.white, clamp((t - 1.2) / 0.6)); chDoodle(c, 'star', 1640, 230, 0.5, CHK.white, clamp((t - 1.3) / 0.6)); chDoodle(c, 'zig', 1110, 900, 0.9, CHK.white, clamp((t - 1.6) / 0.6));
+  chText(c, fill(s.texts.word), 1300, 180, 84, CHK.white, fade(t, 1.2, 0.6), 'word'); if (s.opts.snow) chSnow(c, t, false);
+}; }
+// 3) full-screen four-way split
+LAYOUTS.chquad = { name: '초크 전체 화면 4분할 (사진 네 장이 화면을 꽉 채워요)', slots: 4, weight: 5.5, fields: [['word', '가운데 손글씨 (비워도 돼요)', '']], opts: [['gap', '사진 사이 흰 줄', true], ['one', '한 장씩 차례로', true], ['snow', '눈 내리기', false], ['bw', '흑백', false]], cap: () => [960, 1045, 'photo'],
+  draw(c, s, t, d) { bg(c, s.opts.gap ? '#F7F5F0' : '#000'); const g = s.opts.gap ? 8 : 0, w = (W - g) / 2, h = (H - g) / 2;
+    [[0, 0], [w + g, 0], [0, h + g], [w + g, h + g]].forEach(([x, y], i) => { const a = s.opts.one ? fade(t, i * Math.min(0.9, d / 6), 0.5) : 1; if (a <= 0) return; c.save(); c.globalAlpha *= a; cover(c, s, i, x, y, w, h, t, { bw: s.opts.bw, zoom: 1.02 }); c.restore(); });
+    const wd = fill(s.texts.word); if (wd) chText(c, wd, 960, 540, 100, CHK.white, fade(t, 1.4, 0.6), 'word'); if (s.opts.snow) chSnow(c, t, false); } };
+LAYOUTS.chquad.bgHidden = true;
+// 4) cloud photo can be a plain full-screen photo/video
+LAYOUTS.chcloud.opts = [['full', '구름 없이 전체 화면', false], ...LAYOUTS.chcloud.opts];
+{ const L = LAYOUTS.chcloud, dr = L.draw; L.draw = function (c, s, t, d) { if (!s.opts.full) return dr.call(this, c, s, t, d); bg(c, '#000'); cover(c, s, 0, 0, 0, W, H, t, { bw: s.opts.bw, zoom: 1.02 }); chText(c, fill(s.texts.word), 1360, 420, 110, CHK.white, fade(t, 0.9, 0.5), 'word'); if (s.opts.snow) chSnow(c, t, false); }; }
+CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chquad');
+// 5) a crayon heart that draws itself, as a sticker
+STICKERS.push(['drawheart', '그려지는 크레파스 하트']);
+{ const ds = drawSticker; drawSticker = function (c, kind, x, y, sz, p) { if (kind !== 'drawheart') return ds(c, kind, x, y, sz); const P = []; for (let i = 0; i <= 50; i++) { const a = Math.PI / 2 + i / 50 * Math.PI * 2; P.push([x + 16 * Math.pow(Math.sin(a), 3) * sz / 36, y - (13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) * sz / 36]); } chLine(c, P, '#F27C95', Math.max(5, sz / 12), p == null ? 1 : p); }; }
+drawStickers = function (c, s, t) { (s.stickers || []).forEach(k => { const key = 'stk:' + k.id, st = getStyle(key), sz = 100 * (st.s || 1), x = (k.x || 960) + (st.x || 0), y = (k.y || 540) + (st.y || 0), a = fade(t, 0.3, 0.4); if (a <= 0) return; c.save(); c.globalAlpha *= a;
+  if (k.kind === 'drawheart') drawSticker(c, k.kind, x, y, sz, clamp((t - 0.3) / 1.2)); else drawSticker(c, k.kind, x, y, sz * (0.85 + 0.15 * backOut(clamp((t - 0.3) / 0.4)))); c.restore(); addHit({ type: 'text', key, x: x - sz / 2, y: y - sz / 2, w: sz, h: sz }); }); };
+// template: full-screen four-way splits join the flow
+TEMPLATES.W.make = (o => () => { const p = o(); let k = 0; p.scenes.forEach((x, i) => { if (x.layout === 'chgrid' && x.count === 4 && k++ < 3) { const n = makeScene('chquad', {}); n.weight = x.weight; n.tr = x.tr; p.scenes[i] = n; } }); return p; })(TEMPLATES.W.make);
 let BASE_TPL = null; // customer page: template.json from the same folder
 function projectFromTemplate(tpl) {
   return {
