@@ -10106,10 +10106,14 @@ LAYOUTS.chbgpola.opts = [['link', '하트 줄로 두 사진 잇기', true], ...L
     c.restore(); addHit({ type: 'media', si, x: cx - w / 2, y: cy - h / 2, w, h, oy: 0 }); });
   pola(1, 470, 400, 440, 470, -0.035, 0.3, fill(s.texts.c1)); pola(2, 1450, 640, 440, 470, 0.04, 0.7, fill(s.texts.c2));
   if (s.opts.link) { // string from the first to the second, looping into a heart in the middle
-    const r1 = slotRect(s, 1, 470 - 220, 400 - 235, 440, 470), r2 = slotRect(s, 2, 1450 - 220, 640 - 235, 440, 470), ax = r1[0] + r1[2] + 22, ay = r1[1] + r1[3] * 0.62, bx = r2[0] - 22, by = r2[1] + r2[3] * 0.35, mx = (ax + bx) / 2, my = (ay + by) / 2 - 20, P = [];
-    for (let i = 0; i <= 30; i++) { const u = i / 30; P.push([ax + (mx - 30 - ax) * u, ay + (my + 60 - ay) * u + Math.sin(u * Math.PI) * 60]); }
-    for (let i = 0; i <= 40; i++) { const a = Math.PI / 2 + i / 40 * Math.PI * 2, hx = 16 * Math.pow(Math.sin(a), 3), hy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)); P.push([mx + hx * 5.2, my + hy * 5.2]); }
-    for (let i = 0; i <= 30; i++) { const u = i / 30; P.push([mx + 30 + (bx - mx - 30) * u, my + 60 + (by - my - 60) * u + Math.sin(u * Math.PI) * 50]); }
+    const r1 = slotRect(s, 1, 470 - 220, 400 - 235, 440, 470), r2 = slotRect(s, 2, 1450 - 220, 640 - 235, 440, 470), ax = r1[0] + r1[2] + 26, ay = r1[1] + r1[3] * 0.55, bx = r2[0] - 26, by = r2[1] + r2[3] * 0.45;
+    // one continuous string: A sags into the heart's bottom tip, draws the heart (right lobe first), leaves from the tip and sags on to B
+    const k = 5, hcx = (ax + bx) / 2, hcy = (ay + by) / 2 - 40, tx = hcx, ty = hcy + 17 * k, Q = [];
+    const bez = (p0, p1, p2, p3, n) => { for (let i = 1; i <= n; i++) { const u = i / n, v = 1 - u; Q.push([v * v * v * p0[0] + 3 * v * v * u * p1[0] + 3 * v * u * u * p2[0] + u * u * u * p3[0], v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1]]); } };
+    Q.push([ax, ay]); const d1 = Math.max(80, (tx - ax) * 0.45); bez([ax, ay], [ax + d1, ay + 90], [tx - 110, ty + 70], [tx, ty], 40);
+    for (let i = 1; i <= 80; i++) { const a = Math.PI - i / 80 * Math.PI * 2; Q.push([hcx + 16 * Math.pow(Math.sin(a), 3) * k, hcy - (13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)) * k]); }
+    const d2 = Math.max(80, (bx - tx) * 0.45); bez([tx, ty], [tx + 110, ty + 70], [bx - d2, by + 90], [bx, by], 40);
+    const P = [Q[0]]; let acc = 0; for (let i = 1; i < Q.length; i++) { acc += Math.hypot(Q[i][0] - Q[i - 1][0], Q[i][1] - Q[i - 1][1]); if (acc >= 9 || i === Q.length - 1) { P.push(Q[i]); acc = 0; } } // even spacing so the chalk wobble is even
     chLine(c, P, '#F27CC4', 8, clamp((t - 1.0) / 1.6));
   }
   chDoodle(c, 'heart', 300, 980, 0.8, CHK.white, clamp((t - 1.1) / 0.6)); chDoodle(c, 'star', 820, 140, 0.55, CHK.white, clamp((t - 1.2) / 0.6)); chDoodle(c, 'star', 1640, 230, 0.5, CHK.white, clamp((t - 1.3) / 0.6)); chDoodle(c, 'zig', 1110, 900, 0.9, CHK.white, clamp((t - 1.6) / 0.6));
