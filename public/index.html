@@ -10121,6 +10121,52 @@ LAYOUTS.igcarousel.opts = [...LAYOUTS.igcarousel.opts, ['tapring', '마지막에
 { const L = LAYOUTS.igcarousel, dr = L.draw; L.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (s.opts.tapring) igFinger(c, 1230, 142, t, d - 0.55); }; }
 { const o = igOpenTr; igOpenTr = function (c, r, pr, sc) { const i = project.scenes.indexOf(sc), P = project.scenes[i - 1], fr = sc && !sc.openFrom && P && timeline[i - 1] ? igRingRect(P, timeline[i - 1].dur) : null;
   if (!fr) return o(c, r, pr, sc); sc.openFrom = fr; try { o(c, r, pr, sc); } finally { delete sc.openFrom; } }; }
+// type 10: the closing stories (after her reactions) stay longer, about 3 s per photo; the video runs a little over 3 minutes
+{ const o = TEMPLATES.IG.make; TEMPLATES.IG.make = () => { const p = o(), sc = p.scenes, a = sc.findIndex(x => x.layout === 'igactivity'); if (a >= 0) sc.forEach((x, i) => { if (i > a && x.layout === 'igstories') x.weight = 12; }); return p; }; }
+/* ---- iPhone Live Photos: a ≤3.5 s clip is usually a Live Photo — offer to turn it into a still (with a chosen moment) ---- */
+const LIVE_MAX = 3.6;
+const isLiveClip = m => !!(m && m.type === 'video' && m.el && isFinite(m.el.duration) && m.el.duration > 0 && m.el.duration <= LIVE_MAX);
+async function liveFrame(m, t) { // grab one frame of a clip as a JPEG blob, without touching the clip that plays in the editor
+  const v = await loadVid(m.url); try {
+    const d = v.duration || 0, at = Math.max(0, Math.min(d - 0.05, t == null ? d / 2 : t));
+    await new Promise(res => { const to = setTimeout(res, 2500); v.addEventListener('seeked', () => { clearTimeout(to); res(); }, { once: true }); v.currentTime = at || 0.001; });
+    const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
+    return await new Promise(r => c.toBlob(b => r(b), 'image/jpeg', 0.93));
+  } finally { v.removeAttribute('src'); v.load(); v.remove(); } }
+async function liveSrcMedia(id) { if (media[id]) return media[id]; if (TEAM) return null; try { const r = await idbGet('media:' + id); if (r && r.blob) return await makeMedia(id, r.blob, 'video'); } catch (e) { } return null; }
+function livePickDialog(m, t0) { // scrub the clip and pick the moment; resolves with the time, or null
+  return new Promise(res => { const d = m.el.duration || 3, a = t0 == null ? d / 2 : t0;
+    ask('라이브 사진 순간 고르기', '', [['취소', false, () => res(null)], ['이 순간으로 사진 만들기', true, () => res(+$('livePickR').value / 100)]],
+      `<p class="hint" style="margin:0 0 8px">막대를 움직여 눈 뜨고 예쁘게 나온 순간을 골라주세요. 가운데가 아이폰이 고른 대표 사진에 가까워요.</p><video id="livePickV" muted playsinline style="width:100%;max-height:52vh;background:#000;border-radius:8px;display:block"></video><input id="livePickR" type="range" min="0" max="${Math.round(d * 100)}" value="${Math.round(a * 100)}" style="width:100%;margin-top:8px" aria-label="사진으로 만들 순간">`);
+    const v = $('livePickV'), r = $('livePickR'); v.src = m.url; v.addEventListener('loadeddata', () => { v.currentTime = a; }, { once: true }); r.oninput = () => { v.currentTime = +r.value / 100; }; }); }
+async function liveToPhoto(s, i, t) { // swap the clip in slot i for a still, keeping its position and look settings
+  const slot = s.media[i], src = slot.liveSrc ? await liveSrcMedia(slot.liveSrc) : media[slot.id]; if (!src) { toast('원본 라이브 영상을 찾지 못했어요'); return false; }
+  const jpg = await liveFrame(src, t); if (!jpg) return false;
+  const r = await importFileRaw(new File([jpg], 'live.jpg', { type: 'image/jpeg' })), n = { ...slot, id: r.id, t: 'image', liveSrc: slot.liveSrc || slot.id, liveT: t == null ? (src.el.duration || 0) / 2 : t };
+  ['vs', 've', 'hold', 'vol', 'mute'].forEach(k => delete n[k]); s.media[i] = n; touch(s.id); queueThumb(s.id); return true; }
+const importFileRaw = importFile;
+let liveAsk = null, liveAskAt = 0;
+function liveDecision() { // asked once per upload batch
+  if (liveAsk && Date.now() - liveAskAt < 15000) { liveAskAt = Date.now(); return liveAsk; }
+  liveAskAt = Date.now(); return liveAsk = new Promise(res => ask('라이브 사진이 들어왔어요', '', [['영상 그대로 넣기', false, () => res(false)], ['사진으로 바꿔 넣기', true, () => res(true)]],
+    `<p>3초 이하의 짧은 영상은 대부분 아이폰 ‘라이브 사진’이에요. 영상으로 넣으면 사진이 혼자 움직이거나 흔들려 보여요.</p><p class="hint">사진으로 바꾸면 대표 사진(가운데 순간)으로 들어가고, 나중에 장면 편집에서 ‘라이브 순간 다시 고르기’로 바꿀 수 있어요.</p>`)); }
+importFile = async function (file) { const r = await importFileRaw(file); if (r.t !== 'video' || !isLiveClip(media[r.id])) return r;
+  if (!(await liveDecision())) return r;
+  try { const jpg = await liveFrame(media[r.id]); if (!jpg) return r; const p = await importFileRaw(new File([jpg], 'live.jpg', { type: 'image/jpeg' })); return { ...p, liveSrc: r.id, liveT: (media[r.id].el.duration || 0) / 2 }; } catch (e) { return r; } };
+{ const orig = buildSlots; buildSlots = function (s) { orig(s);
+  s.media.forEach((slot, i) => { const m = slot.id && media[slot.id], btn = document.querySelector(`#slots .slot-btn[data-si="${i}"]`), d = btn && btn.closest('.slot'); if (!d || !m) return;
+    if (isLiveClip(m)) { const others = project.scenes.reduce((n, sc) => n + sc.media.filter(x => x.id && isLiveClip(media[x.id])).length, 0);
+      const box = document.createElement('div'); box.style.cssText = 'margin-top:8px;padding:8px;border:1px dashed var(--line);border-radius:8px';
+      box.innerHTML = `<p class="hint" style="margin:0 0 6px">${m.el.duration.toFixed(1)}초짜리 짧은 영상이라 아이폰 라이브 사진 같아요.</p><button class="btn small" data-lv1 style="width:100%">사진으로 바꾸기 (대표 순간)</button><button class="btn small" data-lv2 style="width:100%;margin-top:6px">순간 골라서 사진으로</button>${others > 1 ? `<button class="btn small" data-lvall style="width:100%;margin-top:6px">프로젝트의 라이브 사진 ${others}개 모두 사진으로</button>` : ''}`;
+      d.appendChild(box);
+      box.querySelector('[data-lv1]').onclick = async e => { e.target.disabled = true; if (await liveToPhoto(s, i)) { sceneChanged(s); buildSlots(s); toast('사진으로 바꿨어요'); } };
+      box.querySelector('[data-lv2]').onclick = async () => { const t = await livePickDialog(m); if (t == null) return; if (await liveToPhoto(s, i, t)) { sceneChanged(s); buildSlots(s); toast('고른 순간으로 사진을 만들었어요'); } };
+      const all = box.querySelector('[data-lvall]'); if (all) all.onclick = async () => { all.disabled = true; let n = 0; for (const sc of project.scenes) for (let k = 0; k < sc.media.length; k++) { const x = sc.media[k]; if (x.id && isLiveClip(media[x.id])) { all.textContent = `바꾸는 중… ${++n}/${others}`; try { await liveToPhoto(sc, k); } catch (er) { } } }
+        sceneChanged(s); buildSlots(s); toast(`라이브 사진 ${n}개를 사진으로 바꿨어요`); };
+    } else if (m.type === 'image' && slot.liveSrc) {
+      const b = document.createElement('button'); b.className = 'btn small'; b.style.cssText = 'width:100%;margin-top:6px'; b.textContent = '라이브 순간 다시 고르기'; d.appendChild(b);
+      b.onclick = async () => { const src = await liveSrcMedia(slot.liveSrc); if (!src) { toast('원본 라이브 영상이 없어서 다시 고를 수 없어요'); return; } const t = await livePickDialog(src, slot.liveT); if (t == null) return; if (await liveToPhoto(s, i, t)) { sceneChanged(s); buildSlots(s); toast('사진을 바꿨어요'); } };
+    } }); }; }
 /* ---- type 9 revisions from a customer's feedback ---- */
 // 1) two photos in the "three in a row" scene get bigger boxes
 { const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
@@ -10440,7 +10486,8 @@ function sceneAt(T) {
   for (let i = timeline.length - 1; i >= 0; i--) if (T >= timeline[i].start) return i;
   return 0;
 }
-const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' || tr === 'bars' ? 1.4 : tr === 'blur' || tr === 'push' || tr === 'rise' ? 1.1 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
+const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'dissolve'; if (tr === 'cut') return 0; if (tr === 'slide' && project.scenes[i].layout === 'igstories') return Math.min(1.6, timeline[i].dur * 0.35); // stories swipe over slowly (a fast full-screen move breaks up in the encoded video)
+  return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' || tr === 'bars' ? 1.4 : tr === 'blur' || tr === 'push' || tr === 'rise' ? 1.1 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
 function lyricAt(T) {
   if (!project.lyricsOn) return null;
   for (const l of project.lyrics) if ((l.text || l.sub) && T >= l.start && T < l.end) return l;
@@ -11622,6 +11669,7 @@ async function restore() {
   }
   project.scenes.forEach(s => s.media.forEach((m, k) => { if (m.id && !media[m.id]) s.media[k] = { id: null }; }));
   const keys = (await idbKeys()) || [];
+  project.scenes.forEach(s => s.media.forEach(m => m.liveSrc && ids.add(m.liveSrc))); // keep a Live Photo's original clip so its moment can be picked again
   keys.filter(k => typeof k === 'string' && k.startsWith('media:') && !ids.has(k.slice(6))).forEach(k => idbDel(k));
   await restoreSfxFromIDB();
   const a = await idbGet('audio');
@@ -11775,7 +11823,7 @@ async function pickVideoCfg(S) {
   const w = CROP ? CROP.w : W * S, h = CROP ? CROP.h : H * S;
   const codecs = S > 1 ? ['avc1.640034', 'avc1.640033', 'avc1.4d0034', 'avc1.4d0033'] : ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640029'];
   for (const codec of codecs) for (const hw of ['prefer-hardware', 'no-preference']) {
-    const cfg = { codec, width: w, height: h, bitrate: S > 1 ? 24e6 : 8e6, framerate: 30, hardwareAcceleration: hw, avc: { format: 'avc' } };
+    const cfg = { codec, width: w, height: h, bitrate: S > 1 ? 24e6 : 14e6, framerate: 30, hardwareAcceleration: hw, avc: { format: 'avc' } };
     try { const r = await VideoEncoder.isConfigSupported(cfg); if (r.supported) return cfg; } catch (e) {}
   }
   return null;
