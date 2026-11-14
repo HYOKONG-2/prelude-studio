@@ -9836,7 +9836,7 @@ Object.assign(LAYOUTS, {
       txt(c, fill(s.texts.date), 960, 170, IGF(34, 500), 'rgba(255,255,255,.9)', fade(t, 0, 0.6), { k: 'date' }); txt(c, fill(s.texts.time), 960, 300, IGF(180, 600), '#fff', fade(t, 0, 0.6), { k: 'time' });
       // one line: the banner widens to the message, and the text shrinks only if it would still not fit
       const msg = fill(s.texts.msg); c.save(); c.font = IGF(28, 400); const mw0 = c.measureText(msg).width; c.restore();
-      const bw = Math.min(1760, Math.max(1040, mw0 + 190)), mfs = Math.min(28, Math.floor(28 * (bw - 190) / Math.max(1, mw0))), k = backOut(clamp((t - 1.0) / 0.6)), bx = 960 - bw / 2, by = 430 - (1 - k) * 260, bh = 150;
+      const bw = Math.min(1760, Math.max(1040, mw0 + 190)), mfs = Math.min(28, Math.floor(28 * (bw - 190) / Math.max(1, mw0))), nSp = +s.opts.nspd || 0.9, nAt = Math.max(0, Math.min(+(s.opts.nat || 1.2), d - nSp - 0.9)) /* when the banner arrives and how long it takes to drop in (set in the scene options); always settles before the fingertip taps it */, k = backOut(clamp((t - nAt) / nSp)), bx = 960 - bw / 2, by = 430 - (1 - k) * 260, bh = 150;
       if (k > 0) { c.save(); c.globalAlpha = clamp(k * 1.5); c.fillStyle = 'rgba(245,245,247,.88)'; c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 30 * R.S; rr(c, bx, by, bw, bh, 34); c.fill(); c.shadowColor = 'transparent';
         const g = c.createLinearGradient(bx + 30, by + 105, bx + 110, by + 25); g.addColorStop(0, '#F9CE34'); g.addColorStop(0.5, '#EE2A7B'); g.addColorStop(1, '#6228D7'); c.fillStyle = g; rr(c, bx + 30, by + 35, 80, 80, 20); c.fill();
         c.strokeStyle = '#fff'; c.lineWidth = 6; rr(c, bx + 48, by + 53, 44, 44, 13); c.stroke(); c.beginPath(); c.arc(bx + 70, by + 75, 11, 0, Math.PI * 2); c.stroke();
@@ -10241,6 +10241,11 @@ TEMPLATES.MID2 = {
     sc[1].tr = 'zoom'; sc.forEach(x => { if (x.layout === 'igstories') x.count = 'auto'; });
     return baseProj('MID2', sc, { lyricFx: '', outCrop: 956 }); }
 };
+// lock-screen notification: the user picks when it arrives and how fast it drops in
+LAYOUTS.ignotify.opts = [...LAYOUTS.ignotify.opts, ['nat', '알림 뜨는 시점', '1.2'], ['nspd', '알림 내려오는 속도', '0.9']];
+LAYOUTS.ignotify.optSelects = { ...(LAYOUTS.ignotify.optSelects || {}),
+  nat: [['1.2', '기본 (장면 시작 1.2초 뒤)'], ['0.3', '바로 (0.3초 뒤)'], ['0.6', '0.6초 뒤'], ['0.9', '0.9초 뒤'], ['1.5', '1.5초 뒤'], ['2', '2초 뒤'], ['2.5', '2.5초 뒤'], ['3', '3초 뒤'], ['3.5', '3.5초 뒤'], ['4', '4초 뒤']],
+  nspd: [['0.9', '기본 (0.9초)'], ['0.6', '빠르게 (0.6초)'], ['1.2', '천천히 (1.2초)'], ['1.6', '아주 천천히 (1.6초)']] };
 /* ---- type 9 revisions from a customer's feedback ---- */
 // 1) two photos in the "three in a row" scene get bigger boxes
 { const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
