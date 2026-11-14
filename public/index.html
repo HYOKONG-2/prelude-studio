@@ -292,7 +292,7 @@ body.dragging .slot-btn,body.dragging .card{border-color:var(--accent)}
 
 <div class="lobby" id="start" hidden>
   <div class="lobby-in" style="max-width:1080px">
-    <div class="brand"><b>Prelude</b><span>식전영상 에디터</span></div>
+    <div class="brand"><b>Prelude</b><span>식전·식중영상 에디터</span></div>
     <div id="startResume"></div>
     <h2 class="st-h">새로 만들기</h2>
     <div class="tpl-grid" id="tplGrid"></div>
@@ -5043,8 +5043,8 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       dgBg(c, t);
       daisyBunch(c, t, 170, 1, 0.2); daisyBunch(c, t, 1750, -1, 0.35);
-      shapedPhoto(c, s, 0, 680, 190, 560, 720, t, d, k => archPath(c, 680 + k, 190 + k, 560 - 2 * k, 720 - 2 * k), { at: 0.1, bw: s.opts.bw });
-      txt(c, fill(s.texts.title), 960, 110, PACI(76), DG.cocoa, fade(t, 0.6, 0.8), { k: 'title', rise: 10 });
+      shapedPhoto(c, s, 0, 600, 140, 720, 800, t, d, k => archPath(c, 600 + k, 140 + k, 720 - 2 * k, 800 - 2 * k), { at: 0.1, bw: s.opts.bw });
+      txt(c, fill(s.texts.title), 960, 76, PACI(76), DG.cocoa, fade(t, 0.6, 0.8), { k: 'title', rise: 10 });
       txt(c, fill(s.texts.n1), 430, 560, JUA(72), DG.cocoa, fade(t, 1.0, 0.7), { k: 'n1', rise: 8 });
       txt(c, fill(s.texts.n2), 1490, 560, JUA(72), DG.cocoa, fade(t, 1.2, 0.7), { k: 'n2', rise: 8 });
       const ha = pop(t, 1.4, 0.5); if (ha > 0) { c.save(); c.translate(430, 470); c.scale(ha, ha); c.fillStyle = DG.coral; heartShape(c, 0, 0, 30); c.fill(); c.restore(); c.save(); c.translate(1490, 470); c.scale(ha, ha); c.fillStyle = DG.coral; heartShape(c, 0, 0, 30); c.fill(); c.restore(); }
@@ -5057,15 +5057,15 @@ Object.assign(LAYOUTS, {
     opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       dgBg(c, t);
-      [[560, 0, 'n1', 'e1', 0.1], [1360, 1, 'n2', 'e2', 0.4]].forEach(([cx, si, kn, ke, st]) => {
-        shapedPhoto(c, s, si, cx - 300, 170, 600, 600, t, d, k => scallopCircle(c, cx, 470, 300 - k, 18), { at: st, bw: s.opts.bw, bw2: 18 });
-        txt(c, fill(s.texts[kn]), cx, 860, JUA(76), DG.cocoa, fade(t, st + 0.6, 0.6), { k: kn, rise: 8 });
-        txt(c, fill(s.texts[ke]), cx, 935, PACI(40), DG.coral, fade(t, st + 0.8, 0.6), { k: ke });
+      [[510, 0, 'n1', 'e1', 0.1], [1410, 1, 'n2', 'e2', 0.4]].forEach(([cx, si, kn, ke, st]) => {
+        shapedPhoto(c, s, si, cx - 345, 105, 690, 690, t, d, k => scallopCircle(c, cx, 450, 345 - k, 20), { at: st, bw: s.opts.bw, bw2: 18 });
+        txt(c, fill(s.texts[kn]), cx, 885, JUA(76), DG.cocoa, fade(t, st + 0.6, 0.6), { k: kn, rise: 8 });
+        txt(c, fill(s.texts[ke]), cx, 955, PACI(40), DG.coral, fade(t, st + 0.8, 0.6), { k: ke });
       });
       const p = ease(clamp((t - 0.9) / 0.8));
-      if (p > 0) { c.save(); c.strokeStyle = DG.sage; c.lineWidth = 4; c.setLineDash([2, 14]); c.lineCap = 'round'; c.beginPath(); c.moveTo(870, 470); c.lineTo(870 + 180 * p, 470); c.stroke(); c.restore(); }
-      daisy(c, 960, 470, 46, t * 0.3, clamp((t - 1.3) / 0.6));
-      txt(c, fill(s.texts.amp), 960, 360, PACI(80), DG.coral, fade(t, 1.4, 0.6), { k: 'amp' });
+      if (p > 0) { c.save(); c.strokeStyle = DG.sage; c.lineWidth = 4; c.setLineDash([2, 14]); c.lineCap = 'round'; c.beginPath(); c.moveTo(880, 450); c.lineTo(880 + 160 * p, 450); c.stroke(); c.restore(); }
+      daisy(c, 960, 450, 40, t * 0.3, clamp((t - 1.3) / 0.6));
+      txt(c, fill(s.texts.amp), 960, 340, PACI(80), DG.coral, fade(t, 1.4, 0.6), { k: 'amp' });
     }
   },
   dgperson: {
@@ -5073,9 +5073,9 @@ Object.assign(LAYOUTS, {
     fields: [['en', '영문 이름', '{GROOM}'], ['name', '이름', '신랑 {신랑}'], ['k1', '키워드 1', '웃음이 많은'], ['k2', '키워드 2', '다정한 말투'], ['k3', '키워드 3', '든든한 내 편'], ['quote', '말풍선 한 마디', '평생 웃게 해줄게']],
     opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 560 : 1360, 1045, 'light'],
     draw(c, s, t, d) {
-      dgBg(c, t); const f = s.opts.flip, px = f ? 1120 : 200, tx = f ? 180 : 1000;
-      shapedPhoto(c, s, 0, px, 80, 600, 920, t, d, k => { c.beginPath(); rr(c, px + k, 80 + k, 600 - 2 * k, 920 - 2 * k, 300 - k); }, { at: 0.05, bw: s.opts.bw });
-      daisy(c, f ? px + 40 : px + 560, 130, 50, 0.3, clamp((t - 0.7) / 0.5));
+      dgBg(c, t); const f = s.opts.flip, px = f ? 1060 : 120, tx = f ? 160 : 1000;
+      shapedPhoto(c, s, 0, px, 50, 740, 960, t, d, k => { c.beginPath(); rr(c, px + k, 50 + k, 740 - 2 * k, 960 - 2 * k, 370 - k); }, { at: 0.05, bw: s.opts.bw });
+      daisy(c, f ? px + 60 : px + 680, 120, 50, 0.3, clamp((t - 0.7) / 0.5));
       txt(c, fill(s.texts.en), tx, 230, PACI(56), DG.coral, fade(t, 0.5, 0.6), { align: 'left', k: 'en' });
       txt(c, fill(s.texts.name), tx, 330, JUA(100), DG.cocoa, fade(t, 0.7, 0.6), { align: 'left', k: 'name', rise: 8 });
       const cols = [DG.butter, '#DDE8D3', '#F8D6CF'];
@@ -5095,17 +5095,17 @@ Object.assign(LAYOUTS, {
     name: '데이지 아치 창문 두 장', slots: 2, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       dgBg(c, t);
-      (autoN(s, 2) === 1 ? [[640, 0, 0.05]] : [[230, 0, 0.05], [1050, 1, 0.35]]).forEach(([x, si, st]) => shapedPhoto(c, s, si, x, 110, 640, 820, t, d, k => archPath(c, x + k, 110 + k, 640 - 2 * k, 820 - 2 * k), { at: st, bw: s.opts.bw }));
-      daisyBunch(c, t, 120, 1, 0.8); daisyBunch(c, t, 1800, -1, 0.9);
-      daisy(c, 960, 160, 40, 0.2, clamp((t - 1.0) / 0.5));
+      (autoN(s, 2) === 1 ? [[560, 0, 0.05]] : [[140, 0, 0.05], [1020, 1, 0.35]]).forEach(([x, si, st]) => shapedPhoto(c, s, si, x, 60, 760, 930, t, d, k => archPath(c, x + k, 60 + k, 760 - 2 * k, 930 - 2 * k), { at: st, bw: s.opts.bw }));
+      daisyBunch(c, t, 60, 1, 0.8); daisyBunch(c, t, 1860, -1, 0.9);
+      daisy(c, 960, 140, 40, 0.2, clamp((t - 1.0) / 0.5));
     }
   },
   dgscallop: {
     name: '데이지 물결 테두리 큰 사진', slots: 1, weight: 5, fields: [['tag', '아래 라벨', 'with love']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       dgBg(c, t);
-      shapedPhoto(c, s, 0, 230, 90, 1460, 860, t, d, k => scallopPath(c, 230 + k, 90 + k, 1460 - 2 * k, 860 - 2 * k, 26), { at: 0.05, bw: s.opts.bw, borderCol: '#FFFFFF', bw2: 22 });
-      daisy(c, 250, 120, 70, 0.4, clamp((t - 0.7) / 0.5)); daisy(c, 1670, 930, 60, 1.1, clamp((t - 0.9) / 0.5));
+      shapedPhoto(c, s, 0, 140, 60, 1640, 900, t, d, k => scallopPath(c, 140 + k, 60 + k, 1640 - 2 * k, 900 - 2 * k, 26), { at: 0.05, bw: s.opts.bw, borderCol: '#FFFFFF', bw2: 22 });
+      daisy(c, 165, 90, 70, 0.4, clamp((t - 0.7) / 0.5)); daisy(c, 1755, 930, 60, 1.1, clamp((t - 0.9) / 0.5));
       if (fill(s.texts.tag)) dgPill(c, fill(s.texts.tag), 960, 990, DG.butter, t, 1.1, 'tag');
     }
   },
@@ -5113,7 +5113,7 @@ Object.assign(LAYOUTS, {
     name: '데이지 둥근 사진 여섯 장', slots: 6, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       dgBg(c, t);
-      const n = autoN(s, 6), cells = gridCells(n, 140, 100, 1640, 880, 40);
+      const n = autoN(s, 6), cells = gridCells(n, 60, 50, 1800, 950, 28);
       for (let i = 0; i < n; i++) {
         const [x, y, cw, chh] = cells[i];
         const a = pop(t, 0.1 + i * 0.15, 0.6); if (a <= 0.001) continue;
@@ -5128,8 +5128,8 @@ Object.assign(LAYOUTS, {
     name: '데이지 큰 사진 + 손글씨 문장', slots: 1, weight: 5,
     fields: [['word', '위 영문', 'sweet days'], ['text', '문장', '너와 함께라서\n평범한 하루도\n특별해졌어', true]], opts: [['flip', '사진 오른쪽', false], ['bw', '흑백', false]], cap: s => [s.opts.flip ? 520 : 1400, 1045, 'light'],
     draw(c, s, t, d) {
-      dgBg(c, t); const f = s.opts.flip, px = f ? 960 : 100, tx = f ? 480 : 1440;
-      shapedPhoto(c, s, 0, px, 100, 860, 880, t, d, k => { c.beginPath(); rr(c, px + k, 100 + k, 860 - 2 * k, 880 - 2 * k, 48); }, { at: 0.05, bw: s.opts.bw });
+      dgBg(c, t); const f = s.opts.flip, px = f ? 860 : 60, tx = f ? 450 : 1470;
+      shapedPhoto(c, s, 0, px, 50, 1000, 960, t, d, k => { c.beginPath(); rr(c, px + k, 50 + k, 1000 - 2 * k, 960 - 2 * k, 48); }, { at: 0.05, bw: s.opts.bw });
       txt(c, fill(s.texts.word), tx, 290, PACI(64), DG.coral, fade(t, 0.6, 0.6), { k: 'word', rise: 8 });
       block(c, fill(s.texts.text), tx, 560, JUA(70), 92, DG.cocoa, t, 0.9, d * 0.45, true, 'text');
       const p = ease(clamp((t - 1.6) / 0.6)); if (p > 0) { c.save(); c.strokeStyle = DG.butter; c.lineWidth = 8; c.lineCap = 'round'; c.beginPath(); c.moveTo(tx - 200, 740); c.lineTo(tx - 200 + 400 * p, 740); c.stroke(); c.restore(); }
@@ -5155,13 +5155,13 @@ Object.assign(LAYOUTS, {
       const m = /(\d{4})\D+(\d{1,2})\D+(\d{1,2})/.exec(fill(s.texts.since) || ''), pd = parseKoDate(project.info.dateKo);
       let days = 1000; if (m) { const a = new Date(+m[1], +m[2] - 1, +m[3]), b = pd ? new Date(pd.y, pd.mo - 1, pd.d) : new Date(); days = Math.max(1, Math.round((b - a) / 86400000)); }
       const n = Math.round(days * ease(clamp((t - 0.6) / 1.8)));
-      shapedPhoto(c, s, 0, 150, 300, 420, 420, t, d, k => scallopCircle(c, 360, 510, 210 - k, 14), { at: 0.1, bw: s.opts.bw });
-      shapedPhoto(c, s, 1, 1350, 300, 420, 420, t, d, k => scallopCircle(c, 1560, 510, 210 - k, 14), { at: 0.3, bw: s.opts.bw });
+      shapedPhoto(c, s, 0, 50, 220, 580, 580, t, d, k => scallopCircle(c, 340, 510, 290 - k, 16), { at: 0.1, bw: s.opts.bw });
+      shapedPhoto(c, s, 1, 1290, 220, 580, 580, t, d, k => scallopCircle(c, 1580, 510, 290 - k, 16), { at: 0.3, bw: s.opts.bw });
       txt(c, fill(s.texts.label), 960, 330, JUA(54), DG.cocoa, fade(t, 0.3, 0.6), { k: 'label' });
-      txt(c, n.toLocaleString() + fill(s.texts.unit), 960, 520, JUA(190), DG.cocoa, fade(t, 0.5, 0.5), { k: 'since' });
+      txt(c, n.toLocaleString() + fill(s.texts.unit), 960, 520, JUA(170), DG.cocoa, fade(t, 0.5, 0.5), { k: 'since' });
       txt(c, fill(s.texts.sub), 960, 690, PACI(54), DG.coral, fade(t, 2.2, 0.6), { k: 'sub' });
       // flowers grow under the photos so the counter and the line below stay clear
-      c.save(); c.translate(0, 80); daisyBunch(c, t, 360, 1, 0.72); daisyBunch(c, t, 1560, -1, 0.72); c.restore();
+      c.save(); c.translate(0, 110); daisyBunch(c, t, 340, 1, 0.72); daisyBunch(c, t, 1580, -1, 0.72); c.restore();
     }
   },
   dgtext: {
@@ -5180,10 +5180,10 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       dgBg(c, t);
       daisyBunch(c, t, 170, 1, 0.2); daisyBunch(c, t, 1750, -1, 0.3);
-      shapedPhoto(c, s, 0, 770, 70, 380, 480, t, d, k => archPath(c, 770 + k, 70 + k, 380 - 2 * k, 480 - 2 * k), { at: 0.1, bw: s.opts.bw });
-      txt(c, fill(s.texts.title), 960, 660, PACI(110), DG.cocoa, fade(t, 0.7, 0.9), { k: 'title', rise: 10 });
-      block(c, fill(s.texts.text), 960, 820, JUA(46), 64, DG.cocoa, t, 1.3, 1, false, 'text');
-      dgPill(c, fill(s.texts.names), 960, 980, DG.butter, t, 2.0, 'names');
+      shapedPhoto(c, s, 0, 690, 40, 540, 585, t, d, k => archPath(c, 690 + k, 40 + k, 540 - 2 * k, 585 - 2 * k), { at: 0.1, bw: s.opts.bw });
+      txt(c, fill(s.texts.title), 960, 715, PACI(110), DG.cocoa, fade(t, 0.7, 0.9), { k: 'title', rise: 10 });
+      block(c, fill(s.texts.text), 960, 855, JUA(44), 60, DG.cocoa, t, 1.3, 1, false, 'text');
+      dgPill(c, fill(s.texts.names), 960, 985, DG.butter, t, 2.0, 'names');
       c.save(); c.fillStyle = '#FFFFFF'; for (let i = 0; i < 26; i++) { const x = rnd(i, 61) * W + Math.sin(t + i) * 30, y = ((rnd(i, 62) * (H + 40)) + t * (40 + rnd(i, 63) * 40)) % (H + 40) - 20; c.save(); c.translate(x, y); c.rotate(t + i); c.globalAlpha = 0.8; c.beginPath(); c.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); c.fill(); c.restore(); } c.restore();
     }
   }
@@ -5657,22 +5657,22 @@ Object.assign(LAYOUTS, {
     name: '데이지 꽃 모양 사진', slots: 1, weight: 5, fields: [['word', '아래 영문', 'my sunshine']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       dgBg(c, t);
-      const cx = 960, cy = 480, R0 = 330, k = ease(clamp(t / 0.9));
+      const cx = 960, cy = 450, R0 = 400, k = ease(clamp(t / 0.9));
       const petalPath = rad => { c.beginPath(); for (let i = 0; i <= 360; i++) { const a = i / 360 * Math.PI * 2, r = rad * (0.86 + 0.14 * Math.abs(Math.cos(a * 4))); const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.closePath(); };
       c.save(); c.translate(cx, cy); c.rotate((1 - k) * -0.6); c.scale(k, k); c.translate(-cx, -cy);
       c.save(); c.shadowColor = 'rgba(120,90,60,.22)'; c.shadowBlur = 24 * R.S; c.fillStyle = '#FFFFFF'; petalPath(R0 + 22); c.fill(); c.restore();
       c.save(); petalPath(R0); c.clip(); const ho = hitOn; hitOn = false; coverIn(c, s, 0, cx - R0, cy - R0, R0 * 2, R0 * 2, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); hitOn = ho; c.restore();
       c.restore(); addHit({ type: 'media', si: 0, x: cx - R0, y: cy - R0, w: R0 * 2, h: R0 * 2, oy: 0 });
-      txt(c, fill(s.texts.word), 960, 900, PACI(70), DG.cocoa, fade(t, 0.9, 0.6), { k: 'word', rise: 8 });
-      daisy(c, 520, 300, 50, 0.3, clamp((t - 0.8) / 0.5)); daisy(c, 1400, 700, 56, 1.1, clamp((t - 1.0) / 0.5)); daisy(c, 1430, 250, 34, 0.7, clamp((t - 1.2) / 0.5));
+      txt(c, fill(s.texts.word), 960, 965, PACI(70), DG.cocoa, fade(t, 0.9, 0.6), { k: 'word', rise: 8 });
+      daisy(c, 420, 260, 56, 0.3, clamp((t - 0.8) / 0.5)); daisy(c, 1520, 740, 60, 1.1, clamp((t - 1.0) / 0.5)); daisy(c, 1530, 210, 38, 0.7, clamp((t - 1.2) / 0.5));
     }
   },
   dgpills: {
     name: '데이지 길쭉한 사진 세 장 + 꽃 사슬', slots: 3, weight: 5, fields: [], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       dgBg(c, t);
-      ({ 1: [[760, 70]], 2: [[480, 100], [1040, 100]], 3: [[200, 120], [760, 70], [1320, 120]] })[autoN(s, 3)].forEach(([x, y], i) => shapedPhoto(c, s, i, x, y, 400, 840, t, d, k => { c.beginPath(); rr(c, x + k, y + k, 400 - 2 * k, 840 - 2 * k, 200 - k); }, { at: 0.1 + i * 0.25, bw: s.opts.bw }));
-      for (let i = 0; i < 9; i++) daisy(c, 120 + i * 210, 990 + Math.sin(i) * 12, 30, i, clamp((t - 0.9 - i * 0.07) / 0.5));
+      ({ 1: [[680, 40]], 2: [[360, 60], [1000, 60]], 3: [[110, 80], [700, 40], [1290, 80]] })[autoN(s, 3)].forEach(([x, y], i) => shapedPhoto(c, s, i, x, y, 520, 880, t, d, k => { c.beginPath(); rr(c, x + k, y + k, 520 - 2 * k, 880 - 2 * k, 260 - k); }, { at: 0.1 + i * 0.25, bw: s.opts.bw }));
+      for (let i = 0; i < 9; i++) daisy(c, 120 + i * 210, 1005 + Math.sin(i) * 10, 28, i, clamp((t - 0.9 - i * 0.07) / 0.5));
     }
   },
   /* E · cinematic */
@@ -8351,13 +8351,13 @@ Object.assign(LAYOUTS, {
           const ho = hitOn; hitOn = false; c.save(); rr(c, -IW / 2, -PH / 2 + 22, IW, IH, 8); c.clip(); coverIn(c, s, i, -IW / 2, -PH / 2 + 22, IW, IH, t, { bw: s.opts.bw, zoom: 1.03 }); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(230,170,100,.5)'; c.fillRect(-IW / 2, -PH / 2 + 22, IW, IH); c.restore(); hitOn = ho; c.restore(); addHit({ type: 'media', si: i, x: cx - IW / 2, y: cy - PH / 2 + 22, w: IW, h: IH, oy: 0 }); }); });
         block(c, fill(s.texts.text), 960, 950, KSERIF(54), 70, SA.ink, t, 0.8, 1, false, 'text');
       } else if (fr === 'slide') {
-        if (n >= 2) { slideMount(c, s, 0, 320, 520, 540, -0.035, t, d, fade(t, 0, 0.8)); slideMount(c, s, 1, 880, 540, 540, 0.03, t, d, fade(t, 0.4, 0.8)); }
-        else slideMount(c, s, 0, 640, 520, 900, -0.025, t, d, fade(t, 0, 0.8));
-        block(c, fill(s.texts.text), 1460, 520, KSERIF(52), 80, SA.ink, t, 0.7, 1, false, 'text');
+        if (n >= 2) { slideMount(c, s, 0, 285, 520, 480, -0.035, t, d, fade(t, 0, 0.8)); slideMount(c, s, 1, 790, 540, 480, 0.03, t, d, fade(t, 0.4, 0.8)); }
+        else slideMount(c, s, 0, 590, 520, 820, -0.025, t, d, fade(t, 0, 0.8));
+        { const f = samsgFit(c, fill(s.texts.text), 52, 700); block(c, fill(s.texts.text), 1470, 520, KSERIF(f), Math.round(f * 1.55), SA.ink, t, 0.7, 1, false, 'text'); } // keep a clear gap from the photos
       } else if (fr === 'keyline') {
-        if (n >= 2) { keyline(c, s, 0, 100, 190, 450, 640, t, d, { a: fade(t, 0, 0.8) }); keyline(c, s, 1, 590, 250, 450, 640, t, d, { a: fade(t, 0.35, 0.8) }); }
-        else keyline(c, s, 0, 200, 170, 760, 740, t, d, { a: fade(t, 0, 0.8) });
-        block(c, fill(s.texts.text), 1400, 540, KSERIF(54), 80, SA.ink, t, 0.7, 1, false, 'text');
+        if (n >= 2) { keyline(c, s, 0, 100, 200, 410, 600, t, d, { a: fade(t, 0, 0.8) }); keyline(c, s, 1, 550, 260, 410, 600, t, d, { a: fade(t, 0.35, 0.8) }); }
+        else keyline(c, s, 0, 160, 170, 760, 740, t, d, { a: fade(t, 0, 0.8) });
+        { const f = samsgFit(c, fill(s.texts.text), 54, 720); block(c, fill(s.texts.text), 1440, 540, KSERIF(f), Math.round(f * 1.5), SA.ink, t, 0.7, 1, false, 'text'); }
       } else if (fr === 'cinema') {
         cover(c, s, 0, 0, 138, W, 804, t, { bw: s.opts.bw, dark: true, zoom: 1.03 + 0.04 * clamp(t / d) }); c.fillStyle = 'rgba(0,0,0,.42)'; c.fillRect(0, 138, W, 804);
         noBg(() => block(c, fill(s.texts.text), 960, 540, KSERIF(60), 88, SA.ink, t, 0.7, 1, false, 'text'));
@@ -9855,7 +9855,7 @@ Object.assign(LAYOUTS, {
       igAvatar(c, s, 0, px + 40, y + 60, 20, t, false); txt(c, fill(s.texts.user), px + 72, y + 60, IGF(22, 600), '#fff', 1, { align: 'left', k: 'user' });
       const st = fill(s.texts.stk).split('\n')[cur] || ''; if (st) { const sk = backOut(clamp((lt - 0.3) / 0.45)); if (sk > 0) { c.save(); c.translate(px + w / 2, y + h * 0.62); c.rotate(-0.06); c.scale(sk, sk); c.font = IGF(40, 700); const tw = c.measureText(st).width + 50; c.fillStyle = '#fff'; rr(c, -tw / 2, -36, tw, 72, 14); c.fill(); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(st, 0, 2); c.restore(); } }
       c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 2; rr(c, px + 24, y + h - 84, w - 110, 56, 28); c.stroke(); txt(c, '메시지 보내기', px + 52, y + h - 56, IGF(22, 400), '#fff', 1, { align: 'left' }); igIcon(c, 'heart', px + w - 50, y + h - 56, 30, '#fff');
-      c.restore(); for (let i = 0; i < n; i++) addHit({ type: 'media', si: i, x: px, y, w, h, oy: 0 });
+      c.restore(); c.restore(); /* closes the clip and the fade-in save (one was left open, which broke the slide between stories) */ for (let i = 0; i < n; i++) addHit({ type: 'media', si: i, x: px, y, w, h, oy: 0 });
       if (cur < n - 1) igTap(c, px + w - 70, y + h / 2, t, (cur + 1) * seg - 0.35);
       const sideX = f ? 300 : 1060, lines = igWrap(c, fill(s.texts.side), IGF(46, 500), 700); lines.forEach((l, i) => txt(c, l, sideX, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 500), '#fff', fade(t, 0.8 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side', shadow: 'rgba(0,0,0,.4)', blur: 10 }));
     } },
@@ -10167,6 +10167,80 @@ importFile = async function (file) { const r = await importFileRaw(file); if (r.
       const b = document.createElement('button'); b.className = 'btn small'; b.style.cssText = 'width:100%;margin-top:6px'; b.textContent = '라이브 순간 다시 고르기'; d.appendChild(b);
       b.onclick = async () => { const src = await liveSrcMedia(slot.liveSrc); if (!src) { toast('원본 라이브 영상이 없어서 다시 고를 수 없어요'); return; } const t = await livePickDialog(src, slot.liveT); if (t == null) return; if (await liveToPhoto(s, i, t)) { sceneChanged(s); buildSlots(s); toast('사진을 바꿨어요'); } };
     } }); }; }
+/* ================= 식중영상 1타입: 러브 스토리 시네마 (love story from the first meeting to the wedding day; no parent-thanks scenes) ================= */
+TEMPLATES.MID1 = {
+  mid: true, code: '식중 1', badge: '식중영상 1타입',
+  name: '러브 스토리 시네마', desc: '처음 만난 날 → 함께한 계절 → 프러포즈 → 그리고 오늘, 네 챕터로 연애에서 결혼까지 이어지는 식중영상. 장면마다 짧은 자막으로 이야기가 흐르고, 부모님 감사 장면 없이 하객 감사 인사로 담백하게 마무리해요. 약 3분 30초',
+  tags: ['식중영상', '연애 → 웨딩', '챕터 4개', '하객 감사'],
+  preview: TEMPLATES.K ? TEMPLATES.K.preview : 0,
+  make: () => {
+    const p = TEMPLATES.K.make(); p.tpl = 'MID1';
+    const sc = p.scenes, open = sc.find(s => s.layout === 'saopen'); if (open) open.texts.kicker = 'OUR LOVE STORY';
+    // chapter titles, and a 4th chapter (the proposal) in front of the countdown card
+    const ch = sc.filter(s => s.layout === 'sachapter');
+    const CH = [['01', '처음 만난 날', 'The Beginning'], ['02', '함께한 계절', 'Our Seasons'], ['04', '그리고, 오늘', 'And Today']];
+    ch.forEach((s, i) => { if (CH[i]) Object.assign(s.texts, { num: CH[i][0], title: CH[i][1], en: CH[i][2] }); });
+    const dd = sc.findIndex(s => s.layout === 'sadday');
+    const c2 = sc.indexOf(ch[1]);
+    if (dd > 0 && c2 > 0) { const n = JSON.parse(JSON.stringify(ch[1])); n.id = uid(); Object.assign(n.texts, { num: '03', title: '프러포즈', en: 'The Promise' });
+      sc.splice(c2 + Math.ceil((dd - c2) * 0.7), 0, n); sc.find(s => s.layout === 'sadday').texts.text = '그리고, 우리는 부부가 되기로 했습니다'; }
+    // short story captions, chapter by chapter
+    const STORY = [['그날, 너를 처음 만났어', '어색한 인사가 설렘이 되던 날들', '너라서 하루가 특별해졌어'], ['함께라면 어디든 좋았던 계절', '다투고, 다시 웃으며 더 단단해진 우리', '그렇게 너는 나의 일상이 되었어'],
+      ['이 사람이라면, 평생도 짧겠다고', '“나랑 결혼해 줄래?”'], ['평생을 함께하자는 약속', '오늘, 우리는 부부가 됩니다']];
+    let chi = -1, k = 0; sc.forEach(s => { if (s.layout === 'sachapter') { chi++; k = 0; } else if (s.layout === 'saletter' && chi >= 0 && STORY[chi] && STORY[chi][k]) s.texts.sub = STORY[chi][k++];
+      if (s.texts && s.texts.sideL === 'chapter three') s.texts.sideL = 'chapter four'; });
+    // ending: thanks to everyone who came (nothing about parents)
+    const first = sc.findIndex(s => s.layout === 'samsg'), end = sc.findIndex(s => s.layout === 'saend');
+    if (first > 0 && end > first) {
+      const base = sc[first], MSG = [['처음 만난 그날부터\n오늘 이 자리까지', 'cinema'], ['서로의 가장 든든한 편이 되어\n같은 내일을 함께 걸어가겠습니다', 'slide'],
+        ['연인에서 부부가 되는 순간을 함께해 주신\n모든 분들께 진심으로 감사드립니다', 'full'], ['축하해 주신 따뜻한 마음 잊지 않고\n행복하게 잘 살겠습니다', 'full']];
+      const ms = MSG.map(([text, frame], i) => { const n = JSON.parse(JSON.stringify(base)); n.id = uid(); n.texts.text = text; n.opts.frame = frame; n.tr = i % 2 ? 'blur' : 'black'; return n; });
+      sc.splice(first, end - first, ...ms); }
+    p.trV2 = true; return p; }
+};
+// thank-you lines beside photos: shrink the type when a line would run into the photos
+function samsgFit(c, text, size, maxW) { c.save(); c.font = KSERIF(size); const w = Math.max(1, ...String(text || '').split('\n').map(l => c.measureText(l).width)); c.restore(); return w <= maxW ? size : Math.max(34, Math.floor(size * maxW / w)); }
+/* ================= 식중영상 2타입: 인스타 러브 스토리 (a shared couple account, told in order from the first meeting to the wedding) ================= */
+TEMPLATES.MID2 = {
+  mid: true, code: '식중 2', badge: '식중영상 2타입',
+  name: '인스타 러브 스토리', desc: '두 사람이 함께 쓴 커플 인스타 계정으로 보여주는 연애부터 결혼까지. 첫 만남 하이라이트 → 연애 피드 → 추억 카드·릴스 → 프러포즈 → 친구들의 축하 댓글 → 웨딩 스토리 → 하객 감사 댓글 순서로 이야기가 흘러요. 약 3분, 1920×956 출력 지원',
+  tags: ['식중영상', '인스타 UI', '연애 → 웨딩', '하객 감사'],
+  preview: TEMPLATES.IG ? TEMPLATES.IG.preview : 0,
+  make: () => {
+    const U = 'our.love.story', PF = { user: U, name: '연애부터 결혼까지, 우리의 기록', bio: '처음 만난 날부터 오늘까지 ♡\n{날짜}, 우리 결혼합니다', posts: '214', hls: '첫만남\n프러포즈\n웨딩', overlay: '' };
+    const PRO = (move, tapwhat, w) => ['igprofile', { opts: { move, tapwhat }, texts: { ...PF } }, w];
+    const STS = (stk, w, o = {}) => ['igstories', { opts: { flip: false, ...o }, texts: { user: U, stk, side: '' } }, w];
+    const list = [
+      ['ignotify', { texts: { time: '12:00', date: '{날짜}', title: 'Instagram', msg: `${U}님이 새 게시물을 올렸습니다: 연애부터 결혼까지, 우리의 이야기 ♡` } }, 5.5],
+      PRO('hold', 'hl1', 7),
+      // chapter 1 — the first meeting
+      STS('처음 만난 날 🎞\n어색했던 첫인사\n두 번째 만남\n또 보고 싶다', 9),
+      ['igpost', { texts: { user: U, text: '처음 만난 날.\n어색하게 웃던 네 모습이\n아직도 생생해.\n\n그날부터 우리의\n이야기가 시작됐어.', date: '2019년 4월 13일', likes: '좋아요 2개' } }, 8],
+      // chapter 2 — dating
+      PRO('hold', 'p1', 4),
+      ['igfeedswipe', { opts: { per: '3', tapring: true }, texts: { user: U, caps: '우리의 첫 데이트\n벚꽃 아래에서\n여름 바다, 그리고 너', dates: '2019년 5월 4일\n2020년 4월 2일\n2020년 8월 15일' } }, 15],
+      ['igmemory', { opts: { flip: false }, texts: { ago: '3년 전 오늘', date: '2021년 10월 9일', side: '' } }, 6],
+      ['igreel', { texts: { user: U, cap: '우리의 첫 여행 ✈️', side: '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.', music: '♪ 우리의 노래' } }, 9],
+      PRO('hold', 'p2', 4),
+      ['igcarousel', { opts: { firstLong: false, tapring: false }, texts: { user: U, text: '다툰 날에도, 생일에도,\n눈 오는 날에도\n결국 우리는 같이 웃고 있었어.', date: '2022년 12월 24일' } }, 11],
+      ['igfeedswipe', { opts: { per: '3', tapring: false }, texts: { user: U, caps: '함께 맞은 네 번째 봄\n너의 생일 🎂\n올해도 같이 본 첫눈', dates: '2023년 4월 8일\n2023년 9월 17일\n2023년 12월 2일' } }, 15],
+      // chapter 3 — the proposal
+      PRO('hold', 'hl2', 4),
+      STS('그날 💍\n떨리던 순간\n“응”\n♡', 9),
+      ['igcarousel', { opts: { firstLong: true, tapring: false }, texts: { user: U, text: '평생 함께하자는 약속.\n떨리는 목소리로 건넨 반지,\n그리고 너의 대답 “응” 💍', date: '2025년 6월 21일' } }, 13],
+      ['igcomments', { texts: { user: U, text: '우리, 결혼합니다 💍', cmts: 'friend.jiwoo: 드디어!! 너무 축하해 🎉\nfriend.minseo: 둘이 정말 잘 어울려요 🤍\nfriend.hyunwoo: 결혼식 꼭 갈게, 행복하자!', date: '2025년 6월 22일' } }, 9],
+      // chapter 4 — the wedding
+      PRO('hold', 'hl3', 4),
+      STS('웨딩 촬영 📸\n우리 둘\n드레스 입은 너\n♡', 12),
+      STS('오늘, 결혼합니다 💍\n{날짜}\n평생\n함께', 12),
+      STS('든든한 편이 되어줄게\n같은 내일을\n함께 걸어가요\n♡', 12),
+      ['igcomments', { texts: { user: U, text: '오늘 이 자리를 빛내주신\n모든 분들께 감사드립니다.', cmts: `${U}: 바쁘신 와중에도 와주셔서 감사합니다 🙏\n${U}: 보내주신 축복 잊지 않을게요\n${U}: 예쁘게, 행복하게 잘 살겠습니다 ♡`, date: '{날짜}' } }, 10]
+    ];
+    const sc = list.map(([k, o, w]) => { const x = makeScene(k, o); x.weight = w; return x; });
+    sc.forEach((x, i) => { if (!i) return; const P = sc[i - 1]; x.tr = (P.layout === 'igprofile' && P.opts.tapwhat !== 'none') || P.layout === 'igactivity' || P.opts.tapring ? 'igopen' : x.layout === 'igstories' && P.layout === 'igstories' ? 'slide' : 'dissolve'; });
+    sc[1].tr = 'zoom'; sc.forEach(x => { if (x.layout === 'igstories') x.count = 'auto'; });
+    return baseProj('MID2', sc, { lyricFx: '', outCrop: 956 }); }
+};
 /* ---- type 9 revisions from a customer's feedback ---- */
 // 1) two photos in the "three in a row" scene get bigger boxes
 { const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
@@ -12554,25 +12628,25 @@ function showStart() {
   const r = $('startResume');
   if (!workIsEmpty()) {
     const i = project.info;
-    r.innerHTML = `<div class="resume"><div style="flex:1;min-width:220px"><div class="badge2">${project.tpl ? esc(project.tpl) + '타입 ' : ''}작업 중</div>
-      <div style="font-weight:600;font-size:17px;margin-top:4px">${esc(i.groomKo || '')}, ${esc(i.brideKo || '')} 식전영상</div>
+    r.innerHTML = `<div class="resume"><div style="flex:1;min-width:220px"><div class="badge2">${project.tpl ? esc((TEMPLATES[project.tpl] && TEMPLATES[project.tpl].badge) || project.tpl + '타입') + ' ' : ''}작업 중</div>
+      <div style="font-weight:600;font-size:17px;margin-top:4px">${esc(i.groomKo || '')}, ${esc(i.brideKo || '')} ${TEMPLATES[project.tpl] && TEMPLATES[project.tpl].mid ? '식중영상' : '식전영상'}</div>
       <div class="hint" style="margin:2px 0 0">장면 ${project.scenes.length}개. 이 브라우저에 자동 보관된 작업이에요.</div></div>
       <button class="btn primary" id="resumeBtn">이어서 작업하기</button></div>`;
     $('resumeBtn').onclick = hideStart;
   } else r.innerHTML = '';
-  const tab = startTab || 'base', list = Object.entries(TEMPLATES).filter(([, T]) => tab === 'custom' ? T.custom : !T.custom);
+  const tab = startTab || 'base', list = Object.entries(TEMPLATES).filter(([, T]) => tab === 'custom' ? T.custom : tab === 'mid' ? T.mid : !T.custom && !T.mid);
   if (tab === 'custom') list.sort((a, b) => (+a[1].code || 99) - (+b[1].code || 99));
   let tabs = $('tplTabs'); if (!tabs) { tabs = document.createElement('div'); tabs.id = 'tplTabs'; tabs.className = 'seg-toggle'; tabs.style.margin = '0 0 16px'; $('tplGrid').parentNode.insertBefore(tabs, $('tplGrid')); }
-  tabs.innerHTML = `<button type="button" data-tab2="base" class="${tab === 'base' ? 'on' : ''}" style="padding:8px 18px;font-size:14px">기본 템플릿</button><button type="button" data-tab2="custom" class="${tab === 'custom' ? 'on' : ''}" style="padding:8px 18px;font-size:14px">고객 요청</button>`;
+  tabs.innerHTML = [['base', '식전영상'], ['mid', '식중영상'], ['custom', '고객 요청']].map(([k, n]) => `<button type="button" data-tab2="${k}" class="${tab === k ? 'on' : ''}" style="padding:8px 18px;font-size:14px">${n}</button>`).join('');
   tabs.querySelectorAll('[data-tab2]').forEach(b => b.onclick = () => { startTab = b.dataset.tab2; showStart(); });
   $('tplGrid').innerHTML = list.map(([k, T]) => `<div class="tpl"><canvas width="480" height="270" data-tp="${k}"></canvas><div class="b">
-    <div class="badge2">${T.code || k}타입</div><h3>${esc(T.name)}</h3><p>${esc(T.desc)}</p>
+    <div class="badge2">${T.badge || (T.code || k) + '타입'}</div><h3>${esc(T.name)}</h3><p>${esc(T.desc)}</p>
     <div class="tagrow">${T.tags.map(x => `<span>${esc(x)}</span>`).join('')}</div>
-    <button class="btn small primary" data-start="${k}" style="align-self:flex-start;margin-top:6px">${T.code || k}타입으로 시작</button></div></div>`).join('');
+    <button class="btn small primary" data-start="${k}" style="align-self:flex-start;margin-top:6px">${T.badge || (T.code || k) + '타입'}으로 시작</button></div></div>`).join('');
   document.querySelectorAll('[data-tp]').forEach(cv => tplPreview(cv.dataset.tp, cv));
   document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
     const k = b.dataset.start;
-    if (workIsEmpty()) startNew(k); else askReplace(`${k}타입으로 새로 시작할까요?`, () => startNew(k));
+    const lb = TEMPLATES[k].badge || k + '타입'; if (workIsEmpty()) startNew(k); else askReplace(`${lb}으로 새로 시작할까요?`, () => startNew(k));
   });
 }
 function hideStart() { $('start').hidden = true; dirty = true; }
@@ -12585,7 +12659,7 @@ async function startNew(type) {
     abuf = null; peaks = null; audioName = ''; audioBlob = null;
     project = normalize(TEMPLATES[type].make()); sel = 0; curT = 0; editSel = null;
     onAudioReady(); buildInfoPane(); buildLyricPane(); buildFilePane(); loadFontsFor(allText()); save(); resetHistory();
-    hideStart(); toast(`${type}타입 템플릿으로 시작해요. 사진을 끌어다 놓아 채워보세요`);
+    hideStart(); toast(`${TEMPLATES[type].badge || type + '타입'} 템플릿으로 시작해요. 사진을 끌어다 놓아 채워보세요`);
   } finally { workBusy = false; }
 }
 $('startLoad').onclick = () => { $('workInput').value = ''; $('workInput').click(); };
