@@ -9534,7 +9534,7 @@ Object.assign(LAYOUTS, {
     fields: [['user', '아이디', 'our.secret.story'], ['cap', '릴스 캡션', '우리의 첫 여행 ✈️'], ['side', '옆 큰 글씨 (편지)', '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.', true], ['music', '음악 표시', '♪ 우리의 노래']],
     opts: [['flip', '글씨 왼쪽', false]], cap: s => [s.opts.flip ? 1400 : 520, 1045, 'dark'],
     draw(c, s, t, d) {
-      igBg(c, s, 0); const f = s.opts.flip, h = 1000, w = Math.round(h * 9 / 16), x = f ? 1260 - w / 2 + 120 : 660 - w / 2 + 300, y = 40, k = ease(clamp(t / 0.6));
+      igBg(c, s, 0); const f = s.opts.flip, h = 940, w = Math.round(h * 9 / 16), x = f ? 1260 - w / 2 + 120 : 660 - w / 2 + 300, y = 70, /* fits inside the 1920×956 venue crop (dashed lines) */ k = ease(clamp(t / 0.6));
       const vx = f ? 1200 : 1100 - 0; const RX = f ? 260 : 1180;
       const px = f ? 1180 : 420; // reel position
       c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#000'; rr(c, px, y, w, h, 28); c.fill(); c.restore();
