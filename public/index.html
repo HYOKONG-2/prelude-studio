@@ -471,6 +471,8 @@ function ensureStyle(idx, k) {
   return s.tstyle[k] || (s.tstyle[k] = { s: 1, x: 0, y: 0 });
 }
 function addHit(h) { if (hitOn && hits) { h.idx = curIdx; hits.push(h); } }
+// a layout drawn moved sideways (c.translate) must move its drag/click areas the same way
+function hitShift(dx, fn) { const n0 = hits ? hits.length : 0; try { return fn(); } finally { if (hits) for (let i = n0; i < hits.length; i++) hits[i].x += dx; } }
 
 /* ---------------- drawing helpers ---------------- */
 function rr(c, x, y, w, h, r) {
@@ -9855,7 +9857,7 @@ Object.assign(LAYOUTS, {
       igAvatar(c, s, 0, px + 40, y + 60, 20, t, false); txt(c, fill(s.texts.user), px + 72, y + 60, IGF(22, 600), '#fff', 1, { align: 'left', k: 'user' });
       const st = fill(s.texts.stk).split('\n')[cur] || ''; if (st) { const sk = backOut(clamp((lt - 0.3) / 0.45)); if (sk > 0) { c.save(); c.translate(px + w / 2, y + h * 0.62); c.rotate(-0.06); c.scale(sk, sk); c.font = IGF(40, 700); const tw = c.measureText(st).width + 50; c.fillStyle = '#fff'; rr(c, -tw / 2, -36, tw, 72, 14); c.fill(); c.fillStyle = '#111'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(st, 0, 2); c.restore(); } }
       c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 2; rr(c, px + 24, y + h - 84, w - 110, 56, 28); c.stroke(); txt(c, '메시지 보내기', px + 52, y + h - 56, IGF(22, 400), '#fff', 1, { align: 'left' }); igIcon(c, 'heart', px + w - 50, y + h - 56, 30, '#fff');
-      c.restore(); c.restore(); /* closes the clip and the fade-in save (one was left open, which broke the slide between stories) */ for (let i = 0; i < n; i++) addHit({ type: 'media', si: i, x: px, y, w, h, oy: 0 });
+      c.restore(); c.restore(); /* closes the clip and the fade-in save (one was left open, which broke the slide between stories) */ addHit({ type: 'media', si: cur, x: px, y, w, h, oy: 0 }); // only the story on screen takes the drag
       if (cur < n - 1) igTap(c, px + w - 70, y + h / 2, t, (cur + 1) * seg - 0.35);
       const sideX = f ? 300 : 1060, lines = igWrap(c, fill(s.texts.side), IGF(46, 500), 700); lines.forEach((l, i) => txt(c, l, sideX, 540 + (i - (lines.length - 1) / 2) * 72, IGF(46, 500), '#fff', fade(t, 0.8 + i * 0.5, 0.7), { align: 'left', k: i ? null : 'side', shadow: 'rgba(0,0,0,.4)', blur: 10 }));
     } },
@@ -10020,8 +10022,8 @@ igOpenTr = function (c, r, pr, sc) { const i = project.scenes.indexOf(sc), P = p
 // notification: Saturday 12:00 by default
 LAYOUTS.ignotify.fields = LAYOUTS.ignotify.fields.map(f => f[0] === 'time' ? ['time', '시간', '12:00'] : f[0] === 'date' ? ['date', '날짜', '12월 5일 토요일'] : f);
 // stories / memory card: with no side text they sit in the middle (lyrics carry the words)
-{ const dr = LAYOUTS.igstories.draw; LAYOUTS.igstories.draw = function (c, s, t, d) { if (fill(s.texts.side)) return dr.call(this, c, s, t, d); { const n = Math.max(1, autoN(s, 4)); igBg(c, s, Math.min(n - 1, Math.floor(t / (d / n)))); } /* full-width background first, so moving the story to the centre leaves no gap */ c.save(); c.translate(960 - (s.opts.flip ? 1180 : 420) - 270, 0); dr.call(this, c, s, t, d); c.restore(); }; }
-{ const dr = LAYOUTS.igmemory.draw; LAYOUTS.igmemory.draw = function (c, s, t, d) { if (fill(s.texts.side)) return dr.call(this, c, s, t, d); igBg(c, s, 0); c.save(); c.translate(960 - (s.opts.flip ? 1240 : 680), 0); dr.call(this, c, s, t, d); c.restore(); }; }
+{ const dr = LAYOUTS.igstories.draw; LAYOUTS.igstories.draw = function (c, s, t, d) { if (fill(s.texts.side)) return dr.call(this, c, s, t, d); { const n = Math.max(1, autoN(s, 4)); igBg(c, s, Math.min(n - 1, Math.floor(t / (d / n)))); } /* full-width background first, so moving the story to the centre leaves no gap */ { const dx = 960 - (s.opts.flip ? 1180 : 420) - 270; c.save(); c.translate(dx, 0); hitShift(dx, () => dr.call(this, c, s, t, d)); c.restore(); } }; }
+{ const dr = LAYOUTS.igmemory.draw; LAYOUTS.igmemory.draw = function (c, s, t, d) { if (fill(s.texts.side)) return dr.call(this, c, s, t, d); igBg(c, s, 0); { const dx = 960 - (s.opts.flip ? 1240 : 680); c.save(); c.translate(dx, 0); hitShift(dx, () => dr.call(this, c, s, t, d)); c.restore(); } }; }
 // activity: three items, and the fingertip taps her (last) story ring at the end
 LAYOUTS.igactivity.fields = LAYOUTS.igactivity.fields.map(f => f[0] === 'items' ? ['items', '알림 (줄마다)', '님이 회원님을 팔로우하기 시작했습니다.\n님이 회원님의 게시물 128개를 좋아합니다.\n님이 댓글을 남겼습니다: 응, 결혼하자 💍', true] : f);
 { const dr = LAYOUTS.igactivity.draw; LAYOUTS.igactivity.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); const n = fill(s.texts.items).split('\n').filter(Boolean).length; igFinger(c, 520 + 76, 270 + (n - 1) * 160 + 30, t, d - 0.55); }; }
@@ -10246,6 +10248,44 @@ LAYOUTS.ignotify.opts = [...LAYOUTS.ignotify.opts, ['nat', '알림 뜨는 시점
 LAYOUTS.ignotify.optSelects = { ...(LAYOUTS.ignotify.optSelects || {}),
   nat: [['1.2', '기본 (장면 시작 1.2초 뒤)'], ['0.3', '바로 (0.3초 뒤)'], ['0.6', '0.6초 뒤'], ['0.9', '0.9초 뒤'], ['1.5', '1.5초 뒤'], ['2', '2초 뒤'], ['2.5', '2.5초 뒤'], ['3', '3초 뒤'], ['3.5', '3.5초 뒤'], ['4', '4초 뒤']],
   nspd: [['0.9', '기본 (0.9초)'], ['0.6', '빠르게 (0.6초)'], ['1.2', '천천히 (1.2초)'], ['1.6', '아주 천천히 (1.6초)']] };
+/* ---- type 10: the proposal video, cut into short reels with captions (the venue plays it without sound) ---- */
+// [start, end (s), big caption beside the reel, reel caption] — cut points fit a typical "she reads the secret feed → he kneels → she says yes" clip
+const PROPOSE_CUTS = [
+  [1.5, 6, '2년 동안 너 몰래 기록한 이 계정,\n프러포즈 날 처음 보여줬어.', '프러포즈 날 💍'],
+  [16.5, 21.5, '네가 피드를 넘기는 동안\n몰래 반지를 꺼냈어.', '두근두근 🤫'],
+  [24, 30, '무릎 꿇은 것도 모르고\n피드만 보던 너 😂', '아직 몰라요 😂'],
+  [34, 39.5, '그제야 날 보고\n그대로 주저앉아 버린 너.', '🥹'],
+  [45.5, 51, '그리고, 너의 대답.\n“응.” 💍', 'YES 💍'],
+  [114.5, 120, '평생 함께하자는 약속,\n받아줘서 고마워.', '우리, 결혼해요 🤍']];
+function proposeScene(k, id) { const [vs, ve, side, cap] = PROPOSE_CUTS[k], x = makeScene('igreel', { texts: { side, cap, music: '♪ 우리의 노래' }, opts: { pgrp: 'propose', pcut: k } });
+  x.weight = Math.round((ve - vs) * 10) / 10; x.tr = k ? 'dissolve' : 'dissolve'; if (id) Object.assign(x.media[0], { id, t: 'video', vs, ve, hold: true }); return x; }
+function proposeCut(s, slot) { const k = +s.opts.pcut, c = PROPOSE_CUTS[k]; if (!c || !slot || !slot.id || !media[slot.id] || media[slot.id].type !== 'video') return false;
+  const D = media[slot.id].el.duration || 0; if (D && c[0] >= D - 0.5) return false; // clip too short for this cut: leave it to the user
+  slot.vs = c[0]; slot.ve = D ? Math.min(D, c[1]) : c[1]; slot.hold = true;
+  if (slot.z == null && slot.oy == null) { slot.z = 1.6; slot.oy = -0.2; } // phone proposal clips are wide shots with the couple low in the frame: start closer in (drag in the preview to adjust)
+  return true; }
+// one video dropped into any proposal reel fills the empty ones too, each at its own cut
+const pSeen = new Map();
+{ const o = sceneChanged; sceneChanged = function (s) {
+  if (s && s.opts && s.opts.pgrp === 'propose' && s.media[0]) { const sl = s.media[0], prev = pSeen.get(s.id); pSeen.set(s.id, sl.id || null);
+    if (sl.id && sl.id !== prev && (prev !== undefined || (sl.vs == null && sl.ve == null)) && proposeCut(s, sl)) {
+      project.scenes.forEach(x => { if (x !== s && x.opts && x.opts.pgrp === 'propose' && x.media[0] && !x.media[0].id) { x.media[0].id = sl.id; x.media[0].t = 'video'; if (proposeCut(x, x.media[0])) { pSeen.set(x.id, sl.id); o(x); } else { x.media[0].id = null; delete x.media[0].t; } } });
+      toast('프러포즈 영상을 장면마다 짧게 나눠 넣었어요. 장면 편집의 ‘영상 컷 정하기’로 구간을 바꿀 수 있어요'); if (typeof buildStrip === 'function') { changed(true); } } }
+  return o(s); }; }
+// template 10: the proposal reels come right after her "yes" in the activity feed
+{ const o = TEMPLATES.IG.make; TEMPLATES.IG.make = () => { const p = o(), sc = p.scenes, a = sc.findIndex(x => x.layout === 'igactivity');
+  const ps = PROPOSE_CUTS.map((_, k) => proposeScene(k)); sc.splice(a >= 0 ? a + 1 : sc.length - 1, 0, ...ps);
+  const nx = sc[(a >= 0 ? a + 1 : sc.length - 1) + ps.length]; if (nx && nx.tr === 'igopen') nx.tr = 'dissolve'; return p; }; }
+// any reel holding a long video (e.g. in a project already under way) can be split into the captioned proposal reels in one click
+{ const orig = buildSlots; buildSlots = function (s) { orig(s);
+  if (s.layout !== 'igreel' || (s.opts && s.opts.pgrp)) return; const sl = s.media[0], m = sl && sl.id && media[sl.id]; if (!m || m.type !== 'video' || !(m.el.duration > 30)) return;
+  const btn = document.querySelector('#slots .slot-btn[data-si="0"]'), d = btn && btn.closest('.slot'); if (!d) return;
+  const box = document.createElement('div'); box.style.cssText = 'margin-top:8px;padding:8px;border:1px dashed var(--line);border-radius:8px';
+  box.innerHTML = `<p class="hint" style="margin:0 0 6px">긴 프러포즈 영상이면, 장면 ${PROPOSE_CUTS.length}개로 짧게 나누고 상황 설명 자막을 붙일 수 있어요. 식장에서는 소리 없이 나와서 자막으로 이야기를 전해요.</p><button class="btn small" data-psplit style="width:100%">프러포즈 짧은 장면 ${PROPOSE_CUTS.length}개로 나누기</button>`;
+  d.appendChild(box);
+  box.querySelector('[data-psplit]').onclick = () => { const i = project.scenes.indexOf(s); if (i < 0) return; const ps = PROPOSE_CUTS.map((_, k) => proposeScene(k, sl.id)).filter(x => proposeCut(x, x.media[0]));
+    if (!ps.length) { toast('영상이 짧아서 나눌 수 없어요'); return; } ps[0].tr = s.tr; ps.forEach(x => pSeen.set(x.id, sl.id));
+    project.scenes.splice(i, 1, ...ps); changed(true); select(i); toast(`프러포즈 영상을 장면 ${ps.length}개로 나눴어요. 자막과 구간은 장면마다 바꿀 수 있어요`); }; }; }
 /* ---- type 9 revisions from a customer's feedback ---- */
 // 1) two photos in the "three in a row" scene get bigger boxes
 { const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
