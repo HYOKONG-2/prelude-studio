@@ -10277,16 +10277,30 @@ const pSeen = new Map();
 { const o = TEMPLATES.IG.make; TEMPLATES.IG.make = () => { const p = o(), sc = p.scenes, a = sc.findIndex(x => x.layout === 'igactivity');
   const ps = PROPOSE_CUTS.map((_, k) => proposeScene(k)); sc.splice(a >= 0 ? a + 1 : sc.length - 1, 0, ...ps);
   const nx = sc[(a >= 0 ? a + 1 : sc.length - 1) + ps.length]; if (nx && nx.tr === 'igopen') nx.tr = 'dissolve'; return p; }; }
-// any reel holding a long video (e.g. in a project already under way) can be split into the captioned proposal reels in one click
-{ const orig = buildSlots; buildSlots = function (s) { orig(s);
-  if (s.layout !== 'igreel' || (s.opts && s.opts.pgrp)) return; const sl = s.media[0], m = sl && sl.id && media[sl.id]; if (!m || m.type !== 'video' || !(m.el.duration > 30)) return;
-  const btn = document.querySelector('#slots .slot-btn[data-si="0"]'), d = btn && btn.closest('.slot'); if (!d) return;
-  const box = document.createElement('div'); box.style.cssText = 'margin-top:8px;padding:8px;border:1px dashed var(--line);border-radius:8px';
-  box.innerHTML = `<p class="hint" style="margin:0 0 6px">긴 프러포즈 영상이면, 장면 ${PROPOSE_CUTS.length}개로 짧게 나누고 상황 설명 자막을 붙일 수 있어요. 식장에서는 소리 없이 나와서 자막으로 이야기를 전해요.</p><button class="btn small" data-psplit style="width:100%">프러포즈 짧은 장면 ${PROPOSE_CUTS.length}개로 나누기</button>`;
-  d.appendChild(box);
-  box.querySelector('[data-psplit]').onclick = () => { const i = project.scenes.indexOf(s); if (i < 0) return; const ps = PROPOSE_CUTS.map((_, k) => proposeScene(k, sl.id)).filter(x => proposeCut(x, x.media[0]));
-    if (!ps.length) { toast('영상이 짧아서 나눌 수 없어요'); return; } ps[0].tr = s.tr; ps.forEach(x => pSeen.set(x.id, sl.id));
-    project.scenes.splice(i, 1, ...ps); changed(true); select(i); toast(`프러포즈 영상을 장면 ${ps.length}개로 나눴어요. 자막과 구간은 장면마다 바꿀 수 있어요`); }; }; }
+// put the captioned proposal reels into a project that is already under way
+function proposeInsert(after, id) { const ps = PROPOSE_CUTS.map((_, k) => proposeScene(k, id)).filter(x => !id || proposeCut(x, x.media[0]));
+  if (!ps.length) { toast('영상이 짧아서 나눌 수 없어요'); return 0; } if (id) ps.forEach(x => pSeen.set(x.id, id));
+  project.scenes.splice(after + 1, 0, ...ps); const nx = project.scenes[after + 1 + ps.length]; if (nx && nx.tr === 'igopen') nx.tr = 'dissolve';
+  changed(true); select(after + 1); return ps.length; }
+// 1) a long video in any photo box (a reel, the proposal carousel post, …) can be split into the reels right there
+{ const orig = buildSlots; buildSlots = function (s) { orig(s); if (CUSTOMER || (s.opts && s.opts.pgrp)) return;
+  s.media.forEach((sl, si) => { const m = sl && sl.id && media[sl.id]; if (!m || m.type !== 'video' || !(m.el.duration > 30)) return;
+    const btn = document.querySelector(`#slots .slot-btn[data-si="${si}"]`), d = btn && btn.closest('.slot'); if (!d) return;
+    const swap = s.layout === 'igreel' && si === 0, box = document.createElement('div'); box.style.cssText = 'margin-top:8px;padding:10px;border:1.5px solid var(--accent);border-radius:10px';
+    box.innerHTML = `<b style="font-size:13.5px">💍 프러포즈 영상이면</b><p class="hint" style="margin:4px 0 8px">${fmt1(m.el.duration)}초짜리 영상을 4~6초짜리 짧은 릴스 장면 ${PROPOSE_CUTS.length}개로 나누고, 상황 설명 자막을 붙여요. ${swap ? '이 장면이 그 장면들로 바뀌어요.' : '이 장면 바로 뒤에 추가돼요 (이 장면은 그대로).'}</p><button class="btn small" data-psplit style="width:100%">프러포즈 짧은 장면 ${PROPOSE_CUTS.length}개로 나누기</button>`;
+    d.appendChild(box);
+    box.querySelector('[data-psplit]').onclick = () => { const i = project.scenes.indexOf(s); if (i < 0) return; const tr = s.tr;
+      if (swap) { project.scenes.splice(i, 1); const n = proposeInsert(i - 1, sl.id); if (!n) { project.scenes.splice(i, 0, s); changed(true); return; } project.scenes[i].tr = tr; changed(true); toast(`장면 ${n}개로 나눴어요. 자막과 구간은 장면마다 바꿀 수 있어요`); }
+      else { const n = proposeInsert(i, sl.id); if (n) toast(`이 장면 뒤에 프러포즈 장면 ${n}개를 넣었어요. 자막과 구간은 장면마다 바꿀 수 있어요`); } }; }); }; }
+// 2) on Instagram projects, a button at the top of the scene panel adds the (empty) reels after the selected scene
+{ const orig = buildScenePane; buildScenePane = function () { orig(); const s = project.scenes[sel]; if (CUSTOMER || !s) return;
+  if (!(project.tpl === 'IG' || project.tpl === 'MID2' || project.scenes.some(x => /^ig/.test(x.layout)))) return;
+  const p = $('pane-scene'), row = p && p.querySelector('.row'); if (!row) return;
+  const has = project.scenes.some(x => x.opts && x.opts.pgrp === 'propose'), box = document.createElement('div');
+  box.style.cssText = 'margin:10px 0 4px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;display:flex;gap:10px;align-items:center;justify-content:space-between';
+  box.innerHTML = `<span class="hint" style="margin:0">💍 프러포즈 영상 장면 ${PROPOSE_CUTS.length}개 (자막 포함)${has ? ' · 이미 들어 있어요' : ''}</span><button class="btn small" data-padd>이 장면 뒤에 넣기</button>`;
+  row.after(box);
+  box.querySelector('[data-padd]').onclick = () => { const n = proposeInsert(sel); if (n) toast(`프러포즈 장면 ${n}개를 넣었어요. 아무 장면 하나에 프러포즈 영상을 넣으면 나머지도 자동으로 채워져요`); }; }; }
 /* ---- type 9 revisions from a customer's feedback ---- */
 // 1) two photos in the "three in a row" scene get bigger boxes
 { const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
