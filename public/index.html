@@ -9981,13 +9981,15 @@ igFinger = function (c, x, y, t, t0) { const k = clamp((t - t0 + 0.45) / 0.45), 
   c.fillStyle = 'rgba(255,255,255,.5)'; c.strokeStyle = 'rgba(0,0,0,.18)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y + (1 - k) * 40, r, 0, Math.PI * 2); c.fill(); c.stroke(); c.restore();
   const q = clamp((t - t0) / 0.5); if (q > 0 && q < 1) { c.save(); c.globalAlpha = 0.35 * (1 - q); c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 18 + 40 * ease(q), 0, Math.PI * 2); c.stroke(); c.restore(); } };
 const IGP = { X: 300, Wd: 1320, cell: (1320 - 8) / 3, hlY: 478, gridTop: 640 };
-function igProfileGeo(s, t, d) { const gridH = 4 * (IGP.cell + 4), maxSc = Math.max(0, IGP.gridTop + gridH - H + 120), mode = s.opts.move || 'hold';
+function igTapCell(tw) { return tw === 'last' ? 11 : /^p\d+$/.test(tw || '') ? Math.max(0, Math.min(11, +tw.slice(1) - 1)) : 9; } // grid cell (0 = top-left, newest … 11 = bottom-right, oldest)
+function igProfileGeo(s, t, d) { const gridH = 4 * (IGP.cell + 4), maxSc = Math.max(0, IGP.gridTop + gridH - H + 120); let mode = s.opts.move || 'hold';
+  { const tw = s.opts.tapwhat || 'none'; if (mode === 'hold' && (tw === 'last' || /^p\d+$/.test(tw)) && IGP.gridTop + (Math.floor(igTapCell(tw) / 3) + 1) * (IGP.cell + 4) > H - 140) mode = 'quickdown'; } // a post further down can't be tapped without scrolling to it
   const hold = Math.min(4.5, d * 0.45), p = mode === 'down' ? ease(clamp((t - hold) / Math.max(1, d - hold - 1.2))) : mode === 'quickdown' ? ease(clamp((t - 0.6) / Math.max(1, d - 1.8))) : mode === 'up' ? 1 - ease(clamp((t - 0.3) / Math.max(1, d - 1.4))) : 0;
   return { sc: p * maxSc, maxSc }; }
 function igTapRect(s, d) { // where the fingertip lands on a profile (also where the next scene opens from)
   const tw = s.opts.tapwhat || 'none'; if (tw === 'none') return null; const sc = igProfileGeo(s, d, d).sc;
   if (/^hl/.test(tw)) { const i = +tw.slice(2) - 1, x = IGP.X + 120 + i * 190; return [x - 62, IGP.hlY - 62, 124, 124]; }
-  const i = tw === 'last' ? 11 : tw === 'p1' ? 0 : tw === 'p2' ? 1 : tw === 'p3' ? 2 : 9, x = IGP.X + (i % 3) * (IGP.cell + 4), y = IGP.gridTop + Math.floor(i / 3) * (IGP.cell + 4) - sc; return [x, y, IGP.cell, IGP.cell];
+  const i = igTapCell(tw), x = IGP.X + (i % 3) * (IGP.cell + 4), y = IGP.gridTop + Math.floor(i / 3) * (IGP.cell + 4) - sc; return [x, y, IGP.cell, IGP.cell];
 }
 LAYOUTS.igprofile = { name: '인스타 프로필 (하이라이트 + 피드 12칸, 스크롤·누르기)', slots: 16, weight: 8,
   slotNames: ['프로필 사진', ...Array.from({ length: 12 }, (_, i) => `게시물 ${i + 1}`), '하이라이트 1', '하이라이트 2', '하이라이트 3'],
@@ -10013,7 +10015,7 @@ LAYOUTS.igprofile = { name: '인스타 프로필 (하이라이트 + 피드 12칸
     const tr = igTapRect(s, d); if (tr) { const ty = /^hl/.test(s.opts.tapwhat) ? tr[1] + tr[3] / 2 - sc : tr[1] + tr[3] / 2 + igProfileGeo(s, d, d).sc - sc; igFinger(c, tr[0] + tr[2] / 2, ty, t, d - 0.55); }
     const ov = fill(s.texts.overlay); if (ov) { const a = fade(t, 1.0, 0.8); c.fillStyle = `rgba(0,0,0,${0.55 * a})`; c.fillRect(0, 0, W, H); igWrap(c, ov, IGF(72, 700), 1400).forEach((l, i, A) => txt(c, l, 960, 540 + (i - (A.length - 1) / 2) * 100, IGF(72, 700), '#fff', a, { k: i ? null : 'overlay' })); }
   } };
-LAYOUTS.igprofile.optSelects = { move: [['hold', '멈춰 있기'], ['down', '잠시 보여준 뒤 아래로 스크롤'], ['quickdown', '바로 아래로 스크롤'], ['up', '위로 올라오기']], tapwhat: [['none', '누르지 않음'], ['hl1', '하이라이트 1'], ['hl2', '하이라이트 2'], ['hl3', '하이라이트 3'], ['p1', '첫 게시물'], ['p2', '두 번째 게시물'], ['p3', '세 번째 게시물'], ['p10', '10번째 게시물'], ['last', '마지막 게시물']] };
+LAYOUTS.igprofile.optSelects = { move: [['hold', '멈춰 있기'], ['down', '잠시 보여준 뒤 아래로 스크롤'], ['quickdown', '바로 아래로 스크롤'], ['up', '위로 올라오기']], tapwhat: [['none', '누르지 않음'], ['hl1', '하이라이트 1'], ['hl2', '하이라이트 2'], ['hl3', '하이라이트 3'], ...Array.from({ length: 11 }, (_, i) => ['p' + (i + 1), `게시물 ${i + 1}${i === 0 ? ' (맨 위 왼쪽 · 가장 최근 글)' : ''}`]), ['last', '게시물 12 (맨 아래 오른쪽 · 가장 오래된 글)']] };
 LAYOUTS.igprofile.noBulk = [0, 13, 14, 15];
 // the next scene grows out of whatever the previous scene tapped
 igOpenTr = function (c, r, pr, sc) { const i = project.scenes.indexOf(sc), P = project.scenes[i - 1]; let fr = sc && Array.isArray(sc.openFrom) ? sc.openFrom : null;
@@ -10301,6 +10303,14 @@ function proposeInsert(after, id) { const ps = PROPOSE_CUTS.map((_, k) => propos
   box.innerHTML = `<span class="hint" style="margin:0">💍 프러포즈 영상 장면 ${PROPOSE_CUTS.length}개 (자막 포함)${has ? ' · 이미 들어 있어요' : ''}</span><button class="btn small" data-padd>이 장면 뒤에 넣기</button>`;
   row.after(box);
   box.querySelector('[data-padd]').onclick = () => { const n = proposeInsert(sel); if (n) toast(`프러포즈 장면 ${n}개를 넣었어요. 아무 장면 하나에 프러포즈 영상을 넣으면 나머지도 자동으로 채워져요`); }; }; }
+// type 10: the grid reads like a real profile — newest post top-left, oldest bottom-right — so the story taps follow time:
+// first-meeting feed ← the oldest post (scroll to the bottom), the middle years ← a post halfway down, the proposal post ← the newest
+{ const o = TEMPLATES.IG.make; TEMPLATES.IG.make = () => { const p = o(), sc = p.scenes;
+  sc.forEach((x, i) => { if (x.layout !== 'igprofile') return; const nx = sc[i + 1] || {}; const tw = x.opts.tapwhat;
+    if (tw === 'p1' && nx.layout === 'igfeedswipe') { x.opts.tapwhat = 'last'; x.opts.move = 'quickdown'; x.weight = Math.max(x.weight, 5.5); }
+    else if (tw === 'p2' && nx.layout === 'igcarousel') { x.opts.tapwhat = 'p8'; x.opts.move = 'quickdown'; x.weight = Math.max(x.weight, 5); }
+    else if (tw === 'last' && nx.layout === 'igcarousel') { x.opts.tapwhat = 'p1'; x.opts.move = 'up'; } });
+  return p; }; }
 /* ---- type 9 revisions from a customer's feedback ---- */
 // 1) two photos in the "three in a row" scene get bigger boxes
 { const L = LAYOUTS.chrow3; L.draw = function (c, s, t, d) { chBg(c, s, false); const n = autoN(s, 3), w = n === 2 ? 640 : n === 1 ? 760 : 540, h = n === 3 ? 720 : 780, g = n === 2 ? 50 : 40, x0 = (W - (n * w + (n - 1) * g)) / 2, y0 = n === 3 ? 200 : 160;
