@@ -12060,10 +12060,14 @@ async function seekVideo(v, want) {
   });
 }
 async function waitQueue(enc, max) {
-  while (enc.encodeQueueSize > max) {
-    await new Promise(r => { if ('ondequeue' in enc) enc.addEventListener('dequeue', () => r(), { once: true }); else setTimeout(r, 4); });
+  let last = performance.now(), n = enc.encodeQueueSize;
+  while (enc.encodeQueueSize > max && enc.state === 'configured') {
+    await new Promise(r => { const to = setTimeout(r, 250); if ('ondequeue' in enc) enc.addEventListener('dequeue', () => { clearTimeout(to); r(); }, { once: true }); else { clearTimeout(to); setTimeout(r, 4); } });
+    if (enc.encodeQueueSize < n) { n = enc.encodeQueueSize; last = performance.now(); }
+    else if (performance.now() - last > 15000) throw new Error('encoder stalled'); // the encoder stopped answering: switch to recording instead of waiting forever
   }
 }
+const timeoutP = (p, ms, v) => Promise.race([p, new Promise(r => setTimeout(() => r(v), ms))]);
 /* ---- faster video export: read each clip's frames in order with the browser's video decoder instead of seeking a <video> for every frame
    (a seek decodes again from the last keyframe, which made scenes with video about 10× slower). Anything it can't read falls back to the old way. ---- */
 const VIDX = new Map(); // media id -> Promise<index | null>
@@ -12125,11 +12129,14 @@ function vReader(ix) {
     const behind = !R.dec || R.fed === 0 || (R.cur && R.cur.timestamp > want + half) || target >= R.fed + 90; // went back, or far ahead: start again from a keyframe
     if (behind && !(have && R.dec && R.cur.timestamp === us(target))) { let k = target; while (k > 0 && !ix.key[k]) k--; R.open(k); if (R.cur) { R.cur.close(); R.cur = null; } }
     const pick = () => { let best = -1; for (let j = 0; j < R.frames.length; j++) if (R.frames[j].timestamp <= want + half) best = j; if (best >= 0) { if (R.cur) R.cur.close(); R.cur = R.frames[best]; R.frames.splice(0, best + 1).slice(0, -1).forEach(f => f.close()); } };
+    const t0 = performance.now();
     for (let guard = 0; guard < 4000 && !R.err; guard++) {
+      if (performance.now() - t0 > 4000) { R.err = true; break; } // the decoder stopped giving pictures: let the caller fall back to seeking
       pick();
       if (R.frames.some(f => f.timestamp > want + half) || R.end) break;
+      if (R.dec.state !== 'configured') { R.err = true; break; }
       if (R.fed < ix.N && R.dec.decodeQueueSize < 6) { const i = R.fed++; R.dec.decode(new EncodedVideoChunk({ type: ix.key[i] ? 'key' : 'delta', timestamp: us(i), data: ix.buf.subarray(ix.off[i], ix.off[i] + ix.size[i]) })); continue; }
-      if (R.fed >= ix.N) { await R.dec.flush().catch(() => { R.err = true; }); R.end = true; pick(); break; }
+      if (R.fed >= ix.N) { const ok = await timeoutP(R.dec.flush().then(() => true, () => false), 3000, false); if (!ok) R.err = true; R.end = true; pick(); break; }
       await new Promise(r => { R.wake = r; setTimeout(r, 40); }); R.wake = null;
     }
     if (R.err) return null;
@@ -12143,7 +12150,9 @@ function vReader(ix) {
 async function slotFrame(slot, md, t) {
   if (slot._vr === false) return false;
   if (!slot._vr || slot._vrId !== slot.id) { const ix = await mp4Index(md); if (!ix) { slot._vr = false; return false; } if (slot._vr && slot._vr.close) slot._vr.close(); slot._vr = vReader(ix); slot._vr.ix = ix; slot._vrId = slot.id; }
-  const f = await slot._vr.get(t); if (!f) { slot._vr.close(); slot._vr = false; return false; }
+  const rd = slot._vr; let f = null; try { f = await rd.get(t); } catch (e) { f = null; }
+  if (slot._vr !== rd) return false; // given up on while it was still working
+  if (!f) { rd.close(); slot._vr = false; return false; }
   const rot = slot._vr.ix.rot;
   if (!rot) { slot._vf = f; return true; }
   const cv = slot._vrc || (slot._vrc = document.createElement('canvas')), w = f.displayWidth, h = f.displayHeight, sw = rot % 180 ? h : w, sh = rot % 180 ? w : h;
@@ -12154,8 +12163,12 @@ function dropSlotReaders() { project.scenes.forEach(s => s.media.forEach(m => { 
 async function prepVideosAt(T) { // every video on screen at T (both scenes in a transition)
   const i = sceneAt(T), jobs = [], t = T - timeline[i].start;
   const add = (k, tt) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (!md || md.type !== 'video') return; const at = vidTime(m, md.el, tt);
-    jobs.push(slotFrame(m, md, at).then(ok => { if (!ok) { m._vf = null; return seekVideo(slotVideo(m, md), at); } })); });
+    jobs.push(timeoutP(slotFrame(m, md, at).catch(() => false), 6000, 'slow').then(ok => {
+      if (ok === 'slow' && m._vr && m._vr.close) { m._vr.close(); m._vr = false; } // never wait on one clip for long
+      if (ok !== true) { m._vf = null; return seekVideo(slotVideo(m, md), at); } })); });
   add(i, t); if (i > 0 && t < xfOf(i)) add(i - 1, timeline[i - 1].dur + t);
+  // clips of scenes already finished give their decoder and pictures back (holding them all made some computers stop mid-export)
+  for (let k = 0; k < i - 1; k++) project.scenes[k].media.forEach(m => { if (m._vr && m._vr.close) { m._vr.close(); delete m._vr; delete m._vrId; delete m._vf; } });
   await Promise.all(jobs);
 }
 // Fast path: renders frame by frame and encodes with WebCodecs (no real-time wait)
@@ -12214,8 +12227,8 @@ async function exportFast(S) {
   if (cancelled) { try { venc.close(); aenc && aenc.close(); } catch (e) {} dropSlotVideos(); dropSlotReaders(); return 'cancel'; }
   pushAudio(total + 1);
   progress(1, '마무리 중 ');
-  await venc.flush(); venc.close();
-  if (aenc) { await aenc.flush(); aenc.close(); }
+  if (await timeoutP(venc.flush().then(() => 1), 30000, 0) !== 1) throw new Error('encoder flush stalled'); venc.close();
+  if (aenc) { await timeoutP(aenc.flush(), 15000); aenc.close(); }
   if (err) throw err;
   dropSlotVideos(); dropSlotReaders();
   return { blob: mux.finalize(), ext: 'mp4' };
