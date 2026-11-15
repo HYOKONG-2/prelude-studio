@@ -9534,7 +9534,7 @@ Object.assign(LAYOUTS, {
     fields: [['user', '아이디', 'our.secret.story'], ['cap', '릴스 캡션', '우리의 첫 여행 ✈️'], ['side', '옆 큰 글씨 (편지)', '처음으로 함께 떠난 여행.\n바다를 보던 네 옆모습을\n아직도 기억해.', true], ['music', '음악 표시', '♪ 우리의 노래']],
     opts: [['flip', '글씨 왼쪽', false]], cap: s => [s.opts.flip ? 1400 : 520, 1045, 'dark'],
     draw(c, s, t, d) {
-      igBg(c, s, 0); const f = s.opts.flip, h = 940, w = Math.round(h * 9 / 16), x = f ? 1260 - w / 2 + 120 : 660 - w / 2 + 300, y = 70, /* fits inside the 1920×956 venue crop (dashed lines) */ k = ease(clamp(t / 0.6));
+      igBg(c, s, 0); const f = s.opts.flip, h = 940, w = Math.round(h * 9 / 16), x = f ? 1260 - w / 2 + 120 : 660 - w / 2 + 300, y = 70, /* fits inside the 1920×956 venue crop (dashed lines) */ pv = project.scenes[project.scenes.indexOf(s) - 1], k = pv && pv.layout === 'igreel' ? 1 : ease(clamp(t / 0.6)); // reel after reel: the phone frame stays put, only the video and words change (no flash)
       const vx = f ? 1200 : 1100 - 0; const RX = f ? 260 : 1180;
       const px = f ? 1180 : 420; // reel position
       c.save(); c.globalAlpha *= k; c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#000'; rr(c, px, y, w, h, 28); c.fill(); c.restore();
@@ -9828,8 +9828,8 @@ function igFinger(c, x, y, t, t0) { // a soft fingertip that comes down and pres
   if (s.opts.tap) { const X = 300, Wd = 1320, cell = (Wd - 8) / 3, gridTop = 430, maxSc = Math.max(0, gridTop + 4 * (cell + 4) - H + 40), sc = s.opts.scroll ? (s.opts.up ? 0 : maxSc) : 0, i = s.opts.up ? 0 : 9; igFinger(c, X + (i % 3) * (cell + 4) + cell / 2, gridTop + Math.floor(i / 3) * (cell + 4) + cell / 2 - sc, t, d - 0.6); } }; }
 // reels: play button, tap, then it plays
 LAYOUTS.igreel.opts = [...LAYOUTS.igreel.opts, ['tapplay', '눌러서 재생 연출', true]];
-{ const dr = LAYOUTS.igreel.draw; LAYOUTS.igreel.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (!s.opts.tapplay) return; const h = 1000, w = Math.round(h * 9 / 16), px = s.opts.flip ? 1180 : 420, cx = px + w / 2, cy = 540;
-  const a = 1 - clamp((t - 0.9) / 0.3); if (a > 0) { c.save(); c.globalAlpha = a; c.fillStyle = 'rgba(0,0,0,.35)'; rr(c, px, 40, w, h, 28); c.fill(); c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.moveTo(cx - 28, cy - 38); c.lineTo(cx + 40, cy); c.lineTo(cx - 28, cy + 38); c.closePath(); c.fill(); c.restore(); }
+{ const dr = LAYOUTS.igreel.draw; LAYOUTS.igreel.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (!s.opts.tapplay) return; const pv = project.scenes[project.scenes.indexOf(s) - 1]; if (pv && pv.layout === 'igreel') return; /* a reel straight after a reel just keeps playing: no play button, no tap */ const h = 940, w = Math.round(h * 9 / 16), px = s.opts.flip ? 1180 : 420, cx = px + w / 2, cy = 70 + h / 2;
+  const a = 1 - clamp((t - 0.9) / 0.3); if (a > 0) { c.save(); c.globalAlpha = a; c.fillStyle = 'rgba(0,0,0,.35)'; rr(c, px, 70, w, h, 28); c.fill(); c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.moveTo(cx - 28, cy - 38); c.lineTo(cx + 40, cy); c.lineTo(cx - 28, cy + 38); c.closePath(); c.fill(); c.restore(); }
   igFinger(c, cx, cy, t, 0.75); }; }
 Object.assign(LAYOUTS, {
   ignotify: { name: '인스타 알림이 도착하는 잠금화면 (오프닝용)', slots: 1, weight: 6, slotNames: ['배경 사진 (잠금화면)'], fields: [['time', '시간', '9:41'], ['date', '날짜', '12월 5일 금요일'], ['title', '알림 제목', 'Instagram'], ['msg', '알림 내용', 'our.secret.story님이 회원님을 태그했습니다: 2년 동안 너 몰래 써온 우리 이야기 ♡']], opts: [], cap: () => [960, 1045, 'dark'],
