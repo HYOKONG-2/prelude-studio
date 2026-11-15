@@ -546,11 +546,12 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
     if (!exporting) c.fillText(slot.id ? '불러오는 중' : '사진 ' + (si + 1), x + w / 2, y + h / 2); // the label never goes into the finished video
     c.restore(); return;
   }
-  if (m.type === 'video') {
+  const VF = m.type === 'video' && exporting && slot._vf && slot._vrId === slot.id ? slot._vf : null;
+  if (m.type === 'video' && !VF) {
     if (collectVideos) usedVideos.set(slot.id, { t, slot });
     if (m.el.readyState < 2) { c.fillStyle = '#000'; c.fillRect(x, y, w, h); c.restore(); return; }
   }
-  const EL = (m.type === 'video' && exporting && slot._ev && slot._evId === slot.id && slot._ev.readyState >= 2) ? slot._ev : m.el;
+  const EL = VF || ((m.type === 'video' && exporting && slot._ev && slot._evId === slot.id && slot._ev.readyState >= 2) ? slot._ev : m.el);
   const sw = m.type === 'video' ? (EL.videoWidth || m.w) : m.w;
   const sh = m.type === 'video' ? (EL.videoHeight || m.h) : m.h;
   const mv = motionOf(slot.mo, t);
@@ -12031,6 +12032,100 @@ async function waitQueue(enc, max) {
     await new Promise(r => { if ('ondequeue' in enc) enc.addEventListener('dequeue', () => r(), { once: true }); else setTimeout(r, 4); });
   }
 }
+/* ---- faster video export: read each clip's frames in order with the browser's video decoder instead of seeking a <video> for every frame
+   (a seek decodes again from the last keyframe, which made scenes with video about 10× slower). Anything it can't read falls back to the old way. ---- */
+const VIDX = new Map(); // media id -> Promise<index | null>
+function mp4Index(md) {
+  if (!window.VideoDecoder || !window.EncodedVideoChunk) return Promise.resolve(null);
+  if (!VIDX.has(md.url)) VIDX.set(md.url, (async () => {
+    try {
+      const buf = new Uint8Array(await (await fetch(md.url)).arrayBuffer()), dv = new DataView(buf.buffer);
+      const u32 = o => dv.getUint32(o), typ = o => String.fromCharCode(buf[o], buf[o + 1], buf[o + 2], buf[o + 3]);
+      const kids = (s, e) => { const out = []; let o = s; while (o + 8 <= e) { let n = u32(o), h = 8; const t = typ(o + 4); if (n === 1) { n = Number(dv.getBigUint64(o + 8)); h = 16; } else if (n === 0) n = e - o; if (n < 8) break; out.push({ t, s: o + h, e: Math.min(e, o + n) }); o += n; } return out; };
+      const find = (list, t) => list.find(b => b.t === t);
+      const moov = find(kids(0, buf.length), 'moov'); if (!moov) return null;
+      let track = null;
+      for (const tk of kids(moov.s, moov.e).filter(b => b.t === 'trak')) { const mdia = find(kids(tk.s, tk.e), 'mdia'); if (!mdia) continue; const hd = find(kids(mdia.s, mdia.e), 'hdlr'); if (hd && typ(hd.s + 8) === 'vide') { track = tk; break; } }
+      if (!track) return null;
+      const tkB = kids(track.s, track.e), tkhd = find(tkB, 'tkhd'), mdia = find(tkB, 'mdia'), mdB = kids(mdia.s, mdia.e), mdhd = find(mdB, 'mdhd');
+      const ts = buf[mdhd.s] === 1 ? u32(mdhd.s + 20) : u32(mdhd.s + 12);
+      const mo = tkhd.s + (buf[tkhd.s] === 1 ? 52 : 40), a = dv.getInt32(mo) / 65536, b = dv.getInt32(mo + 4) / 65536;
+      const rot = ((Math.round(Math.atan2(b, a) * 180 / Math.PI) % 360) + 360) % 360;
+      let shift = 0; const edts = find(tkB, 'edts');
+      if (edts) { const el = find(kids(edts.s, edts.e), 'elst'); if (el) { const v1 = buf[el.s] === 1, n = u32(el.s + 4); for (let i = 0, o = el.s + 8; i < n; i++, o += v1 ? 20 : 12) { const mt = v1 ? Number(dv.getBigInt64(o + 8)) : dv.getInt32(o + 4); if (mt >= 0) { shift = mt; break; } } } }
+      const minf = find(mdB, 'minf'), stbl = find(kids(minf.s, minf.e), 'stbl'), sb = kids(stbl.s, stbl.e);
+      const stsd = find(sb, 'stsd'), ent = kids(stsd.s + 8, stsd.e)[0]; if (!ent) return null;
+      const cw = dv.getUint16(ent.s + 24), ch = dv.getUint16(ent.s + 26), cfgBox = kids(ent.s + 78, ent.e);
+      let codec, desc;
+      if (/^avc[13]$/.test(ent.t)) { const c = find(cfgBox, 'avcC'); if (!c) return null; desc = buf.slice(c.s, c.e); codec = 'avc1.' + [1, 2, 3].map(i => desc[i].toString(16).padStart(2, '0')).join(''); }
+      else if (/^h(vc1|ev1)$/.test(ent.t)) { const c = find(cfgBox, 'hvcC'); if (!c) return null; desc = buf.slice(c.s, c.e);
+        const ps = desc[1] >> 6, tier = (desc[1] >> 5) & 1, pid = desc[1] & 31; let comp = (desc[2] << 24 | desc[3] << 16 | desc[4] << 8 | desc[5]) >>> 0, rev = 0; for (let i = 0; i < 32; i++) { rev = (rev << 1) | (comp & 1); comp >>>= 1; }
+        const cons = [6, 7, 8, 9, 10, 11].map(i => desc[i]); while (cons.length && !cons[cons.length - 1]) cons.pop();
+        codec = [ent.t, (ps ? 'ABC'[ps - 1] : '') + pid, (rev >>> 0).toString(16), (tier ? 'H' : 'L') + desc[12], ...cons.map(x => x.toString(16).toUpperCase())].join('.'); }
+      else return null;
+      const cfg = { codec, description: desc, codedWidth: cw, codedHeight: ch };
+      const sup = await VideoDecoder.isConfigSupported(cfg).catch(() => null); if (!sup || !sup.supported) return null;
+      // samples: decode time, presentation time, size, file offset, keyframe
+      const stsz = find(sb, 'stsz'), fixed = u32(stsz.s + 4), N = u32(stsz.s + 8), size = new Uint32Array(N); for (let i = 0; i < N; i++) size[i] = fixed || u32(stsz.s + 12 + i * 4);
+      const dts = new Float64Array(N), pts = new Float64Array(N); { const st = find(sb, 'stts'); let k = 0, t = 0; for (let i = 0, n = u32(st.s + 4); i < n; i++) { const c = u32(st.s + 8 + i * 8), d = u32(st.s + 12 + i * 8); for (let j = 0; j < c && k < N; j++) { dts[k++] = t; t += d; } } }
+      pts.set(dts); { const ct = find(sb, 'ctts'); if (ct) { const v1 = buf[ct.s] === 1; let k = 0; for (let i = 0, n = u32(ct.s + 4); i < n; i++) { const c = u32(ct.s + 8 + i * 8), off = v1 ? dv.getInt32(ct.s + 12 + i * 8) : u32(ct.s + 12 + i * 8); for (let j = 0; j < c && k < N; j++, k++) pts[k] = dts[k] + off; } } }
+      const key = new Uint8Array(N); { const ss = find(sb, 'stss'); if (ss) for (let i = 0, n = u32(ss.s + 4); i < n; i++) key[u32(ss.s + 8 + i * 4) - 1] = 1; else key.fill(1); }
+      const off = new Float64Array(N); { const sc = find(sb, 'stsc'), co = find(sb, 'stco') || find(sb, 'co64'), big = co.t === 'co64', nC = u32(co.s + 4), chunk = i => big ? Number(dv.getBigUint64(co.s + 8 + i * 8)) : u32(co.s + 8 + i * 4);
+        const runs = []; for (let i = 0, n = u32(sc.s + 4); i < n; i++) runs.push([u32(sc.s + 8 + i * 12) - 1, u32(sc.s + 12 + i * 12)]);
+        let k = 0; for (let r = 0; r < runs.length; r++) { const end = r + 1 < runs.length ? runs[r + 1][0] : nC; for (let c = runs[r][0]; c < end && k < N; c++) { let o = chunk(c); for (let j = 0; j < runs[r][1] && k < N; j++) { off[k] = o; o += size[k]; k++; } } } }
+      const order = Array.from({ length: N }, (_, i) => i).sort((x, y) => pts[x] - pts[y]); // presentation order
+      return { buf, cfg, ts, shift, rot, N, size, dts, pts, key, off, order };
+    } catch (e) { return null; }
+  })());
+  return VIDX.get(md.url);
+}
+// one reader per photo box: it decodes forward from the nearest keyframe and keeps only the frame on screen
+function vReader(ix) {
+  const R = { frames: [], cur: null, fed: 0, dec: null, wake: null, err: false, end: false };
+  const us = i => Math.round((ix.pts[i] - ix.shift) / ix.ts * 1e6);
+  R.open = from => { try { if (R.dec) R.dec.close(); } catch (e) { } R.frames.forEach(f => f.close()); R.frames = []; R.end = false;
+    R.dec = new VideoDecoder({ output: f => { R.frames.push(f); R.frames.sort((a, b) => a.timestamp - b.timestamp); if (R.wake) R.wake(); }, error: () => { R.err = true; if (R.wake) R.wake(); } });
+    R.dec.configure({ ...ix.cfg, hardwareAcceleration: 'no-preference' }); R.fed = from; };
+  R.get = async t => { // t: seconds into the clip
+    const want = Math.round(t * 1e6), half = 1e6 / 60;
+    let target = 0; for (let k = 0; k < ix.N; k++) { const i = ix.order[k]; if (us(i) <= want + half) target = i; else break; } // decode index of the frame on screen
+    const have = R.cur && R.cur.timestamp <= want + half && (R.frames.length ? R.frames[R.frames.length - 1].timestamp : R.cur.timestamp) >= 0;
+    const behind = !R.dec || R.fed === 0 || (R.cur && R.cur.timestamp > want + half) || target >= R.fed + 90; // went back, or far ahead: start again from a keyframe
+    if (behind && !(have && R.dec && R.cur.timestamp === us(target))) { let k = target; while (k > 0 && !ix.key[k]) k--; R.open(k); if (R.cur) { R.cur.close(); R.cur = null; } }
+    const pick = () => { let best = -1; for (let j = 0; j < R.frames.length; j++) if (R.frames[j].timestamp <= want + half) best = j; if (best >= 0) { if (R.cur) R.cur.close(); R.cur = R.frames[best]; R.frames.splice(0, best + 1).slice(0, -1).forEach(f => f.close()); } };
+    for (let guard = 0; guard < 4000 && !R.err; guard++) {
+      pick();
+      if (R.frames.some(f => f.timestamp > want + half) || R.end) break;
+      if (R.fed < ix.N && R.dec.decodeQueueSize < 6) { const i = R.fed++; R.dec.decode(new EncodedVideoChunk({ type: ix.key[i] ? 'key' : 'delta', timestamp: us(i), data: ix.buf.subarray(ix.off[i], ix.off[i] + ix.size[i]) })); continue; }
+      if (R.fed >= ix.N) { await R.dec.flush().catch(() => { R.err = true; }); R.end = true; pick(); break; }
+      await new Promise(r => { R.wake = r; setTimeout(r, 40); }); R.wake = null;
+    }
+    if (R.err) return null;
+    if (!R.cur && R.frames.length) { R.cur = R.frames.shift(); }
+    return R.cur;
+  };
+  R.close = () => { try { R.dec && R.dec.close(); } catch (e) { } R.frames.forEach(f => f.close()); R.frames = []; if (R.cur) R.cur.close(); R.cur = null; };
+  return R;
+}
+// the picture to draw for a video box while exporting (a decoded frame, turned upright when the phone stored it sideways)
+async function slotFrame(slot, md, t) {
+  if (slot._vr === false) return false;
+  if (!slot._vr || slot._vrId !== slot.id) { const ix = await mp4Index(md); if (!ix) { slot._vr = false; return false; } if (slot._vr && slot._vr.close) slot._vr.close(); slot._vr = vReader(ix); slot._vr.ix = ix; slot._vrId = slot.id; }
+  const f = await slot._vr.get(t); if (!f) { slot._vr.close(); slot._vr = false; return false; }
+  const rot = slot._vr.ix.rot;
+  if (!rot) { slot._vf = f; return true; }
+  const cv = slot._vrc || (slot._vrc = document.createElement('canvas')), w = f.displayWidth, h = f.displayHeight, sw = rot % 180 ? h : w, sh = rot % 180 ? w : h;
+  if (cv.width !== sw || cv.height !== sh) { cv.width = sw; cv.height = sh; }
+  const x = cv.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.translate(sw / 2, sh / 2); x.rotate(rot * Math.PI / 180); x.drawImage(f, -w / 2, -h / 2); slot._vf = cv; return true;
+}
+function dropSlotReaders() { project.scenes.forEach(s => s.media.forEach(m => { if (m._vr && m._vr.close) m._vr.close(); delete m._vr; delete m._vrId; delete m._vf; delete m._vrc; })); VIDX.clear(); }
+async function prepVideosAt(T) { // every video on screen at T (both scenes in a transition)
+  const i = sceneAt(T), jobs = [], t = T - timeline[i].start;
+  const add = (k, tt) => project.scenes[k].media.forEach(m => { const md = m.id && media[m.id]; if (!md || md.type !== 'video') return; const at = vidTime(m, md.el, tt);
+    jobs.push(slotFrame(m, md, at).then(ok => { if (!ok) { m._vf = null; return seekVideo(slotVideo(m, md), at); } })); });
+  add(i, t); if (i > 0 && t < xfOf(i)) add(i - 1, timeline[i - 1].dur + t);
+  await Promise.all(jobs);
+}
 // Fast path: renders frame by frame and encodes with WebCodecs (no real-time wait)
 async function exportFast(S) {
   const vcfg = await pickVideoCfg(S); if (!vcfg) return null;
@@ -12069,7 +12164,7 @@ async function exportFast(S) {
   for (let f = 0; f < nF; f++) {
     if (cancelled || err) break;
     const T = f / fps;
-    for (const [v, t] of videosAt(T)) await seekVideo(v, t);
+    await prepVideosAt(T);
     render(ER, T, false);
     if (cropX) cropX.drawImage(ER.canvas, 0, (H * S - CROP.h) / 2, CROP.w, CROP.h, 0, 0, CROP.w, CROP.h);
     const vf = new VideoFrame(cropCv || ER.canvas, { timestamp: Math.round(f * 1e6 / fps), duration: Math.round(1e6 / fps) });
@@ -12084,13 +12179,13 @@ async function exportFast(S) {
     }
   }
   if (err) throw err;
-  if (cancelled) { try { venc.close(); aenc && aenc.close(); } catch (e) {} dropSlotVideos(); return 'cancel'; }
+  if (cancelled) { try { venc.close(); aenc && aenc.close(); } catch (e) {} dropSlotVideos(); dropSlotReaders(); return 'cancel'; }
   pushAudio(total + 1);
   progress(1, '마무리 중 ');
   await venc.flush(); venc.close();
   if (aenc) { await aenc.flush(); aenc.close(); }
   if (err) throw err;
-  dropSlotVideos();
+  dropSlotVideos(); dropSlotReaders();
   return { blob: mux.finalize(), ext: 'mp4' };
 }
 // Fallback: record in real time
@@ -12141,7 +12236,7 @@ async function runExport(S) {
   cb.onclick = () => { cancelled = true; if (rtDone) rtDone(); }; row.appendChild(cb);
   $('modal').hidden = false;
   let out = null;
-  try { out = await exportFast(S); } catch (e) { out = null; }
+  try { out = await exportFast(S); } catch (e) { out = null; } finally { dropSlotReaders(); }
   if (out === null && !cancelled) out = await exportRealtime(S);
   dropSlotVideos();
   exporting = false; exportRT = false; ER = null; dirty = true; curT = 0;
