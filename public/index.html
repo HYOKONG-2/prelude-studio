@@ -8862,7 +8862,7 @@ LAYOUTS.cksong = {
       txt(c, fill(s.texts.title), PX, 318, SERIF(64, true), '#FFFFFF', 1, { align: 'left', k: 'title' });
       txt(c, fill(s.texts.artist), PX + 2, 372, UIF(24, 500), 'rgba(255,255,255,.65)', 1, { align: 'left', k: 'artist', sp: 3 });
       // lyrics: previous · current · next, scrolling smoothly when the line changes
-      const L = (project.lyrics || []).filter(l => l.text).slice().sort((a, b) => a.start - b.start);
+      const L = (project.lyrics || []).filter(l => l.text && !l.off).slice().sort((a, b) => a.start - b.start);
       let ci = -1; for (let i = 0; i < L.length; i++) if (L[i].start <= gT) ci = i;
       const sc = ci >= 0 ? 1 - ease(clamp((gT - L[ci].start) / 0.5)) : 0, LH = 82, LY = 560;
       c.save(); c.beginPath(); c.rect(PX - 20, LY - 190, PW + 120, 380); c.clip();
@@ -10367,7 +10367,7 @@ function projectFromTemplate(tpl) {
     v: 2,
     info: Object.assign({ groomKo: '', brideKo: '', groomEn: '', brideEn: '', dateKo: '', dateEn: '' }, tpl.info || {}),
     scenes: tpl.scenes.filter(s => LAYOUTS[s.layout]).map(s => makeScene(s.layout, s)),
-    lyrics: (tpl.lyrics || []).map(l => ({ id: uid(), start: +l.start || 0, end: +l.end || 0, text: l.text || '', sub: l.sub || '', own: l.own, st: l.st })),
+    lyrics: (tpl.lyrics || []).map(l => ({ id: uid(), start: +l.start || 0, end: +l.end || 0, text: l.text || '', sub: l.sub || '', own: l.own, st: l.st, off: l.off || undefined })),
     lyricsOn: tpl.lyricsOn !== false,
     lstyle: tpl.lstyle || { s: 1, x: 0, y: 0 }
   };
@@ -10636,7 +10636,7 @@ const xfOf = i => { const tr = (project.scenes[i] && project.scenes[i].tr) || 'd
   return Math.min(tr === 'black' || tr === 'white' || tr === 'hearts' || tr === 'bars' ? 1.4 : tr === 'blur' || tr === 'push' || tr === 'rise' ? 1.1 : (typeof PAPER_TR !== 'undefined' && PAPER_TR.includes(tr)) ? 1.0 : 0.9, timeline[i].dur * 0.35); };
 function lyricAt(T) {
   if (!project.lyricsOn) return null;
-  for (const l of project.lyrics) if ((l.text || l.sub) && T >= l.start && T < l.end) return l;
+  for (const l of project.lyrics) if (!l.off && (l.text || l.sub) && T >= l.start && T < l.end) return l;
   return null;
 }
 
@@ -10974,7 +10974,7 @@ function buildTimeline() {
   });
   if (project.lyricsOn) project.lyrics.forEach(l => {
     if (!(l.end > l.start)) return;
-    const d = document.createElement('div'); d.className = 'lyr';
+    const d = document.createElement('div'); d.className = 'lyr'; if (l.off) d.style.opacity = '0.25';
     d.style.left = (l.start / span * 100) + '%'; d.style.width = Math.max(0.4, (Math.min(l.end, span) - l.start) / span * 100) + '%';
     el.insertBefore(d, $('playhead'));
   });
@@ -11593,7 +11593,8 @@ function buildLyricPane() {
   p.innerHTML = `
     <div class="checks" style="margin-top:0"><label><input type="checkbox" id="lyOn" ${project.lyricsOn ? 'checked' : ''}>가사 자막 보이기</label></div>
     ${autoLyricsHtml()}
-    <p class="hint">음원을 틀어 두고 하이라이트가 시작될 때 맨 아래 ‘지금 위치에 가사 추가’를 누르세요. 가사마다 ‘기본 위치 따르기’를 끄면 그 가사만 따로 옮길 수 있어요. 시작·끝 옆의 ‘지금’ 버튼으로 재생 위치를 바로 찍을 수 있어요.</p>
+    ${list.length ? `<div class="row" style="margin:0 0 8px;align-items:center;gap:6px;flex-wrap:wrap"><span class="hint" style="margin:0">가사 ${list.filter(l => !l.off).length}/${list.length}줄 보이는 중</span><button type="button" class="x" id="lyAllOn">모두 보이기</button><button type="button" class="x" id="lyAllOff">모두 숨기기</button></div>` : ''}
+    <p class="hint">‘이 가사 보이기’를 끄면 그 줄만 영상에서 빠져요 (지우지 않고 남겨 둬요). 음원을 틀어 두고 하이라이트가 시작될 때 맨 아래 ‘지금 위치에 가사 추가’를 누르세요. 가사마다 ‘기본 위치 따르기’를 끄면 그 가사만 따로 옮길 수 있어요. 시작·끝 옆의 ‘지금’ 버튼으로 재생 위치를 바로 찍을 수 있어요.</p>
     <label class="ctl-row" style="margin:4px 0 10px"><input type="checkbox" id="lySame" ${project.lyricSame ? 'checked' : ''}>모든 장면에서 가사 자막 모양 똑같이 (밝은 장면도 흰 글씨 + 외곽선)</label>
     <label class="field"><span>가사 자막 스타일</span><select id="lyFx">${CAPFX.map(([k, n]) => `<option value="${k}" ${(project.lyricFx || '') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
     ${colorRow('lcol', '가사 색', project.lcol)}${colorRow('lcol2', '아래 줄 색', project.lcol2)}
@@ -11604,13 +11605,13 @@ function buildLyricPane() {
     <div class="row" style="margin-top:14px"><button class="btn primary" id="lyAdd" style="width:100%">＋ 지금 위치에 가사 추가</button></div>`;
   const box = $('lyList');
   list.forEach(l => {
-    const d = document.createElement('div'); d.className = 'ly-item'; d.dataset.ly = l.id;
+    const d = document.createElement('div'); d.className = 'ly-item'; d.dataset.ly = l.id; if (l.off) d.style.opacity = '0.5';
     d.innerHTML = `<textarea rows="2" placeholder="가사 (영문 노래면 영어 가사)" aria-label="가사">${esc(l.text)}</textarea>
       <input type="text" class="tin" data-sub style="width:100%;margin-top:6px" placeholder="한글 자막 (영문 가사 아래에 나와요, 선택)" value="${esc(l.sub || '')}" aria-label="한글 자막">
       <div class="ly-times">시작<input class="tin" data-f="start" value="${fmt1(l.start)}" aria-label="시작 시간"><button class="x" data-now="start">지금</button>
       끝<input class="tin" data-f="end" value="${fmt1(l.end)}" aria-label="끝 시간"><button class="x" data-now="end">지금</button>
       <button class="x" data-play>듣기</button><button class="x" data-del>빼기</button></div>
-      <div class="checks" style="margin-top:6px"><label><input type="checkbox" data-own ${l.own ? '' : 'checked'}>기본 위치 따르기</label></div>
+      <div class="checks" style="margin-top:6px"><label><input type="checkbox" data-on ${l.off ? '' : 'checked'}>이 가사 보이기</label><label><input type="checkbox" data-own ${l.own ? '' : 'checked'}>기본 위치 따르기</label></div>
       ${l.own ? `<p class="hint" style="margin:4px 0 0">이 가사만 따로 움직여요. <button class="x" data-goto>이 가사로 이동</button> 후 미리보기에서 끌어 옮기거나 휠로 크기를 바꾸세요.</p>` : ''}`;
     d.querySelector('[data-sub]').oninput = e => { touch('lyrics'); l.sub = e.target.value; loadFontsFor(l.sub); dirty = true; save(); };
     d.querySelector('textarea').oninput = e => { touch('lyrics'); l.text = e.target.value; loadFontsFor(l.text); dirty = true; save(); buildTimelineSoon(); };
@@ -11624,6 +11625,7 @@ function buildLyricPane() {
     });
     d.querySelector('[data-play]').onclick = () => { seek(Math.max(0, l.start - 0.3)); if (!playing) play(); };
     d.querySelector('[data-del]').onclick = () => { project.lyrics = project.lyrics.filter(x => x !== l); lyricChanged(); };
+    d.querySelector('[data-on]').onchange = e => { touch('lyrics'); if (e.target.checked) delete l.off; else l.off = true; lyricChanged(); };
     d.querySelector('[data-own]').onchange = e => {
       touch('lyrics');
       if (e.target.checked) { delete l.own; delete l.st; }
@@ -11638,6 +11640,7 @@ function buildLyricPane() {
   $('lySame').onchange = e => { touch('lyrics'); if (e.target.checked) { project.lyricSame = true; if (!project.capRead || project.capRead === 'auto') project.capRead = 'outline'; } else delete project.lyricSame; dirty = true; save(); buildLyricPane && buildLyricPane(); };
   $('lyFx').onchange = e => { touch('lyrics'); if (e.target.value) project.lyricFx = e.target.value; else delete project.lyricFx; dirty = true; save(); };
   $('lyOn').onchange = e => { project.lyricsOn = e.target.checked; lyricChanged(); };
+  if ($('lyAllOn')) { $('lyAllOn').onclick = () => { touch('lyrics'); project.lyrics.forEach(l => { delete l.off; }); lyricChanged(); }; $('lyAllOff').onclick = () => { touch('lyrics'); project.lyrics.forEach(l => { l.off = true; }); lyricChanged(); }; }
   wireAutoLyrics(p);
   $('lyAdd').onclick = () => {
     const T = +clock().toFixed(1);
@@ -11761,7 +11764,7 @@ function templateData() {
   return {
     kind: 'prelude-template', v: 2, info: project.info,
     scenes: project.scenes.map(s => ({ layout: s.layout, weight: s.weight, caption: s.caption, texts: s.texts, opts: s.opts, tstyle: s.tstyle || {}, bgc: s.bgc, tr: s.tr, fx: s.fx, capFx: s.capFx, anim: s.anim, count: s.count, tm: s.tm, pbg: s.pbg })),
-    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2, capRead: project.capRead, lyricSame: project.lyricSame
+    lyrics: project.lyrics.map(l => ({ start: l.start, end: l.end, text: l.text, sub: l.sub, own: l.own, st: l.st, off: l.off })), lyricsOn: project.lyricsOn, lstyle: project.lstyle, lyricFx: project.lyricFx, lcol: project.lcol, lcol2: project.lcol2, capRead: project.capRead, lyricSame: project.lyricSame
   };
 }
 function saveTemplate() { saveFile(new Blob([JSON.stringify(templateData(), null, 2)], { type: 'application/json' }), 'template.json'); }
