@@ -338,6 +338,26 @@ const fade = (t, s, len = 0.9) => ease(clamp((t - s) / len));
 const uid = () => Math.random().toString(36).slice(2, 10);
 const $ = id => document.getElementById(id);
 const FONTS = [['', '기본'], ['Nanum Myeongjo', '나눔명조'], ['Gowun Batang', '고운바탕'], ['Hahmlet', '함렛'], ['Gowun Dodum', '고운돋움'], ['Noto Sans KR', '노토 산스'], ['Nanum Pen Script', '나눔펜 손글씨'], ['Cormorant Garamond', 'Cormorant (영문)'], ['Pinyon Script', 'Pinyon Script (영문 필기체)'], ['Great Vibes', 'Great Vibes (영문 필기체)'], ['VT323', '캠코더 숫자 (영문)'], ['Jua', '주아 (둥근 귀여운 글씨)'], ['Gaegu', '개구 (귀여운 손글씨)'], ['Pacifico', 'Pacifico (영문 귀여운 필기체)'], ['Playfair Display', 'Playfair (영문 굵은 세리프)']];
+/* ---- fonts the user adds from a file (ttf/otf/woff); kept in the work file and the browser ---- */
+const userFonts = {}; // fid -> { blob, name, family }
+const ufFamily = fid => 'PreludeUF ' + fid;
+function fontList() { return FONTS.concat(Object.entries(userFonts).map(([fid, f]) => [f.family, f.name + ' (내 폰트)'])); }
+async function registerUserFont(fid, blob, name, keep = true) {
+  const family = ufFamily(fid), face = new FontFace(family, await blob.arrayBuffer());
+  await face.load(); document.fonts.add(face);
+  userFonts[fid] = { blob, name: name || '내 폰트', family };
+  if (keep && typeof idbSet === 'function') idbSet('font:' + fid, { blob, name: userFonts[fid].name });
+  return family;
+}
+async function addUserFontFile(file) {
+  if (!file) return null;
+  const fid = uid(), name = file.name.replace(/\.[^.]+$/, '');
+  try { const fam = await registerUserFont(fid, file, name); toast(`‘${name}’ 폰트를 넣었어요`); return fam; }
+  catch (e) { toast('이 폰트 파일은 열 수 없어요. ttf, otf, woff 파일을 넣어주세요'); return null; }
+}
+function pickUserFontFile() {
+  return new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.ttf,.otf,.woff,.woff2,font/*'; i.onchange = () => res(i.files[0] || null); i.addEventListener('cancel', () => res(null)); i.click(); });
+}
 function withFont(font, fam) {
   if (!fam) return font;
   const px = +(/(\d+(?:\.\d+)?)px/.exec(font) || [0, 40])[1];
@@ -461,7 +481,7 @@ const DEF = { s: 1, x: 0, y: 0 };
 function lyricById(k) { return project.lyrics.find(l => l.id === k.slice(6)); }
 function getStyle(k) {
   if (k === 'lyrics') return project.lstyle || DEF;
-  if (k && k.startsWith('lyric:')) { const l = lyricById(k); return (l && l.st) || project.lstyle || DEF; }
+  if (k && k.startsWith('lyric:')) { const l = lyricById(k), g = project.lstyle; if (l && l.st && !l.st.f && g && g.f) return { ...l.st, f: g.f }; return (l && l.st) || g || DEF; } // a moved line keeps the lyric font
   return (curScene && curScene.tstyle && curScene.tstyle[k]) || DEF;
 }
 function ensureStyle(idx, k) {
@@ -11028,7 +11048,7 @@ function styleCtl(key, st) {
     <div class="ctl-row"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((st.s || 1) * 100)}" data-sk="s" aria-label="크기"></div>
     <div class="ctl-row"><span>가로</span><input type="range" min="-900" max="900" value="${Math.round(st.x || 0)}" data-sk="x" aria-label="가로 위치"></div>
     <div class="ctl-row"><span>세로</span><input type="range" min="-1000" max="1000" value="${Math.round(st.y || 0)}" data-sk="y" aria-label="세로 위치"></div>
-    <div class="ctl-row"><span>폰트</span><select data-sf aria-label="폰트">${FONTS.map(([f, n]) => `<option value="${f}" ${(st.f || '') === f ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    <div class="ctl-row"><span>폰트</span><select data-sf aria-label="폰트">${fontList().map(([f, n]) => `<option value="${f}" ${(st.f || '') === f ? 'selected' : ''}>${n}</option>`).join('')}<option value="__add">＋ 내 폰트 파일 넣기 (ttf·otf)…</option></select></div>
     <div class="ctl-row"><span>색</span><div class="sw">${SWATCH.map(c => `<button type="button" class="swb${st.c === c ? ' on' : ''}" style="background:${c}" data-sc="${c}" aria-label="색 ${c}"></button>`).join('')}<input type="color" value="${st.c || '#ffffff'}" data-scp aria-label="색 직접 고르기"><button type="button" class="x" data-sc="">기본 색</button></div></div>
     <div class="row" style="margin-top:4px"><button type="button" class="x" data-sreset>이 글씨 꾸미기 모두 되돌리기</button></div></details>`;
 }
@@ -11037,7 +11057,14 @@ function wireStyle(root, getSt, onChange, onReset) {
     const key = d.dataset.sty;
     d.addEventListener('toggle', () => { if (d.open) openSty.add(key); else openSty.delete(key); });
     d.querySelectorAll('[data-sk]').forEach(r => r.oninput = () => { const st = getSt(key); st[r.dataset.sk] = r.dataset.sk === 's' ? r.value / 100 : +r.value; onChange(key); });
-    d.querySelector('[data-sf]').onchange = e => { const st = getSt(key); if (e.target.value) st.f = e.target.value; else delete st.f; loadFontsFor(allText()); onChange(key); };
+    d.querySelector('[data-sf]').onchange = async e => {
+      let v = e.target.value;
+      if (v === '__add') { const fam = await addUserFontFile(await pickUserFontFile()); if (!fam) { e.target.value = getSt(key).f || ''; return; } v = fam; }
+      const st = getSt(key); if (v) st.f = v; else delete st.f;
+      // a lyric font set for all lyrics also goes to the lines that were moved on their own
+      if (key === 'lyrics') (project.lyrics || []).forEach(l => { if (l.st) { if (v) l.st.f = v; else delete l.st.f; } });
+      loadFontsFor(allText()); onChange(key);
+    };
     d.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => {
       const st = getSt(key); if (b.dataset.sc) { st.c = b.dataset.sc; d.querySelector('[data-scp]').value = b.dataset.sc; } else delete st.c;
       d.querySelectorAll('.swb').forEach(x => x.classList.toggle('on', !!b.dataset.sc && x.dataset.sc === b.dataset.sc)); onChange(key);
@@ -11821,6 +11848,7 @@ async function restore() {
   project.scenes.forEach(s => s.media.forEach(m => m.liveSrc && ids.add(m.liveSrc))); // keep a Live Photo's original clip so its moment can be picked again
   keys.filter(k => typeof k === 'string' && k.startsWith('media:') && !ids.has(k.slice(6))).forEach(k => idbDel(k));
   await restoreSfxFromIDB();
+  for (const k of keys) { if (typeof k !== 'string' || !k.startsWith('font:')) continue; const r = await idbGet(k); if (r && r.blob) { try { await registerUserFont(k.slice(5), r.blob, r.name, false); } catch (e) { } } }
   const a = await idbGet('audio');
   if (a && (a.buf || a.blob)) {
     try {
@@ -12572,7 +12600,9 @@ async function saveWork() {
     }
     const sfxFiles = {};
     (project.sfx || []).forEach(x => { const st = x.fid && sfxStore[x.fid]; if (st && !sfxFiles[x.fid]) { sfxFiles[x.fid] = { name: st.name, mime: st.blob.type || '' }; files.push({ name: 'sfx/' + x.fid, blob: st.blob }); } });
-    const meta = { kind: 'prelude-project', v: 3, saved: Date.now(), project: clone(project), media: mediaIndex, audio, sfxFiles };
+    const fontFiles = {}, pj = JSON.stringify(project);
+    for (const [fid, f] of Object.entries(userFonts)) if (pj.includes(f.family)) { fontFiles[fid] = { name: f.name, mime: f.blob.type || 'font/ttf' }; files.push({ name: 'fonts/' + fid, blob: f.blob }); }
+    const meta = { kind: 'prelude-project', v: 3, saved: Date.now(), project: clone(project), media: mediaIndex, audio, sfxFiles, fontFiles };
     files.unshift({ name: 'project.json', blob: new Blob([JSON.stringify(meta)], { type: 'application/json' }) });
     toast('작업 파일을 만드는 중이에요');
     const skipped = [];
@@ -12646,6 +12676,7 @@ async function applyWork(entries, meta) {
       await loadAudioFile(new File([b], meta.audio.name || '음원', { type: meta.audio.mime || b.type || 'audio/mpeg' }), true);
     } else onAudioReady();
     await loadSfxEntries(entries, meta.sfxFiles);
+    for (const [fid, inf] of Object.entries(meta.fontFiles || {})) { const e = entries.get('fonts/' + fid); if (!e) continue; try { await registerUserFont(fid, await entryBlob(e, inf.mime), inf.name); } catch (err) { } }
     buildInfoPane(); buildLyricPane(); buildSfxPane(); buildTimeline(); loadFontsFor(allText()); save(); resetHistory();
     toast(bad ? `불러왔어요. 파일 ${bad}개는 열지 못했어요` : '작업 파일을 불러왔어요. 이어서 편집하세요');
     buildFilePane(); hideStart();
