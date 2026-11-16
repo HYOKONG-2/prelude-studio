@@ -9905,10 +9905,11 @@ Object.assign(LAYOUTS, {
     draw(c, s, t, d) {
       bg(c, '#FAFAFA'); const X = 520, Wd = 880; c.fillStyle = '#fff'; c.fillRect(X, 0, Wd, H); c.fillStyle = IGC.line; c.fillRect(X, 0, 1.5, H); c.fillRect(X + Wd, 0, 1.5, H);
       txt(c, '알림', X + 40, 120, IGF(40, 700), IGC.ink, 1, { align: 'left' }); txt(c, '오늘', X + 40, 200, IGF(26, 700), IGC.ink, 1, { align: 'left' });
-      fill(s.texts.items).split('\n').filter(Boolean).forEach((m, i) => { const a = fade(t, 0.6 + i * 1.0, 0.4); if (a <= 0) return; const y = 270 + i * 160; c.save(); c.globalAlpha *= a; c.translate((1 - ease(a)) * 40, 0);
+      const actL = fill(s.texts.items).split('\n').filter(Boolean), f0 = /팔로우/.test(actL[0] || ''); // the follow-back button only when the first line is about following
+      actL.forEach((m, i) => { const a = fade(t, 0.6 + i * 1.0, 0.4); if (a <= 0) return; const y = 270 + i * 160; c.save(); c.globalAlpha *= a; c.translate((1 - ease(a)) * 40, 0);
         igAvatar(c, s, 0, X + 76, y + 30, 38, t, true); const ls = igWrap(c, fill(s.texts.who) + m, IGF(27, 400), Wd - 300); ls.forEach((l, j) => txt(c, l, X + 140, y + 14 + j * 38, IGF(27, j ? 400 : 400), IGC.ink, 1, { align: 'left', k: i || j ? null : 'items' })); txt(c, `${i + 1}분`, X + 140, y + 14 + ls.length * 38, IGF(22, 400), IGC.sub, 1, { align: 'left' });
-        if (i === 0) { c.fillStyle = IGC.blue; rr(c, X + Wd - 190, y + 6, 150, 50, 10); c.fill(); txt(c, '맞팔로우', X + Wd - 115, y + 31, IGF(22, 700), '#fff', 1); }
-        else { const si = i % 2 ? 1 : 2; c.fillStyle = '#EEE'; c.fillRect(X + Wd - 110, y, 70, 70); if (s.media[si] && s.media[si].id) { const ho = hitOn; hitOn = false; coverIn(c, s, si, X + Wd - 110, y, 70, 70, t, {}); hitOn = ho; } }
+        if (i === 0 && f0) { c.fillStyle = IGC.blue; rr(c, X + Wd - 190, y + 6, 150, 50, 10); c.fill(); txt(c, '맞팔로우', X + Wd - 115, y + 31, IGF(22, 700), '#fff', 1); }
+        else { const si = (f0 ? i : i + 1) % 2 ? 1 : 2; c.fillStyle = '#EEE'; c.fillRect(X + Wd - 110, y, 70, 70); if (s.media[si] && s.media[si].id) { const ho = hitOn; hitOn = false; coverIn(c, s, si, X + Wd - 110, y, 70, 70, t, {}); hitOn = ho; } }
         c.restore(); });
       igNav(c, X, Wd, H - 136, 3);
     } }
