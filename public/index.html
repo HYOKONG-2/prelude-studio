@@ -584,7 +584,12 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const oy = slot.oy == null ? (vertical ? (dh - h) / h * 0.12 : 0) : slot.oy;
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
-  if (z < 1 || ox || slot.oy != null) { c.fillStyle = scene.pbg || (o.dark ? '#000' : PAPER); c.fillRect(x, y, w, h); }
+  if (z < 1 || ox || slot.oy != null) {
+    if (slot.bfill) { // the empty sides get a soft, darker copy of the same photo instead of a flat colour
+      const k0 = Math.max(w / sw, h / sh) * 1.1; c.save(); c.filter = `blur(${Math.max(6, Math.round(Math.min(w, h) * 0.04))}px) brightness(0.62)`;
+      c.drawImage(EL, x + w / 2 - sw * k0 / 2, y + h / 2 - sh * k0 / 2, sw * k0, sh * k0); c.restore();
+    } else { c.fillStyle = scene.pbg || (o.dark ? '#000' : PAPER); c.fillRect(x, y, w, h); }
+  }
   c.drawImage(EL, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
   if (o.bw) { c.globalCompositeOperation = 'saturation'; c.fillStyle = '#808080'; c.fillRect(x, y, w, h); }
   if (slot.look || slot.lb) applyLook(c, slot, { el: EL }, x, y, w, h, x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2, dw, dh);
@@ -7133,7 +7138,7 @@ function stickerSlot(c, s, si, x, y, w, h, fallback) { // own PNG sticker if one
 // ---- crumpled paper photo that unfolds (mesh warp)
 const _phTex = { key: '', cv: null };
 function photoTex(s, si, w, h, t) {
-  const sl = s.media[si] || {}, key = [sl.id, sl.z, sl.ox, sl.oy, sl.look, sl.lb, w, h, s.opts.bw].join('|');
+  const sl = s.media[si] || {}, key = [sl.id, sl.z, sl.ox, sl.oy, sl.look, sl.lb, sl.bfill, w, h, s.opts.bw].join('|');
   if (_phTex.key === key && _phTex.cv) return _phTex.cv;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d');
   x.fillStyle = '#DDD'; x.fillRect(0, 0, w, h);
@@ -10404,7 +10409,7 @@ function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
   if (p.tpl === 'K' && !p.trV2 && typeof kTransitions === 'function') { kTransitions(p); p.trV2 = true; }
   if (p.tpl === 'K') p.scenes.forEach(s => { if (s.layout === 'edcover' && LAYOUTS.savow) { s.layout = 'savow'; const L = LAYOUTS.savow; s.texts = {}; L.fields.forEach(f => s.texts[f[0]] = f[2]); s.opts = Object.assign({}, ...L.opts.map(o => ({ [o[0]]: o[2] }))); s.media = (s.media || []).slice(0, 1); } });
-  p.scenes.forEach(s => { if (s.openFrom && !Array.isArray(s.openFrom)) delete s.openFrom; s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
+  p.scenes.forEach(s => { if (s.openFrom && !Array.isArray(s.openFrom)) delete s.openFrom; s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb, bfill: m.bfill })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
     if (LAYOUTS[s.layout].countOpts && !s.count && !LAYOUTS[s.layout].autoDefault) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
   p.title = p.title || ''; p.audio = p.audio || null; p.sfx = Array.isArray(p.sfx) ? p.sfx.filter(x => x && (x.key || x.fid)) : [];
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
@@ -11241,6 +11246,7 @@ function buildSlots(s) {
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
+        <div class="checks" style="margin:2px 0 4px"><label><input type="checkbox" data-bfill ${slot.bfill ? 'checked' : ''}>사진을 줄였을 때 빈 곳을 흐린 사진으로 채우기</label></div>
         <label class="ctl"><span>칸 가로</span><input type="range" min="-1800" max="1800" value="${Math.round(slot.fdx || 0)}" data-fk="fdx"></label>
         <label class="ctl"><span>칸 세로</span><input type="range" min="-1000" max="1000" value="${Math.round(slot.fdy || 0)}" data-fk="fdy"></label>
         <label class="ctl"><span>칸 크기</span><input type="range" min="40" max="200" value="${Math.round((slot.fsc || 1) * 100)}" data-fk="fsc"></label>
@@ -11260,7 +11266,8 @@ function buildSlots(s) {
         const k = r.dataset.fk; slot[k] = k === 'fsc' ? r.value / 100 : +r.value; if (k === 'fsc' && slot.fsc === 1) delete slot.fsc;
         editSel = { type: 'media', si: i, idx: project.scenes.indexOf(s) }; sceneChanged(s);
       });
-      d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; delete slot.fdx; delete slot.fdy; delete slot.fsc; delete slot.look; delete slot.lb; sceneChanged(s); buildSlots(s); };
+      d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; delete slot.fdx; delete slot.fdy; delete slot.fsc; delete slot.look; delete slot.lb; delete slot.bfill; sceneChanged(s); buildSlots(s); };
+      d.querySelector('[data-bfill]').onchange = e => { if (e.target.checked) slot.bfill = true; else delete slot.bfill; sceneChanged(s); };
       d.querySelector('[data-mo]').onchange = e => { if (e.target.value === 'auto') delete slot.mo; else slot.mo = e.target.value; sceneChanged(s); };
       d.querySelector('[data-look]').onchange = e => { if (e.target.value) slot.look = e.target.value; else delete slot.look; sceneChanged(s); };
       d.querySelector('[data-lb]').oninput = e => { const v = +e.target.value; if (v) slot.lb = v; else delete slot.lb; sceneChanged(s); };
