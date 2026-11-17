@@ -12091,8 +12091,10 @@ function mp4Index(md) {
       const ts = buf[mdhd.s] === 1 ? u32(mdhd.s + 20) : u32(mdhd.s + 12);
       const mo = tkhd.s + (buf[tkhd.s] === 1 ? 52 : 40), a = dv.getInt32(mo) / 65536, b = dv.getInt32(mo + 4) / 65536;
       const rot = ((Math.round(Math.atan2(b, a) * 180 / Math.PI) % 360) + 360) % 360;
-      let shift = 0; const edts = find(tkB, 'edts');
-      if (edts) { const el = find(kids(edts.s, edts.e), 'elst'); if (el) { const v1 = buf[el.s] === 1, n = u32(el.s + 4); for (let i = 0, o = el.s + 8; i < n; i++, o += v1 ? 20 : 12) { const mt = v1 ? Number(dv.getBigInt64(o + 8)) : dv.getInt32(o + 4); if (mt >= 0) { shift = mt; break; } } } }
+      // edit list: empty edits push the picture later, the first real edit says where the media starts
+      let shift = 0, delay = 0; const edts = find(tkB, 'edts'), mvhd = find(kids(moov.s, moov.e), 'mvhd'), mts = mvhd ? (buf[mvhd.s] === 1 ? u32(mvhd.s + 20) : u32(mvhd.s + 12)) : 0;
+      if (edts) { const el = find(kids(edts.s, edts.e), 'elst'); if (el) { const v1 = buf[el.s] === 1, n = u32(el.s + 4); for (let i = 0, o = el.s + 8; i < n; i++, o += v1 ? 20 : 12) { const sd = v1 ? Number(dv.getBigUint64(o)) : u32(o), mt = v1 ? Number(dv.getBigInt64(o + 8)) : dv.getInt32(o + 4); if (mt < 0) { if (mts) delay += sd / mts; continue; } shift = mt; break; } } }
+      shift -= Math.round(delay * ts);
       const minf = find(mdB, 'minf'), stbl = find(kids(minf.s, minf.e), 'stbl'), sb = kids(stbl.s, stbl.e);
       const stsd = find(sb, 'stsd'), ent = kids(stsd.s + 8, stsd.e)[0]; if (!ent) return null;
       const cw = dv.getUint16(ent.s + 24), ch = dv.getUint16(ent.s + 26), cfgBox = kids(ent.s + 78, ent.e);
@@ -12125,7 +12127,7 @@ function vReader(ix) {
   const us = i => Math.round((ix.pts[i] - ix.shift) / ix.ts * 1e6);
   R.open = from => { try { if (R.dec) R.dec.close(); } catch (e) { } R.frames.forEach(f => f.close()); R.frames = []; R.end = false;
     R.dec = new VideoDecoder({ output: f => { R.frames.push(f); R.frames.sort((a, b) => a.timestamp - b.timestamp); if (R.wake) R.wake(); }, error: () => { R.err = true; if (R.wake) R.wake(); } });
-    R.dec.configure({ ...ix.cfg, hardwareAcceleration: 'no-preference' }); R.fed = from; };
+    R.dec.configure({ ...ix.cfg, hardwareAcceleration: ix.hw || 'no-preference' }); R.fed = from; };
   R.get = async t => { // t: seconds into the clip
     const want = Math.round(t * 1e6), half = 1e6 / 60;
     let target = 0; for (let k = 0; k < ix.N; k++) { const i = ix.order[k]; if (us(i) <= want + half) target = i; else break; } // decode index of the frame on screen
@@ -12145,6 +12147,8 @@ function vReader(ix) {
     }
     if (R.err) return null;
     if (!R.cur && R.frames.length) { R.cur = R.frames.shift(); }
+    // a picture far from the time asked for means the decoder lost its place: give up on it, the caller seeks instead
+    if (R.cur && !R.end && Math.abs(R.cur.timestamp - want) > 300000) { R.err = true; return null; }
     return R.cur;
   };
   R.close = () => { try { R.dec && R.dec.close(); } catch (e) { } R.frames.forEach(f => f.close()); R.frames = []; if (R.cur) R.cur.close(); R.cur = null; };
@@ -12153,7 +12157,8 @@ function vReader(ix) {
 // the picture to draw for a video box while exporting (a decoded frame, turned upright when the phone stored it sideways)
 async function slotFrame(slot, md, t) {
   if (slot._vr === false) return false;
-  if (!slot._vr || slot._vrId !== slot.id) { const ix = await mp4Index(md); if (!ix) { slot._vr = false; return false; } if (slot._vr && slot._vr.close) slot._vr.close(); slot._vr = vReader(ix); slot._vr.ix = ix; slot._vrId = slot.id; }
+  if (!slot._vr || slot._vrId !== slot.id) { const ix = await mp4Index(md); if (!ix) { slot._vr = false; return false; }
+    if (!ix.hw) { ix.hw = 'no-preference'; try { const r = await VideoDecoder.isConfigSupported({ ...ix.cfg, hardwareAcceleration: 'prefer-software' }); if (r && r.supported) ix.hw = 'prefer-software'; } catch (e) { } } if (slot._vr && slot._vr.close) slot._vr.close(); slot._vr = vReader(ix); slot._vr.ix = ix; slot._vrId = slot.id; }
   const rd = slot._vr; let f = null; try { f = await rd.get(t); } catch (e) { f = null; }
   if (slot._vr !== rd) return false; // given up on while it was still working
   if (!f) { rd.close(); slot._vr = false; return false; }
