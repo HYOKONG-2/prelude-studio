@@ -542,12 +542,20 @@ function txt(c, s, x, y, font, color, a, o = {}) {
 // per-slot frame offset/scale (the photo area itself can be moved and resized)
 let rectDone = false;
 let slotLock = false;
+// 'fit': the frame takes the photo's own shape (a tall photo gets a tall frame) inside the space the layout gives it
+function fitRect(scene, si, x, y, w, h) {
+  const sl = scene && scene.media && scene.media[si], m = sl && sl.fit && sl.id && media[sl.id];
+  if (!m) return [x, y, w, h];
+  const sw = m.w || (m.el && m.el.videoWidth), sh = m.h || (m.el && m.el.videoHeight); if (!sw || !sh) return [x, y, w, h];
+  const a = sw / sh; let fw = w, fh = h; if (a < w / h) fw = h * a; else fh = w / a;
+  return [x + (w - fw) / 2, y + (h - fh) / 2, fw, fh];
+}
 function slotRect(scene, si, x, y, w, h) {
   if (slotLock) return [x, y, w, h];
   const sl = scene && scene.media && scene.media[si];
-  if (!sl || (!sl.fdx && !sl.fdy && !sl.fsc)) return [x, y, w, h];
+  if (!sl || (!sl.fdx && !sl.fdy && !sl.fsc && !sl.fit)) return [x, y, w, h];
   const k = sl.fsc || 1, cx = x + w / 2 + (sl.fdx || 0), cy = y + h / 2 + (sl.fdy || 0);
-  return [cx - w * k / 2, cy - h * k / 2, w * k, h * k];
+  return fitRect(scene, si, cx - w * k / 2, cy - h * k / 2, w * k, h * k);
 }
 function coverIn(...a) { const k = rectDone; rectDone = true; try { cover(...a); } finally { rectDone = k; } }
 // cover-crop a media slot into a rect, with per-slot zoom/offset
@@ -7138,7 +7146,7 @@ function stickerSlot(c, s, si, x, y, w, h, fallback) { // own PNG sticker if one
 // ---- crumpled paper photo that unfolds (mesh warp)
 const _phTex = { key: '', cv: null };
 function photoTex(s, si, w, h, t) {
-  const sl = s.media[si] || {}, key = [sl.id, sl.z, sl.ox, sl.oy, sl.look, sl.lb, sl.bfill, w, h, s.opts.bw].join('|');
+  const sl = s.media[si] || {}, key = [sl.id, sl.z, sl.ox, sl.oy, sl.look, sl.lb, sl.bfill, sl.fit, w, h, s.opts.bw].join('|');
   if (_phTex.key === key && _phTex.cv) return _phTex.cv;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d');
   x.fillStyle = '#DDD'; x.fillRect(0, 0, w, h);
@@ -8468,9 +8476,12 @@ TEMPLATES.K = {
 /* ---- K / N: bigger, calmer photo scenes (replaces small slide mounts, the brown film and small polaroids) ---- */
 LAYOUTS.saslide = { name: '순애보 큰 사진 갤러리 (세 장이 천천히 바뀜)', slots: 3, weight: 3.6, fields: [['cap', '아래 작은 글씨', '']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
   draw(c, s, t, d) {
-    saBg(c); const n = autoN(s, 3), seg = d / n, X = 260, Y = 110, Wd = 1400, Ht = 800;
+    saBg(c); const n = autoN(s, 3), seg = d / n, X0 = 260, Y0 = 110, W0 = 1400, H0 = 800;
+    // a photo set to 'frame follows photo' gets a box of its own shape; the box eases from one shape to the next
+    const FR = i => fitRect(s, i, X0, Y0, W0, H0), ci = Math.min(n - 1, Math.floor(t / seg)), ca = ci === 0 ? 1 : clamp((t - ci * seg + 0.4) / 0.8);
+    const r0 = FR(Math.max(0, ci - (ca < 1 ? 1 : 0))), r1 = FR(ci), e = ease(ca), [X, Y, Wd, Ht] = r0.map((v, k) => v + (r1[k] - v) * e);
     c.save(); c.shadowColor = SA.light ? 'rgba(90,70,40,.22)' : 'rgba(0,0,0,.6)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 16 * R.S; c.fillStyle = SA.light ? '#FFFFFF' : '#111'; c.fillRect(X, Y, Wd, Ht); c.restore();
-    for (let i = 0; i < n; i++) { const st = i * seg, a = i === 0 ? 1 : clamp((t - st + 0.4) / 0.8); if (t < st - 0.4 || a <= 0) continue; c.save(); c.globalAlpha *= a; cover(c, s, i, X, Y, Wd, Ht, t, { bw: s.opts.bw, dark: !SA.light, zoom: 1.02 + 0.05 * clamp((t - st + 0.4) / (seg + 0.8)) }); c.restore(); }
+    for (let i = 0; i < n; i++) { const st = i * seg, a = i === 0 ? 1 : clamp((t - st + 0.4) / 0.8); if (t < st - 0.4 || a <= 0) continue; const [px, py, pw, ph] = FR(i); c.save(); c.beginPath(); c.rect(X, Y, Wd, Ht); c.clip(); c.globalAlpha *= a; const rd = rectDone; rectDone = true; try { cover(c, s, i, px, py, pw, ph, t, { bw: s.opts.bw, dark: !SA.light, zoom: 1.02 + 0.05 * clamp((t - st + 0.4) / (seg + 0.8)) }); } finally { rectDone = rd; } c.restore(); }
     c.strokeStyle = SA.frame; c.lineWidth = 2; c.strokeRect(X - 16, Y - 16, Wd + 32, Ht + 32);
     const cur = Math.min(n, Math.floor(t / seg) + 1); txt(c, `${String(cur).padStart(2, '0')} / ${String(n).padStart(2, '0')}`, X + Wd, Y + Ht + 50, UIF(22, 500), SA.sub, fade(t, 0.4, 0.6), { align: 'right', sp: 6 });
     txt(c, fill(s.texts.cap), X, Y + Ht + 50, KSERIF(30), SA.sub, fade(t, 0.6, 0.6), { align: 'left', k: 'cap' });
@@ -8722,7 +8733,7 @@ Object.assign(LAYOUTS, {
     } },
   samat: { name: '순애보 한 장 (짙은 매트 액자 + 캡션)', slots: 1, weight: 4, fields: [['cap', '캡션', 'our days'], ['year', '작은 숫자', '']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
-      saTheme(null); saBg(c); const a = fade(t, 0, 0.9), X = 400, Y = 90, Wd = 1120, Ht = 760, m = 44;
+      saTheme(null); saBg(c); const a = fade(t, 0, 0.9), [X, Y, Wd, Ht] = fitRect(s, 0, 400, 90, 1120, 760), m = 44;
       c.save(); c.globalAlpha *= a; c.save(); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#1B1A19'; c.fillRect(X - m, Y - m, Wd + 2 * m, Ht + 2 * m); c.restore();
       c.strokeStyle = 'rgba(242,238,232,.18)'; c.lineWidth = 1.5; c.strokeRect(X - 12, Y - 12, Wd + 24, Ht + 24);
       cover(c, s, 0, X, Y, Wd, Ht, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
@@ -9991,20 +10002,22 @@ LAYOUTS.chmix4 = { name: '초크 가운데 세로 영상 + 사진 세 장이 차
   } };
 CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chmix4');
 /* ---- every framed photo follows its slot box: move / resize the whole frame (photo + border + shadow + caption) together ---- */
-function slotWrap(c, s, si, x, y, w, h, fn) {
+function slotWrap(c, s, si, x, y, w, h, fn, fnR) {
   if (slotLock) return fn();
   const [nx, ny, nw, nh] = slotRect(s, si, x, y, w, h);
+  const sl = s && s.media && s.media[si];
+  if (fnR && sl && sl.fit) { const ho = hitOn; hitOn = false; slotLock = true; try { fnR(nx, ny, nw, nh); } finally { slotLock = false; hitOn = ho; } addHit({ type: 'media', si, x: nx, y: ny, w: nw, h: nh, oy: 0 }); return; }
   if (nx === x && ny === y && nw === w && nh === h) { slotLock = true; try { fn(); } finally { slotLock = false; } return; }
   c.save(); c.translate(nx + nw / 2, ny + nh / 2); c.scale(nw / w, nh / h); c.translate(-(x + w / 2), -(y + h / 2));
   const ho = hitOn; hitOn = false; slotLock = true; try { fn(); } finally { slotLock = false; hitOn = ho; c.restore(); }
   addHit({ type: 'media', si, x: nx, y: ny, w: nw, h: nh, oy: 0 });
 }
-keyline = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(keyline);
+keyline = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o), (X, Y, Wd, Ht) => prev(c, s, si, X, Y, Wd, Ht, t, d, o)); })(keyline);
 slideMount = (prev => function (c, s, si, cx, cy, sz, rot, t, d, a) { slotWrap(c, s, si, cx - sz / 2, cy - sz * 0.43, sz, sz * 0.86, () => prev(c, s, si, cx, cy, sz, rot, t, d, a)); })(slideMount);
 chPola = (prev => function (c, s, si, cx, cy, w, h, rot, t, d, a, hc) { slotWrap(c, s, si, cx - w / 2, cy - h / 2, w, h, () => prev(c, s, si, cx, cy, w, h, rot, t, d, a, hc)); })(chPola);
-mkPiece = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(mkPiece);
-mkPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(mkPhoto);
-chPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o)); })(chPhoto);
+mkPiece = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o), (X, Y, Wd, Ht) => prev(c, s, si, X, Y, Wd, Ht, t, d, o)); })(mkPiece);
+mkPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o), (X, Y, Wd, Ht) => prev(c, s, si, X, Y, Wd, Ht, t, d, o)); })(mkPhoto);
+chPhoto = (prev => function (c, s, si, x, y, w, h, t, d, o) { slotWrap(c, s, si, x, y, w, h, () => prev(c, s, si, x, y, w, h, t, d, o), (X, Y, Wd, Ht) => prev(c, s, si, X, Y, Wd, Ht, t, d, o)); })(chPhoto);
 /* ---- type 10, revision 1 (customer guide): real-Instagram profile with highlights, highlight → story, feed → swipe/scroll, proposal post, her story → wedding ---- */
 // softer fingertip everywhere (customer: click motion lighter)
 igFinger = function (c, x, y, t, t0) { const k = clamp((t - t0 + 0.45) / 0.45), pr = clamp((t - t0) / 0.25); if (k <= 0 || t > t0 + 0.65) return;
@@ -10409,7 +10422,7 @@ function normalize(p) {
   p.scenes = (p.scenes || []).filter(s => LAYOUTS[s.layout]);
   if (p.tpl === 'K' && !p.trV2 && typeof kTransitions === 'function') { kTransitions(p); p.trV2 = true; }
   if (p.tpl === 'K') p.scenes.forEach(s => { if (s.layout === 'edcover' && LAYOUTS.savow) { s.layout = 'savow'; const L = LAYOUTS.savow; s.texts = {}; L.fields.forEach(f => s.texts[f[0]] = f[2]); s.opts = Object.assign({}, ...L.opts.map(o => ({ [o[0]]: o[2] }))); s.media = (s.media || []).slice(0, 1); } });
-  p.scenes.forEach(s => { if (s.openFrom && !Array.isArray(s.openFrom)) delete s.openFrom; s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb, bfill: m.bfill })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
+  p.scenes.forEach(s => { if (s.openFrom && !Array.isArray(s.openFrom)) delete s.openFrom; s.tstyle = s.tstyle || {}; s.media = (s.media || []).map(m => ({ id: m.id || null, t: m.t, z: m.z, ox: m.ox, oy: m.oy, vs: m.vs, ve: m.ve, hold: m.hold, mo: m.mo, fdx: m.fdx, fdy: m.fdy, fsc: m.fsc, look: m.look, lb: m.lb, bfill: m.bfill, fit: m.fit })); while (s.media.length < (LAYOUTS[s.layout].slots || 0)) s.media.push({ id: null });
     if (LAYOUTS[s.layout].countOpts && !s.count && !LAYOUTS[s.layout].autoDefault) { const fl = s.media.filter(m => m.id); if (fl.length) { s.count = Math.min(fl.length, LAYOUTS[s.layout].countOpts.slice(-1)[0]); s.media = fl.concat(s.media.filter(m => !m.id)); } } });
   p.title = p.title || ''; p.audio = p.audio || null; p.sfx = Array.isArray(p.sfx) ? p.sfx.filter(x => x && (x.key || x.fid)) : [];
   p.lyrics = p.lyrics || []; if (p.lyricsOn == null) p.lyricsOn = true; p.lstyle = p.lstyle || { s: 1, x: 0, y: 0 };
@@ -11246,7 +11259,7 @@ function buildSlots(s) {
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
-        <div class="checks" style="margin:2px 0 4px"><label><input type="checkbox" data-bfill ${slot.bfill ? 'checked' : ''}>사진을 줄였을 때 빈 곳을 흐린 사진으로 채우기</label></div>
+        <div class="checks" style="margin:2px 0 4px"><label><input type="checkbox" data-fit ${slot.fit ? 'checked' : ''}>프레임을 사진 모양에 맞추기 (세로 사진 → 세로 프레임)</label><label><input type="checkbox" data-bfill ${slot.bfill ? 'checked' : ''}>사진을 줄였을 때 빈 곳을 흐린 사진으로 채우기</label></div>
         <label class="ctl"><span>칸 가로</span><input type="range" min="-1800" max="1800" value="${Math.round(slot.fdx || 0)}" data-fk="fdx"></label>
         <label class="ctl"><span>칸 세로</span><input type="range" min="-1000" max="1000" value="${Math.round(slot.fdy || 0)}" data-fk="fdy"></label>
         <label class="ctl"><span>칸 크기</span><input type="range" min="40" max="200" value="${Math.round((slot.fsc || 1) * 100)}" data-fk="fsc"></label>
@@ -11266,7 +11279,8 @@ function buildSlots(s) {
         const k = r.dataset.fk; slot[k] = k === 'fsc' ? r.value / 100 : +r.value; if (k === 'fsc' && slot.fsc === 1) delete slot.fsc;
         editSel = { type: 'media', si: i, idx: project.scenes.indexOf(s) }; sceneChanged(s);
       });
-      d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; delete slot.fdx; delete slot.fdy; delete slot.fsc; delete slot.look; delete slot.lb; delete slot.bfill; sceneChanged(s); buildSlots(s); };
+      d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; delete slot.fdx; delete slot.fdy; delete slot.fsc; delete slot.look; delete slot.lb; delete slot.bfill; delete slot.fit; sceneChanged(s); buildSlots(s); };
+      d.querySelector('[data-fit]').onchange = e => { if (e.target.checked) { slot.fit = true; delete slot.z; delete slot.ox; delete slot.oy; } else delete slot.fit; sceneChanged(s); buildSlots(s); };
       d.querySelector('[data-bfill]').onchange = e => { if (e.target.checked) slot.bfill = true; else delete slot.bfill; sceneChanged(s); };
       d.querySelector('[data-mo]').onchange = e => { if (e.target.value === 'auto') delete slot.mo; else slot.mo = e.target.value; sceneChanged(s); };
       d.querySelector('[data-look]').onchange = e => { if (e.target.value) slot.look = e.target.value; else delete slot.look; sceneChanged(s); };
