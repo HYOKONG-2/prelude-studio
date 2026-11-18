@@ -10097,7 +10097,7 @@ LAYOUTS.igfeedswipe = { name: '인스타 피드 넘겨보기 (게시물마다 �
     const caps = fill(s.texts.caps).split('\n'), dates = fill(s.texts.dates).split('\n');
     for (let p = 0; p < posts; p++) { const y = p * postH, a0 = p * per, cnt = Math.min(per, total - a0); if (y - sc > H || y + postH - sc < -200) continue;
       igAvatar(c, s, a0, X + 26, y + 32, 20, t, true); txt(c, fill(s.texts.user), X + 58, y + 32, IGF(22, 600), IGC.ink, 1, { align: 'left', k: p ? null : 'user' }); igIcon(c, 'more', X + Wd - 20, y + 32, 24, IGC.ink);
-      const local = p === pi ? lt : p < pi ? swipeT : 0, k = cnt > 1 ? Math.min(cnt - 1, local / (swipeT / cnt)) : 0, cur = Math.floor(k), fr = ease(clamp((k - cur - 0.75) / 0.25)), off = (cur + (cur < cnt - 1 ? fr : 0)) * Wd;
+      const local = p === pi ? lt : p < pi ? swipeT : 0, FW = 1.7, uu = cnt > 1 ? local / swipeT * (FW + cnt - 1) : 0, k = cnt > 1 ? Math.min(cnt - 1, uu < FW ? uu / FW : 1 + (uu - FW)) : 0, /* the first photo of a post stays a little longer after the scroll */ cur = Math.floor(k), fr = ease(clamp((k - cur - 0.75) / 0.25)), off = (cur + (cur < cnt - 1 ? fr : 0)) * Wd;
       c.save(); c.beginPath(); c.rect(X, y + 64, Wd, Wd); c.clip(); c.fillStyle = '#EEE'; c.fillRect(X, y + 64, Wd, Wd);
       for (let i = 0; i < cnt; i++) { const x = X + i * Wd - off; if (x > X + Wd || x + Wd < X) continue; const ho = hitOn; hitOn = false; coverIn(c, s, a0 + i, x, y + 64, Wd, Wd, t, { zoom: 1.01 }); hitOn = ho; }
       c.restore(); for (let i = 0; i < cnt; i++) addHit({ type: 'media', si: a0 + i, x: X, y: y + 64 + top - sc, w: Wd, h: Wd, oy: 0 });
