@@ -750,7 +750,7 @@ function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub =
   c.save(); c.translate(x + st.x, y + st.y); c.scale(st.s, st.s);
   c.globalAlpha *= a * (style === 'dark' ? 0.92 : 1);
   if (rmode === 'box' && fx !== 'label') { c.save(); c.shadowColor = 'transparent'; c.fillStyle = 'rgba(20,18,18,.42)'; rr(c, -bw / sk / 2, -(bh / sk) + px * 0.75, bw / sk, bh / sk, 16); c.fill(); c.restore(); }
-  const wantOutline = fx !== 'label' && fx !== 'cute' && fx !== 'movie' && fx !== 'goldline' && (rmode === 'outline' || (rmode === 'auto' && bgL));
+  const wantOutline = fx !== 'label' && fx !== 'cream' && fx !== 'cute' && fx !== 'movie' && fx !== 'goldline' && (rmode === 'outline' || (rmode === 'auto' && bgL));
   if (wantOutline) {
     c.fillText = function (t2, x2, y2) {
       const fl = styleLum(this.fillStyle), need = rmode === 'outline' || Math.abs(fl - bgL.avg) < 0.42 || (fl > 0.6 && bgL.max > 0.85 && bgL.avg > 0.55);
@@ -759,7 +759,7 @@ function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub =
     };
   }
   c.save(); c.translate(0, -subH);
-  c.font = st.f ? withFont(F.kr(px), st.f) : fx === 'hand' ? PEN(Math.round(px * 1.45)) : fx === 'cute' ? JUA(Math.round(px * 1.2)) : fx === 'movie' ? `600 ${px}px "Noto Sans KR", sans-serif` : fx === 'label' ? UIF(Math.round(px * 0.85), 500) : F.kr(px); c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
+  c.font = st.f ? withFont(F.kr(px), st.f) : fx === 'hand' ? PEN(Math.round(px * 1.45)) : fx === 'cream' ? `300 ${Math.round(px * 1.0)}px "Noto Sans KR", "IBM Plex Sans KR", sans-serif` : fx === 'cute' ? JUA(Math.round(px * 1.2)) : fx === 'movie' ? `600 ${px}px "Noto Sans KR", sans-serif` : fx === 'label' ? UIF(Math.round(px * 0.85), 500) : F.kr(px); c.textAlign = 'center'; c.textBaseline = 'middle'; setSpacing(c, 0);
   c.fillStyle = col1 || (style !== 'photo' && curBgLum != null ? (curBgLum > 0.5 ? '#3A3634' : '#F2F0EE') : (style === 'light' ? '#4A4643' : '#FFFFFF'));
   if (style === 'photo' || fx === 'hand') { c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 14 * R.S * st.s; }
   let mw = 0;
@@ -767,6 +767,10 @@ function caption(c, s, x, y, style, a, key, px = 40, fx = '', cols = null, sub =
   if (fx === 'neon') {
     c.fillStyle = col1 || '#FFE9F0'; c.shadowColor = '#FF4F88';
     c.shadowBlur = 30 * R.S * st.s; drawLines(); c.shadowBlur = 10 * R.S * st.s; drawLines();
+  } else if (fx === 'cream') { // pale cream italic with a soft warm glow (B-type sample lyrics)
+    c.save(); c.transform(1, 0, -0.2, 1, 0, 0); c.fillStyle = col1 || '#FCF8CF';
+    c.shadowColor = 'rgba(70,50,20,.55)'; c.shadowBlur = 10 * R.S * st.s; drawLines();
+    c.shadowColor = 'rgba(255,214,120,.7)'; c.shadowBlur = 16 * R.S * st.s; drawLines(); c.restore();
   } else if (fx === 'bilingual' || fx === 'gold' || fx === 'yellow') {
     const f1 = st.f ? withFont(F.kr(Math.round(px * 1.2)), st.f) : fx === 'gold' ? PLAYF(Math.round(px * 1.05), 700, true) : fx === 'yellow' ? UIF(Math.round(px * 0.95), 700) : PEN(Math.round(px * 1.4));
     const f2 = fx === 'gold' || fx === 'yellow' ? UIF(Math.round(px * 0.8), 700) : UIF(Math.round(px * 0.68), 400);
@@ -10701,7 +10705,7 @@ function drawScene(c, i, t, hit) {
     const [x, y, st] = L.cap(s);
     let yo = 0;
     if (activeLyric && Math.abs(x - 960) < 200) yo = -(((activeLyric.text || '').split('\n').length + (activeLyric.sub ? 1 : 0)) * 52 + 18) * (project.lstyle.s || 1) * activeLyricA;
-    caption(c, fill(s.caption), x, y + yo, ['neon', 'cute', 'movie', 'label', 'gold', 'gold2', 'goldline', 'yellow'].includes(s.capFx) ? 'photo' : st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption', 40, s.capFx, [s.capCol, s.capCol2]);
+    caption(c, fill(s.caption), x, y + yo, ['neon', 'cream', 'cute', 'movie', 'label', 'gold', 'gold2', 'goldline', 'yellow'].includes(s.capFx) ? 'photo' : st, fade(t, 0.5, 0.9) * (1 - clamp((t - (d - 0.5)) / 0.5)), 'caption', 40, s.capFx, [s.capCol, s.capCol2]);
   }
   hitOn = false; curScene = null; curBgLum = null;
 }
@@ -10758,7 +10762,7 @@ function render(r, T, preview) {
     curIdx = i; hitOn = preview;
     curBgLum = (s.bgc && !LAYOUTS[s.layout].bgHidden) ? colorLum(s.bgc) : null;
     const lst = curBgLum != null ? (curBgLum > 0.5 ? 'light' : 'photo') : (st === 'dark' ? 'photo' : st);
-    caption(c, fill(ly.text), x, y, (project.lyricSame || ['neon', 'cute', 'movie', 'label', 'gold', 'gold2', 'goldline', 'yellow'].includes(project.lyricFx)) ? 'photo' : lst, a, ly.own ? 'lyric:' + ly.id : 'lyrics', 40, project.lyricFx, [project.lcol, project.lcol2], fill(ly.sub || ''));
+    caption(c, fill(ly.text), x, y, (project.lyricSame || ['neon', 'cream', 'cute', 'movie', 'label', 'gold', 'gold2', 'goldline', 'yellow'].includes(project.lyricFx)) ? 'photo' : lst, a, ly.own ? 'lyric:' + ly.id : 'lyrics', 40, project.lyricFx, [project.lcol, project.lcol2], fill(ly.sub || ''));
     curBgLum = null;
     hitOn = false;
   }
@@ -11097,7 +11101,7 @@ function wireStyle(root, getSt, onChange, onReset) {
     d.querySelector('[data-sreset]').onclick = () => onReset(key);
   });
 }
-const CAPFX = [['', '기본'], ['neon', '네온 핑크'], ['hand', '손글씨'], ['cute', '러블리 (둥근 글씨)'], ['movie', '영화 자막'], ['label', '라벨 (어두운 바탕)'], ['bilingual', '두 줄 (영문 손글씨 + 한글)'], ['gold', '골드 영문 + 한글'], ['gold2', '골드 두 줄 (모든 줄 골드)'], ['goldline', '골드 굵은 영문 + 흰 한글 (진한 테두리)'], ['yellow', '노랑 영문 + 흰 한글']];
+const CAPFX = [['', '기본'], ['neon', '네온 핑크'], ['cream', '크림 이탤릭 (은은한 빛)'], ['hand', '손글씨'], ['cute', '러블리 (둥근 글씨)'], ['movie', '영화 자막'], ['label', '라벨 (어두운 바탕)'], ['bilingual', '두 줄 (영문 손글씨 + 한글)'], ['gold', '골드 영문 + 한글'], ['gold2', '골드 두 줄 (모든 줄 골드)'], ['goldline', '골드 굵은 영문 + 흰 한글 (진한 테두리)'], ['yellow', '노랑 영문 + 흰 한글']];
 const CAPCOL_SW = ['#FFFFFF', '#222020', '#EBC46B', '#FFE9F0', '#FF8FB1', '#A8C8FF'];
 function colorRow(id, label, val) {
   return `<div class="bgrow" style="margin-top:8px"><span class="hint" style="margin:0;min-width:76px">${label}</span>${CAPCOL_SW.map(c => `<button type="button" class="swb${val === c ? ' on' : ''}" style="background:${c}" data-cr="${id}" data-v="${c}" aria-label="${label} ${c}"></button>`).join('')}<input type="color" data-crp="${id}" value="${val || '#ffffff'}" aria-label="${label} 직접 고르기"><button type="button" class="x" data-cr="${id}" data-v="">기본</button></div>`;
@@ -11534,12 +11538,26 @@ async function applyAutoLyrics(pick, off) {
   touch('lyrics');
   project.lyrics = items.map((x, i) => ({ id: uid(), start: x.start, end: Math.max(x.start + 0.8, x.end), text: x.text, sub: subs[i] || '' }));
   project.lyricsOn = true;
-  if (project.tpl && TYPE_LYRIC[project.tpl] != null) { if (TYPE_LYRIC[project.tpl]) project.lyricFx = TYPE_LYRIC[project.tpl]; else delete project.lyricFx; }
-  delete project.lcol; delete project.lcol2;
+  if (!project.lyricSlots) { if (project.tpl && TYPE_LYRIC[project.tpl] != null) { if (TYPE_LYRIC[project.tpl]) project.lyricFx = TYPE_LYRIC[project.tpl]; else delete project.lyricFx; }
+  delete project.lcol; delete project.lcol2; }
   items.forEach(x => loadFontsFor(x.text)); subs.forEach(x => loadFontsFor(x));
   lyricChanged();
   toast(`가사 ${items.length}줄을 넣었어요${subs.some(Boolean) ? ' (한글 해석 포함)' : ''}`);
+  if (project.lyricSlots) { if (pick.syncedLyrics) snapLyricSlots(); else setTimeout(() => toast('이 곡은 시간 정보가 없어서 미리 맞춘 시간 칸에 못 맞췄어요. ‘가사 붙여넣고 탭으로 맞추기’를 써 주세요'), 2500); }
   return true;
+}
+/* saved timing slots (e.g. copied from a finished sample video): each lyric line takes the slot it overlaps most,
+   lines with no slot are hidden (kept, not deleted) — so the lyrics show exactly where the sample showed them */
+function snapLyricSlots(quiet) {
+  const S = (project.lyricSlots || []).slice().sort((a, b) => a[0] - b[0]), L = project.lyrics.slice().sort((a, b) => a.start - b.start);
+  if (!S.length || !L.length) return 0;
+  const ov = (l, s) => Math.max(0, Math.min(l.end, s[1]) - Math.max(l.start, s[0])), used = new Map();
+  L.forEach(l => { let bi = -1, bv = 0; S.forEach((s, i) => { const v = ov(l, s); if (v > bv) { bv = v; bi = i; } }); if (bi >= 0 && bv >= 0.3 * Math.min(l.end - l.start, S[bi][1] - S[bi][0])) { const u = used.get(bi); if (!u || u.v < bv) used.set(bi, { l, v: bv }); } });
+  let n = 0; L.forEach(l => { l.off = true; });
+  used.forEach(({ l }, i) => { l.start = +S[i][0].toFixed(1); l.end = +S[i][1].toFixed(1); delete l.off; n++; });
+  touch('lyrics'); lyricChanged();
+  toast(`미리 맞춘 시간 칸 ${S.length}개에 가사 ${n}줄을 맞췄어요${L.length > n ? ` · 칸 밖의 ${L.length - n}줄은 숨겨 뒀어요` : ''}`);
+  return n;
 }
 /* tap-to-sync: paste lyrics, play the song, tap at the start of each line */
 let tapSync = null;
@@ -11576,6 +11594,7 @@ function finishTap() {
   touch('lyrics');
   project.lyrics = items.map(x => ({ id: uid(), start: x.start, end: x.end, text: x.text, sub: x.sub }));
   project.lyricsOn = true; items.forEach(x => { loadFontsFor(x.text); loadFontsFor(x.sub); });
+  if (project.lyricSlots) { snapLyricSlots(true); return; }
   lyricChanged(); toast(`가사 ${items.length}줄의 시간을 맞췄어요. 줄마다 ‘지금’ 버튼으로 미세하게 고칠 수 있어요`);
 }
 document.addEventListener('keydown', e => {
@@ -11646,6 +11665,7 @@ function buildLyricPane() {
   const list = project.lyrics.slice().sort((a, b) => a.start - b.start);
   p.innerHTML = `
     <div class="checks" style="margin-top:0"><label><input type="checkbox" id="lyOn" ${project.lyricsOn ? 'checked' : ''}>가사 자막 보이기</label></div>
+    ${project.lyricSlots && project.lyricSlots.length ? `<div style="margin:0 0 10px;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.05)"><p class="hint" style="margin:0 0 6px">미리 맞춘 가사 시간 칸 ${project.lyricSlots.length}개가 있어요. 가사를 자동으로 넣거나 탭으로 맞추면 칸 시간에 맞춰지고, 칸 밖의 줄은 숨겨져요.</p><div class="row" style="gap:6px"><button type="button" class="x" id="lySnap"${project.lyrics.length ? '' : ' disabled'}>지금 가사를 칸에 다시 맞추기</button><button type="button" class="x" id="lySlotDel">칸 지우기</button></div></div>` : ''}
     ${autoLyricsHtml()}
     ${list.length ? `<div class="row" style="margin:0 0 8px;align-items:center;gap:6px;flex-wrap:wrap"><span class="hint" style="margin:0">가사 ${list.filter(l => !l.off).length}/${list.length}줄 보이는 중</span><button type="button" class="x" id="lyAllOn">모두 보이기</button><button type="button" class="x" id="lyAllOff">모두 숨기기</button></div>` : ''}
     <p class="hint">‘이 가사 보이기’를 끄면 그 줄만 영상에서 빠져요 (지우지 않고 남겨 둬요). 음원을 틀어 두고 하이라이트가 시작될 때 맨 아래 ‘지금 위치에 가사 추가’를 누르세요. 가사마다 ‘기본 위치 따르기’를 끄면 그 가사만 따로 옮길 수 있어요. 시작·끝 옆의 ‘지금’ 버튼으로 재생 위치를 바로 찍을 수 있어요.</p>
@@ -11691,6 +11711,7 @@ function buildLyricPane() {
   });
   wireColorRows(p, (k, v) => { touch('lyrics'); if (v) project[k] = v; else delete project[k]; dirty = true; save(); });
   $('lyRead').onchange = e => { touch('lyrics'); if (e.target.value === 'auto') delete project.capRead; else project.capRead = e.target.value; dirty = true; save(); project.scenes.forEach(sc => queueThumb(sc.id)); };
+  if ($('lySnap')) { $('lySnap').onclick = () => snapLyricSlots(); $('lySlotDel').onclick = () => { if (!confirm('미리 맞춘 가사 시간 칸을 지울까요? 넣어 둔 가사는 그대로 남아요.')) return; touch('lyrics'); delete project.lyricSlots; lyricChanged(); }; }
   $('lySame').onchange = e => { touch('lyrics'); if (e.target.checked) { project.lyricSame = true; if (!project.capRead || project.capRead === 'auto') project.capRead = 'outline'; } else delete project.lyricSame; dirty = true; save(); buildLyricPane && buildLyricPane(); };
   $('lyFx').onchange = e => { touch('lyrics'); if (e.target.value) project.lyricFx = e.target.value; else delete project.lyricFx; dirty = true; save(); };
   $('lyOn').onchange = e => { project.lyricsOn = e.target.checked; lyricChanged(); };
@@ -12494,7 +12515,7 @@ function mergeProjects(local, remote, d) {
   if (d.has('order')) r.scenes = local.scenes.map(s => (d.has(s.id) || !Rm.has(s.id)) ? s : Rm.get(s.id));
   else r.scenes = r.scenes.map(s => (d.has(s.id) && L.has(s.id)) ? L.get(s.id) : s);
   if (d.has('info')) { r.info = local.info; r.title = local.title; }
-  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; r.lyricFx = local.lyricFx; r.lcol = local.lcol; r.lcol2 = local.lcol2; r.capRead = local.capRead; r.lyricSame = local.lyricSame; }
+  if (d.has('lyrics')) { r.lyrics = local.lyrics; r.lyricsOn = local.lyricsOn; r.lstyle = local.lstyle; r.lyricFx = local.lyricFx; r.lcol = local.lcol; r.lcol2 = local.lcol2; r.capRead = local.capRead; r.lyricSame = local.lyricSame; r.lyricSlots = local.lyricSlots; }
   if (d.has('sfx')) r.sfx = local.sfx;
   if (d.has('audio')) { r.audio = local.audio; r.audioDelay = local.audioDelay; }
   return JSON.parse(JSON.stringify(r));
@@ -12922,7 +12943,7 @@ function diffKeys(a, b) {
   b.scenes.forEach(s => { if (am.get(s.id) !== J(s)) k.add(s.id); });
   a.scenes.forEach(s => { if (!bIds.has(s.id)) k.add(s.id); });
   if (J(a.info) !== J(b.info) || (a.title || '') !== (b.title || '')) k.add('info');
-  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle) || a.lyricFx !== b.lyricFx || a.lcol !== b.lcol || a.lcol2 !== b.lcol2 || a.capRead !== b.capRead || a.lyricSame !== b.lyricSame) k.add('lyrics');
+  if (J(a.lyrics) !== J(b.lyrics) || a.lyricsOn !== b.lyricsOn || J(a.lstyle) !== J(b.lstyle) || a.lyricFx !== b.lyricFx || a.lcol !== b.lcol || a.lcol2 !== b.lcol2 || a.capRead !== b.capRead || a.lyricSame !== b.lyricSame || J(a.lyricSlots) !== J(b.lyricSlots)) k.add('lyrics');
   if (J(a.sfx || []) !== J(b.sfx || [])) k.add('sfx');
   if (J(a.audio || null) !== J(b.audio || null) || (+a.audioDelay || 0) !== (+b.audioDelay || 0)) k.add('audio');
   return k;
