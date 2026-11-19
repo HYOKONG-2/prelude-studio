@@ -9856,6 +9856,8 @@ Object.assign(LAYOUTS, {
 });
 CATS.find(c => c[0] === '화이트 초크 다이어리 (고객 요청 9타입)')[1].push('chtall1', 'chtall2', 'chtall3', 'chtallpola');
 /* ---- type 10, plan 2: closer-to-real Instagram use (notification, tap-to-open, multi-story, typed comment, activity) ---- */
+// tab bar sits on the bottom edge of what is shown: 1920×956 crops 62px off the bottom, full 1080 does not
+function igNavY() { return project.outCrop === 956 ? H - 136 : H - 74; }
 function igNav(c, X, Wd, y, active) { // bottom tab bar
   c.fillStyle = '#fff'; c.fillRect(X, y, Wd, 74); c.fillStyle = IGC.line; c.fillRect(X, y, Wd, 1.5);
   const xs = [0.1, 0.3, 0.5, 0.7, 0.9].map(f => X + Wd * f), cy = y + 37; c.save(); c.strokeStyle = IGC.ink; c.fillStyle = IGC.ink; c.lineWidth = 2.6; c.lineJoin = 'round';
@@ -9871,7 +9873,7 @@ function igFinger(c, x, y, t, t0) { // a soft fingertip that comes down and pres
   c.fillStyle = 'rgba(255,255,255,.55)'; c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 3; c.beginPath(); c.arc(x, y + (1 - k) * 60, r, 0, Math.PI * 2); c.fill(); c.stroke(); c.restore(); igTap(c, x, y, t, t0);
 }
 // profile: bottom tab bar and a fingertip on the post it opens
-{ const dr = LAYOUTS.igprofile.draw; LAYOUTS.igprofile.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (!fill(s.texts.overlay)) igNav(c, 300, 1320, H - 136, 4);
+{ const dr = LAYOUTS.igprofile.draw; LAYOUTS.igprofile.draw = function (c, s, t, d) { dr.call(this, c, s, t, d); if (!fill(s.texts.overlay)) igNav(c, 300, 1320, igNavY(), 4);
   if (s.opts.tap) { const X = 300, Wd = 1320, cell = (Wd - 8) / 3, gridTop = 430, maxSc = Math.max(0, gridTop + 4 * (cell + 4) - H + 40), sc = s.opts.scroll ? (s.opts.up ? 0 : maxSc) : 0, i = s.opts.up ? 0 : 9; igFinger(c, X + (i % 3) * (cell + 4) + cell / 2, gridTop + Math.floor(i / 3) * (cell + 4) + cell / 2 - sc, t, d - 0.6); } }; }
 // reels: play button, tap, then it plays
 LAYOUTS.igreel.opts = [...LAYOUTS.igreel.opts, ['tapplay', '눌러서 재생 연출', true]];
@@ -9933,7 +9935,7 @@ Object.assign(LAYOUTS, {
         if (i === 0 && f0) { c.fillStyle = IGC.blue; rr(c, X + Wd - 190, y + 6, 150, 50, 10); c.fill(); txt(c, '맞팔로우', X + Wd - 115, y + 31, IGF(22, 700), '#fff', 1); }
         else { const si = (f0 ? i : i + 1) % 2 ? 1 : 2; c.fillStyle = '#EEE'; c.fillRect(X + Wd - 110, y, 70, 70); if (s.media[si] && s.media[si].id) { const ho = hitOn; hitOn = false; coverIn(c, s, si, X + Wd - 110, y, 70, 70, t, {}); hitOn = ho; } }
         c.restore(); });
-      igNav(c, X, Wd, H - 136, 3);
+      igNav(c, X, Wd, igNavY(), 3);
     } }
 });
 ['ignotify'].forEach(k => { LAYOUTS[k].bgHidden = true; });
@@ -10061,7 +10063,7 @@ LAYOUTS.igprofile = { name: '인스타 프로필 (하이라이트 + 피드 12칸
     c.fillStyle = IGC.line; c.fillRect(X, gridTop - 44, Wd, 1.5); c.fillStyle = IGC.ink; c.fillRect(X + Wd / 2 - 60, gridTop - 45, 120, 3); igIcon(c, 'grid', X + Wd / 2, gridTop - 24, 22, IGC.ink);
     for (let i = 0; i < 12; i++) { const r = Math.floor(i / 3), cI = i % 3, x = X + cI * (cell + 4), y = gridTop + r * (cell + 4); c.fillStyle = '#E9E9E9'; c.fillRect(x, y, cell, cell); if (s.media[i + 1] && s.media[i + 1].id) { const ho = hitOn; hitOn = false; coverIn(c, s, i + 1, x, y, cell, cell, t, { zoom: 1.01 }); hitOn = ho; } addHit({ type: 'media', si: i + 1, x, y: y - sc, w: cell, h: cell, oy: 0 }); }
     c.restore();
-    igNav(c, X, Wd, H - 136, 4);
+    igNav(c, X, Wd, igNavY(), 4);
     const tr = igTapRect(s, d); if (tr) { const ty = /^hl/.test(s.opts.tapwhat) ? tr[1] + tr[3] / 2 - sc : tr[1] + tr[3] / 2 + igProfileGeo(s, d, d).sc - sc; igFinger(c, tr[0] + tr[2] / 2, ty, t, d - 0.55); }
     const ov = fill(s.texts.overlay); if (ov) { const a = fade(t, 1.0, 0.8); c.fillStyle = `rgba(0,0,0,${0.55 * a})`; c.fillRect(0, 0, W, H); igWrap(c, ov, IGF(72, 700), 1400).forEach((l, i, A) => txt(c, l, 960, 540 + (i - (A.length - 1) / 2) * 100, IGF(72, 700), '#fff', a, { k: i ? null : 'overlay' })); }
   } };
