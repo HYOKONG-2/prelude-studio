@@ -2500,6 +2500,32 @@ Object.assign(LAYOUTS, {
       if (s.opts.bars) { const b = 150 * (1 - ease(clamp(t / 1.4))); if (b > 0.5) { c.fillStyle = '#000'; c.fillRect(0, 0, W, b); c.fillRect(0, H - b, W, b); } }
     }
   },
+  edtitle2: {
+    name: '에디토리얼 타이틀 (사진 두 장 나란히)', slots: 2, weight: 8,
+    fields: [['top', '맨 위 작은 글씨', 'HAPPY WEDDING DAY'], ['n1', '첫 이름', '{GROOM}'], ['and', '가운데 필기체', 'and'], ['n2', '둘째 이름', '{BRIDE}'], ['sub', '아래 글씨', 'The Beginning of Our Forever']],
+    opts: [['bw', '흑백', false], ['bars', '시작할 때 검은 띠 열림', true]],
+    cap: () => [960, 1010, 'photo'],
+    draw(c, s, t, d) {
+      bg(c, '#000');
+      [0, 1].forEach(i => cover(c, s, i, i ? W / 2 + 3 : 0, 0, W / 2 - 3, H, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.05 * clamp(t / d) })); // two photos side by side, thin black seam
+      const g = c.createLinearGradient(0, H * 0.5, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      noBg(() => {
+        txt(c, fill(s.texts.top), 960, 40, F.serif(24, 500, false), 'rgba(255,255,255,.9)', fade(t, 0.4, 0.8), { sp: 4, k: 'top' });
+        const n1 = fill(s.texts.n1), an = fill(s.texts.and), n2 = fill(s.texts.n2), fN = F.serif(150, 500, false), fA = F.script(120);
+        const sA = getStyle('and'), sN1 = getStyle('n1'), sN2 = getStyle('n2');
+        c.save(); setSpacing(c, 6); c.font = withFont(fN, sN1.f); const w1 = c.measureText(n1).width * sN1.s - 6; c.font = withFont(fN, sN2.f); const w2 = c.measureText(n2).width * sN2.s;
+        setSpacing(c, 0); c.font = withFont(fA, sA.f); const m = c.measureText(an || ' ');
+        const inkL = (m.actualBoundingBoxLeft || 0) * sA.s, inkW = an ? ((m.actualBoundingBoxRight || m.width) + (m.actualBoundingBoxLeft || 0)) * sA.s : 0; c.restore();
+        const gap = an ? 34 : 40, tw = w1 + gap + inkW + gap + w2;
+        let x = 960 - tw / 2; const a = fade(t, 0.8, 1.4), y = 840;
+        txt(c, n1, x, y, fN, '#FFFFFF', a, { align: 'left', sp: 6, k: 'n1', rise: 14, shadow: 'rgba(0,0,0,.25)', blur: 10 });
+        txt(c, an, x + w1 + gap + inkL, y + 8, fA, '#FFFFFF', fade(t, 1.2, 1.2), { align: 'left', k: 'and' });
+        txt(c, n2, x + w1 + gap + inkW + gap, y, fN, '#FFFFFF', a, { align: 'left', sp: 6, k: 'n2', rise: 14, shadow: 'rgba(0,0,0,.25)', blur: 10 });
+        txt(c, fill(s.texts.sub), 960, 950, F.serif(36, 400, false), 'rgba(255,255,255,.92)', fade(t, 1.6, 1), { k: 'sub' });
+      });
+      if (s.opts.bars) { const b = 150 * (1 - ease(clamp(t / 1.4))); if (b > 0.5) { c.fillStyle = '#000'; c.fillRect(0, 0, W, b); c.fillRect(0, H - b, W, b); } }
+    }
+  },
   edphoto: {
     name: '에디토리얼 사진 (머리말 + 세로 글씨)', slots: 2, weight: 6,
     fields: [['head', '맨 위 이름', '{GROOM} & {BRIDE}'], ['sideL', '왼쪽 세로 글씨', 'chapter one'], ['sideR', '오른쪽 세로 글씨', 'the wedding issue']],
@@ -2581,11 +2607,11 @@ Object.assign(LAYOUTS, {
     }
   }
 });
-CATS[0][1].push('boldtype', 'bigscript', 'edtitle', 'edtext');
+CATS[0][1].push('boldtype', 'bigscript', 'edtitle', 'edtitle2', 'edtext');
 CATS[1][1].push('introcard', 'sidephoto', 'centercap', 'bigword');
 CATS[2][1].push('roundphotos', 'edphoto', 'edbooth', 'ednames');
 CATS[4][1].push('thankyou');
-['bigscript', 'centercap', 'edtitle', 'bigword'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+['bigscript', 'centercap', 'edtitle', 'edtitle2', 'bigword'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 /* ---------------- mood-matched extra scenes for every type ---------------- */
 function slotAt(s, k) { const f = filledSlots(s); return f[k % f.length]; }
 function tornPath(c, x, y, w, h, seed) {
