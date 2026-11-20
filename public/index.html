@@ -2291,14 +2291,15 @@ Object.assign(LAYOUTS, {
   },
   centerphoto: {
     name: '가운데 사진 + 머리말', slots: 1, weight: 5,
-    fields: [['head', '맨 위 이름 (작게)', '{GROOM} & {BRIDE}']],
-    opts: [['portrait', '세로 사진', false], ['bw', '흑백', false]],
+    fields: [['head', '맨 위 이름 (작게)', '{GROOM} & {BRIDE}'], ['sideL', '왼쪽 세로 글씨 (비우면 없음)', ''], ['sideR', '오른쪽 세로 글씨 (비우면 없음)', '']],
+    opts: [['portrait', '세로 사진', false], ['mid', '사진을 화면 가운데로 (아래 자막 자리 없이)', false], ['bw', '흑백', false]],
     cap: () => [960, 1010, 'light'],
     draw(c, s, t, d) {
       bg(c, BLUSH); headNames(c, s, t);
-      const r = s.opts.portrait ? [650, 90, 620, 840] : [360, 90, 1200, 800];
+      const r = s.opts.portrait ? [650, s.opts.mid ? 120 : 90, 620, 840] : [360, s.opts.mid ? 140 : 90, 1200, 800];
       c.save(); c.globalAlpha = fade(t, 0, 1); c.shadowColor = 'rgba(120,90,90,.18)'; c.shadowBlur = 24 * R.S; c.fillStyle = '#FFF'; c.fillRect(r[0], r[1], r[2], r[3]); c.restore();
       c.save(); c.globalAlpha = fade(t, 0, 1); cover(c, s, 0, r[0], r[1], r[2], r[3], t, { bw: s.opts.bw, zoom: kb(t, d, 0.05) }); c.restore();
+      edSides(c, s, t);
     }
   },
   row3: {
