@@ -9564,7 +9564,7 @@ function igTap(c, x, y, t, t0) { const k = clamp((t - t0) / 0.6); if (k <= 0 || 
 function igBg(c, s, si) { if (igNoBg) return; bg(c, '#0F0F10'); c.save(); c.globalAlpha = 0.9; softBg(c, s, si, false); c.restore(); c.fillStyle = 'rgba(10,10,12,.55)'; c.fillRect(0, 0, W, H); }
 Object.assign(LAYOUTS, {
   igprofile: { name: '인스타 프로필 + 피드 스크롤 (게시물 12칸)', slots: 13, weight: 10, slotNames: ['프로필 사진', ...Array.from({ length: 12 }, (_, i) => `게시물 ${i + 1}`)],
-    fields: [['user', '아이디', 'our.secret.story'], ['name', '이름', '2년 동안 너 몰래 써온 우리의 기록'], ['bio', '소개글', '처음 만난 날부터 오늘까지 ♡\n언젠가 너에게 보여줄 날을 기다리며', true], ['posts', '게시물 수', '128'], ['overlay', '가운데 큰 글씨 (엔딩용, 비워도 돼요)', '']],
+    fields: [['user', '아이디', 'our.secret.story'], ['name', '이름', '2년 동안 너 몰래 써온 우리의 기록'], ['bio', '소개글', '처음 만난 날부터 오늘까지 ♡\n언젠가 너에게 보여줄 날을 기다리며', true], ['posts', '게시물 수', '128'], ['fol', '팔로워 수', '1'], ['fing', '팔로잉 수', '1'], ['overlay', '가운데 큰 글씨 (엔딩용, 비워도 돼요)', '']],
     opts: [['scroll', '피드 아래로 스크롤', true], ['up', '거꾸로 (위로 올라가기)', false], ['tap', '마지막에 게시물 누르기', true]], cap: () => [960, 1045, 'light'],
     draw(c, s, t, d) {
       bg(c, '#FAFAFA'); const X = 300, Wd = 1320, cell = (Wd - 8) / 3, rows = 4, gridTop = 430, gridH = rows * (cell + 4), maxSc = Math.max(0, gridTop + gridH - H + 40);
@@ -9574,7 +9574,7 @@ Object.assign(LAYOUTS, {
       txt(c, fill(s.texts.user), X + 340, 120, IGF(40, 500), IGC.ink, 1, { align: 'left', k: 'user' });
       c.fillStyle = '#EFEFEF'; rr(c, X + 340 + 380, 96, 170, 50, 10); c.fill(); c.fillStyle = IGC.blue; rr(c, X + 340 + 560, 96, 170, 50, 10); c.fill();
       txt(c, '팔로잉', X + 340 + 465, 121, IGF(24, 600), IGC.ink, 1); txt(c, '메시지', X + 340 + 645, 121, IGF(24, 600), '#fff', 1);
-      txt(c, `게시물 ${fill(s.texts.posts)}      팔로워 1      팔로잉 1`, X + 340, 200, IGF(28, 500), IGC.ink, 1, { align: 'left', k: 'posts' });
+      txt(c, `게시물 ${fill(s.texts.posts)}      팔로워 ${fill(s.texts.fol || '1')}      팔로잉 ${fill(s.texts.fing || '1')}`, X + 340, 200, IGF(28, 500), IGC.ink, 1, { align: 'left', k: 'posts' });
       txt(c, fill(s.texts.name), X + 340, 258, IGF(28, 700), IGC.ink, 1, { align: 'left', k: 'name' });
       fill(s.texts.bio).split('\n').forEach((l, i) => txt(c, l, X + 340, 300 + i * 40, IGF(26, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'bio' }));
       c.fillStyle = IGC.line; c.fillRect(X, 395, Wd, 1.5); c.fillStyle = IGC.ink; c.fillRect(X + Wd / 2 - 60, 394, 120, 3); igIcon(c, 'grid', X + Wd / 2, 413, 22, IGC.ink);
@@ -10072,7 +10072,7 @@ function igTapRect(s, d) { // where the fingertip lands on a profile (also where
 }
 LAYOUTS.igprofile = { name: '인스타 프로필 (하이라이트 + 피드 12칸, 스크롤·누르기)', slots: 16, weight: 8,
   slotNames: ['프로필 사진', ...Array.from({ length: 12 }, (_, i) => `게시물 ${i + 1}`), '하이라이트 1', '하이라이트 2', '하이라이트 3'],
-  fields: [['user', '아이디', 'our.secret.story'], ['name', '이름', '2년 동안 너 몰래 써온 우리의 기록'], ['bio', '소개글', '처음 만난 날부터 오늘까지 ♡\n언젠가 너에게 보여줄 날을 기다리며', true], ['posts', '게시물 수', '128'], ['hls', '하이라이트 이름 (줄마다)', '첫만남\n여행\n결혼', true], ['overlay', '가운데 큰 글씨 (비워도 돼요)', '']],
+  fields: [['user', '아이디', 'our.secret.story'], ['name', '이름', '2년 동안 너 몰래 써온 우리의 기록'], ['bio', '소개글', '처음 만난 날부터 오늘까지 ♡\n언젠가 너에게 보여줄 날을 기다리며', true], ['posts', '게시물 수', '128'], ['fol', '팔로워 수', '1'], ['fing', '팔로잉 수', '1'], ['hls', '하이라이트 이름 (줄마다)', '첫만남\n여행\n결혼', true], ['overlay', '가운데 큰 글씨 (비워도 돼요)', '']],
   opts: [['move', '움직임', 'hold'], ['tapwhat', '마지막에 누르는 곳', 'none']], cap: () => [960, 1045, 'light'],
   draw(c, s, t, d) {
     bg(c, '#FAFAFA'); const { X, Wd, cell, gridTop, hlY } = IGP, { sc } = igProfileGeo(s, t, d);
@@ -10082,7 +10082,7 @@ LAYOUTS.igprofile = { name: '인스타 프로필 (하이라이트 + 피드 12칸
     txt(c, fill(s.texts.user), X + 340, 120, IGF(40, 500), IGC.ink, 1, { align: 'left', k: 'user' });
     c.fillStyle = '#EFEFEF'; rr(c, X + 720, 96, 170, 50, 10); c.fill(); c.fillStyle = IGC.blue; rr(c, X + 900, 96, 170, 50, 10); c.fill();
     txt(c, '팔로잉', X + 805, 121, IGF(24, 600), IGC.ink, 1); txt(c, '메시지', X + 985, 121, IGF(24, 600), '#fff', 1);
-    txt(c, `게시물 ${fill(s.texts.posts)}      팔로워 1      팔로잉 1`, X + 340, 200, IGF(28, 500), IGC.ink, 1, { align: 'left', k: 'posts' });
+    txt(c, `게시물 ${fill(s.texts.posts)}      팔로워 ${fill(s.texts.fol || '1')}      팔로잉 ${fill(s.texts.fing || '1')}`, X + 340, 200, IGF(28, 500), IGC.ink, 1, { align: 'left', k: 'posts' });
     txt(c, fill(s.texts.name), X + 340, 258, IGF(28, 700), IGC.ink, 1, { align: 'left', k: 'name' });
     fill(s.texts.bio).split('\n').forEach((l, i) => txt(c, l, X + 340, 300 + i * 40, IGF(26, 400), IGC.ink, 1, { align: 'left', k: i ? null : 'bio' }));
     // highlights row (like the real app)
