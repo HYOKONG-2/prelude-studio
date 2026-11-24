@@ -8453,7 +8453,51 @@ Object.assign(LAYOUTS, {
 });
 ['saletter'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 LAYOUTS.samsg.optSelects = { frame: [['kids', '어린 시절 사진 두 장'], ['slide', '슬라이드 필름'], ['keyline', '키라인 액자'], ['cinema', '시네마 화면'], ['full', '풀사진']] };
-CATS.push(['순애보 시네마 (K타입)', ['saopen', 'saprofile', 'sachapter', 'saletter', 'sasplit', 'sadate', 'saslide', 'sanega', 'samsg', 'saend']]);
+CATS.push(['순애보 시네마 (K타입)', ['saopen', 'saprofile', 'sachapter', 'saletter', 'sasplit', 'sadate', 'saslide', 'sanega', 'samsg', 'saend', 'sacast', 'sacredit']]);
+/* ---- K: movie-style ending (customer sample) — wide letterbox with BRIDE / GROOM names, then a credit roll beside a small photo ---- */
+LAYOUTS.sacast = {
+  name: '순애보 와이드 화면 + BRIDE · GROOM 이름 (영화 엔딩)', slots: 1, weight: 5, lockLen: true,
+  fields: [['l1', '왼쪽 작은 글', 'BRIDE'], ['n1', '왼쪽 이름', '{BRIDE}'], ['l2', '오른쪽 작은 글', 'GROOM'], ['n2', '오른쪽 이름', '{GROOM}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+  draw(c, s, t, d) {
+    bg(c, '#000'); cover(c, s, 0, 0, 150, W, 780, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.05 * clamp(t / d) });
+    { const g = c.createLinearGradient(0, 640, 0, 930); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.5)'); c.fillStyle = g; c.fillRect(0, 640, W, 290); } // keeps the names readable on bright skies
+    const a = fade(t, 0.9, 1.0) * (1 - clamp((t - (d - 0.8)) / 0.8));
+    txt(c, fill(s.texts.l1).toUpperCase(), 230, 842, SERIF(30), '#FFFFFF', a, { k: 'l1', sp: 3, shadow: 'rgba(0,0,0,.55)', blur: 8 });
+    txt(c, fill(s.texts.n1).toUpperCase(), 230, 884, SERIF(26), 'rgba(255,255,255,.88)', a, { k: 'n1', sp: 3, shadow: 'rgba(0,0,0,.55)', blur: 8 });
+    txt(c, fill(s.texts.l2).toUpperCase(), 1690, 842, SERIF(30), '#FFFFFF', a, { k: 'l2', sp: 3, shadow: 'rgba(0,0,0,.55)', blur: 8 });
+    txt(c, fill(s.texts.n2).toUpperCase(), 1690, 884, SERIF(26), 'rgba(255,255,255,.88)', a, { k: 'n2', sp: 3, shadow: 'rgba(0,0,0,.55)', blur: 8 });
+  }
+};
+LAYOUTS.sacredit = {
+  name: '순애보 엔딩 크레딧 (작은 사진 + 이름 → WELCOME → 올라가는 크레딧)', slots: 6, weight: 18, lockLen: true,
+  fields: [['names', '이름', '{GROOM}  &  {BRIDE}'], ['welcome', '두 번째 글', 'WELCOME TO\nOUR WEDDING DAY', true], ['date', '날짜', '{DATE}'],
+    ['roll', '올라가는 크레딧 (빈 줄로 덩어리 구분, 덩어리 첫 줄은 작은 제목)', 'Prologue\n서로의 하루가 되어\n\nChapter 1\n두 사람의 이름으로 시작하는 이야기\n\nCast\n함께 웃고, 함께 울고, 함께 걸어갈 우리\n\nComing Soon\n끝없는 사랑으로 이어질 내일\n\n이제 시작하겠습니다.', true]],
+  opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
+  draw(c, s, t, d) {
+    bg(c, '#000');
+    const ids = s.media.map((m, i) => (m && m.id ? i : -1)).filter(i => i >= 0), n = Math.max(1, ids.length);
+    const PX = 160, PY = 352, PW = 740, PH = 376, t0 = 1.0, seg = Math.max(0.5, (d - t0) / n), k = Math.min(n - 1, Math.max(0, Math.floor((t - t0) / seg)));
+    const pa = fade(t, t0, 0.9) * (1 - clamp((t - (d - 1.2)) / 1.1));
+    const drawP = (j, al) => { if (al <= 0 || !ids.length) return; c.save(); c.globalAlpha *= al; const ho = hitOn; hitOn = false; cover(c, s, ids[j], PX, PY, PW, PH, t, { bw: s.opts.bw, zoom: 1.02 + 0.03 * clamp((t - t0 - j * seg) / seg) }); hitOn = ho; c.restore(); };
+    drawP(k, pa); if (k > 0) { const x = clamp((t - t0 - k * seg) / 0.6); if (x < 1) { drawP(k - 1, pa * (1 - x)); } }
+    if (ids.length) addHit({ type: 'media', si: ids[k], x: PX, y: PY, w: PW, h: PH, oy: 0 });
+    // right side: names, then welcome + date, then the rolling credits
+    const p1 = [1.4, d * 0.27], p2 = [d * 0.29, d * 0.5], p3 = [d * 0.52, d - 2.2], CX = 1400;
+    const inOut = (a, b) => fade(t, a, 0.8) * (1 - clamp((t - (b - 0.7)) / 0.7));
+    txt(c, fill(s.texts.names).toUpperCase(), CX, 548, SERIF(30), '#FFFFFF', inOut(p1[0], p1[1]), { k: 'names', sp: 3 });
+    const wl = fill(s.texts.welcome).toUpperCase().split('\n'), aw = inOut(p2[0], p2[1]);
+    wl.forEach((l, i) => txt(c, l, CX, 470 + i * 44, SERIF(28), '#FFFFFF', aw, { k: 'welcome', sp: 2 }));
+    txt(c, fill(s.texts.date), CX, 470 + wl.length * 44 + 40, SERIF(26), 'rgba(255,255,255,.9)', aw, { k: 'date', sp: 2 });
+    const blocks = fill(s.texts.roll).split(/\n\s*\n/).map(b => b.split('\n').filter(x => x.trim()));
+    const RX = 1160, step = 200, rows = []; let y = 0;
+    blocks.forEach((b, bi) => { if (b.length > 1) { rows.push([b[0], y, 0]); b.slice(1).forEach((l, li) => rows.push([l, y + 46 + li * 38, 1])); } else if (b.length) rows.push([b[0], y + (bi === blocks.length - 1 ? 180 : 0), 1]); y += step; });
+    const last = rows.length ? rows[rows.length - 1][1] : 0, u = clamp((t - p3[0]) / Math.max(0.5, p3[1] - p3[0] - 1.0));
+    const y0 = (H + 30) + (540 - last - (H + 30)) * u, ar = fade(t, p3[0], 0.4) * (1 - clamp((t - (p3[1] + 0.3)) / 0.9));
+    rows.forEach(([l, ry, big]) => { const yy = y0 + ry; if (yy < -40 || yy > H + 40) return; txt(c, l, RX, yy, big ? UIF(24, 600) : UIF(19, 500), big ? '#FFFFFF' : 'rgba(255,255,255,.72)', ar, { align: 'left' }); });
+  }
+};
+['sacast', 'sacredit'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+
 // customer tab: shown as 1, 2, 3 …; the old customer K becomes C1 so the base list can have its own K
 if (TEMPLATES.K && TEMPLATES.K.custom) { TEMPLATES.C1 = TEMPLATES.K; delete TEMPLATES.K; }
 [['C1', '1'], ['L', '2'], ['M', '3'], ['M2', '4'], ['N', '5']].forEach(([k, code]) => { if (TEMPLATES[k]) TEMPLATES[k].code = code; });
