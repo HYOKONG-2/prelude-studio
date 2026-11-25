@@ -4343,7 +4343,8 @@ LAYOUTS.introcard = {
     const ba = fade(t, 1.5, 0.6);
     if (ba > 0) { c.save(); c.globalAlpha *= ba; c.fillStyle = '#D8D4CF'; c.fillRect(R2 ? ax - 560 : ax, 600, 560, 2); c.restore(); }
     c.save(); c.font = UIF(32, 500); const bw2 = c.measureText(fill(s.texts.birth)).width; c.restore();
-    if (R2) { txt(c, fill(s.texts.birth), ax, 660, UIF(32, 500), '#2E2A33', ba, { align: 'right', k: 'birth' }); txt(c, 'BIRTH', ax - bw2 - 24, 660, UIF(24, 700), '#A39D97', ba, { align: 'right', sp: 3 }); }
+    if (!fill(s.texts.birth || '').trim()) {} // no birthday -> no BIRTH label either
+    else if (R2) { txt(c, fill(s.texts.birth), ax, 660, UIF(32, 500), '#2E2A33', ba, { align: 'right', k: 'birth' }); txt(c, 'BIRTH', ax - bw2 - 24, 660, UIF(24, 700), '#A39D97', ba, { align: 'right', sp: 3 }); }
     else { txt(c, 'BIRTH', ax, 660, UIF(24, 700), '#A39D97', ba, { align: 'left', sp: 3 }); txt(c, fill(s.texts.birth), ax + 120, 660, UIF(32, 500), '#2E2A33', ba, { align: 'left', k: 'birth' }); }
     chips(c, s.texts.tags, ax, 760, fade(t, 1.9, 0.6), al);
   }
