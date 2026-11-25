@@ -550,15 +550,16 @@ function fitRect(scene, si, x, y, w, h) {
   const a = sw / sh; let fw = w, fh = h; if (a < w / h) fw = h * a; else fh = w / a;
   return [x + (w - fw) / 2, y + (h - fh) / 2, fw, fh];
 }
+let rectSeen = null;
 function slotRect(scene, si, x, y, w, h) {
   if (slotLock) return [x, y, w, h];
-  const sl = scene && scene.media && scene.media[si];
+  const sl = scene && scene.media && scene.media[si]; rectSeen = sl || null;
   if (!sl || (!sl.fdx && !sl.fdy && !sl.fsc && !sl.fit)) return [x, y, w, h];
   const k = sl.fsc || 1, cx = x + w / 2 + (sl.fdx || 0), cy = y + h / 2 + (sl.fdy || 0);
   return fitRect(scene, si, cx - w * k / 2, cy - h * k / 2, w * k, h * k);
 }
 function coverIn(...a) { // photo drawn into a fixed box; a slot that was moved / resized in the editor still follows its box
-  const sl = a[1] && a[1].media && a[1].media[a[2]], moved = !slotLock && sl && (sl.fdx || sl.fdy || (sl.fsc && sl.fsc !== 1));
+  const sl = a[1] && a[1].media && a[1].media[a[2]], moved = !slotLock && sl && rectSeen !== sl && (sl.fdx || sl.fdy || (sl.fsc && sl.fsc !== 1)); // a caller that already moved the box (whiteBorder…) is not moved twice
   const k = rectDone; rectDone = !moved; try { cover(...a); } finally { rectDone = k; } }
 // cover-crop a media slot into a rect, with per-slot zoom/offset
 function cover(c, scene, si, x, y, w, h, t, o = {}) {
@@ -1172,8 +1173,9 @@ Object.assign(LAYOUTS, {
       bg(c, '#000'); softBg(c, s, 0, s.opts.bw);
       c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H);
       const a = fade(t, 0.2, 1.2), fw = 1240, fh = 760, x = (W - fw) / 2, y = (H - fh) / 2 - 30;
-      c.save(); c.globalAlpha = a; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(x - 16, y - 16, fw + 32, fh + 32); c.restore();
-      c.save(); c.globalAlpha = a; cover(c, s, 0, x, y, fw, fh, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore();
+      slotWrap(c, s, 0, x, y, fw, fh, () => { // white frame moves with its photo
+        c.save(); c.globalAlpha = a; c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 40 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(x - 16, y - 16, fw + 32, fh + 32); c.restore();
+        c.save(); c.globalAlpha = a; cover(c, s, 0, x, y, fw, fh, t, { bw: s.opts.bw, zoom: kb(t, d, 0.04) }); c.restore(); });
     }
   }
 });
@@ -1651,8 +1653,9 @@ Object.assign(LAYOUTS, {
       const a = fade(t, 0.7, 1.1);
       if (a > 0.001) {
         c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * 24);
-        c.save(); c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 36 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(1000, 360, 740, 600); c.restore();
-        cover(c, s, 1, 1018, 378, 704, 564, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) });
+        slotWrap(c, s, 1, 1018, 378, 704, 564, () => { // white card moves / resizes with its photo
+          c.save(); c.shadowColor = 'rgba(0,0,0,.28)'; c.shadowBlur = 36 * R.S; c.shadowOffsetY = 10 * R.S; c.fillStyle = '#FFFFFF'; c.fillRect(1000, 360, 740, 600); c.restore();
+          cover(c, s, 1, 1018, 378, 704, 564, t, { bw: s.opts.bw, zoom: kb(t, d, 0.03) }); });
         c.restore();
       }
     }
@@ -2996,12 +2999,12 @@ Object.assign(LAYOUTS, {
     }
   },
   doodlephoto: {
-    name: '낙서 동그라미 사진', slots: 1, weight: 5, fields: [['note', '손글씨 메모', '여기 우리!']], opts: [['bw', '흑백', false]],
+    name: '낙서 동그라미 사진', slots: 1, weight: 5, fields: [['note', '손글씨 메모 (비우면 없음)', '여기 우리!']], opts: [['noDoodle', '낙서(동그라미·화살표) 지우기', false], ['bw', '흑백', false]],
     cap: () => [960, 1015, 'light'],
     draw(c, s, t, d) {
       bg(c, '#FAFAFA');
       c.save(); c.globalAlpha = fade(t, 0, 0.7); roundCover(c, s, 0, 120, 70, 1160, 900, t, d, { bw: s.opts.bw }); c.restore();
-      const p = ease(clamp((t - 0.8) / 0.9));
+      const p = s.opts.noDoodle ? 0 : ease(clamp((t - 0.8) / 0.9));
       if (p > 0) {
         c.save(); c.strokeStyle = '#1E1E1E'; c.lineWidth = 6; c.lineCap = 'round';
         c.beginPath(); for (let i = 0; i <= 60 * p; i++) { const a2 = -1.2 + i / 60 * Math.PI * 2.15, rx = 230 + Math.sin(i * 0.7) * 6, ry = 190 + Math.cos(i * 0.5) * 6; const x = 700 + Math.cos(a2) * rx, y = 470 + Math.sin(a2) * ry; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
