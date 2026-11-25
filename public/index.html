@@ -10832,7 +10832,7 @@ function render(r, T, preview) {
     }
   } else drawScene(c, i, t, preview);
   if (preview && project.outCrop === 956) { c.save(); c.setLineDash([14, 10]); c.strokeStyle = 'rgba(255,90,120,.85)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 62); c.lineTo(W, 62); c.moveTo(0, 1018); c.lineTo(W, 1018); c.stroke(); c.restore(); }
-  if (project.retroFx && typeof rmRetro === 'function' && !(project.scenes[i] && LAYOUTS[project.scenes[i].layout] && LAYOUTS[project.scenes[i].layout].noFx)) { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,190,130,.22)'; c.fillRect(0, 0, W, H); c.restore(); rmRetro(c, T); }
+  if (project.retroFx && typeof rmRetro === 'function' && !(project.scenes[i] && (project.scenes[i].noFx || (LAYOUTS[project.scenes[i].layout] && LAYOUTS[project.scenes[i].layout].noFx)))) { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,190,130,.22)'; c.fillRect(0, 0, W, H); c.restore(); rmRetro(c, T); }
   if (activeLyric) {
     const s = project.scenes[i], st = LAYOUTS[s.layout].cap(s)[2], ly = activeLyric, x = 960, y = 1012;
     const a = activeLyricA;
