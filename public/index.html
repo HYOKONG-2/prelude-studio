@@ -596,7 +596,9 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
   if (z < 1 || ox || slot.oy != null) {
-    if (slot.bfill === true || (slot.bfill !== false && (slot.z || 1) < 1)) { // shrunk photo: automatic (can be turned off per photo); the empty sides get a soft, darker copy of the same photo instead of a flat colour
+    const px0 = x + w / 2 + (ox + (mv ? mv.x : 0)) * w - dw / 2, py0 = y + h / 2 + (oy + (mv ? mv.y : 0)) * h - dh / 2;
+    const gap = px0 > x + 0.5 || py0 > y + 0.5 || px0 + dw < x + w - 0.5 || py0 + dh < y + h - 0.5; // photo shrunk or pushed so part of the box is empty
+    if (slot.bfill === true || (slot.bfill !== false && gap)) { // shrunk photo: automatic (can be turned off per photo); the empty sides get a soft, darker copy of the same photo instead of a flat colour
       const k0 = Math.max(w / sw, h / sh) * 1.1; c.save(); c.filter = `blur(${Math.max(6, Math.round(Math.min(w, h) * 0.04))}px) brightness(0.62)`;
       c.drawImage(EL, x + w / 2 - sw * k0 / 2, y + h / 2 - sh * k0 / 2, sw * k0, sh * k0); c.restore();
     } else { c.fillStyle = scene.pbg || (o.dark ? '#000' : PAPER); c.fillRect(x, y, w, h); }
@@ -4667,7 +4669,7 @@ LAYOUTS.navphoto.opts = LAYOUTS.navphoto.opts.concat([['wordLeft', '필기체 �
   };
 })();
 /* ---------------- H type: childhood photos (whole photos / cut-out figures) ---------------- */
-function fitRect(s, si, x, y, w, h, align) {
+function fitWhole(s, si, x, y, w, h, align) { // whole photo in its own shape (always); fitRect only does this for slots set to 'fit'
   const slot = s.media[si] || {}, m = slot.id && media[slot.id]; if (!m || !m.w) return [x, y, w, h];
   const ar = m.w / m.h, cr = w / h; let fw = w, fh = h;
   if (ar > cr) fh = w / ar; else fw = h * ar;
@@ -8818,7 +8820,7 @@ Object.assign(LAYOUTS, {
     } },
   samat: { name: '순애보 한 장 (짙은 매트 액자 + 캡션)', slots: 1, weight: 4, fields: [['cap', '캡션', 'our days'], ['year', '작은 숫자', '']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
-      saTheme(null); saBg(c); const a = fade(t, 0, 0.9), [X, Y, Wd, Ht] = fitRect(s, 0, 400, 90, 1120, 760), m = 44;
+      saTheme(null); saBg(c); const a = fade(t, 0, 0.9), [X, Y, Wd, Ht] = fitWhole(s, 0, 400, 90, 1120, 760), m = 44;
       c.save(); c.globalAlpha *= a; c.save(); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 14 * R.S; c.fillStyle = '#1B1A19'; c.fillRect(X - m, Y - m, Wd + 2 * m, Ht + 2 * m); c.restore();
       c.strokeStyle = 'rgba(242,238,232,.18)'; c.lineWidth = 1.5; c.strokeRect(X - 12, Y - 12, Wd + 24, Ht + 24);
       cover(c, s, 0, X, Y, Wd, Ht, t, { bw: s.opts.bw, dark: true, zoom: 1.02 + 0.04 * clamp(t / d) }); c.restore();
