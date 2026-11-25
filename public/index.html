@@ -8443,7 +8443,8 @@ Object.assign(LAYOUTS, {
     fields: [['big', '큰 글씨', 'Thank you'], ['names', '이름', '{GROOM}  &  {BRIDE}'], ['date', '날짜', '{DATE}']], opts: [['bw', '흑백', false]], cap: () => [960, 1045, 'dark'],
     draw(c, s, t, d) {
       saBg(c);
-      keyline(c, s, 0, 430, 70, 1060, 600, t, d, { a: fade(t, 0.2, 1.0), zoom: 1.03 + 0.03 * clamp(t / d) });
+      const noTxt = !s.texts.big && !s.texts.names && !s.texts.date; // all text cleared -> photo sits in the middle
+      keyline(c, s, 0, 430, noTxt ? 240 : 70, 1060, 600, t, d, { a: fade(t, 0.2, 1.0), zoom: 1.03 + 0.03 * clamp(t / d) });
       txt(c, fill(s.texts.big), 960, 790, SERIF(96, true), SA.ink, fade(t, 1.0, 1.0), { k: 'big' });
       txt(c, fill(s.texts.names), 960, 880, UIF(26, 500), SA.sub, fade(t, 1.5, 0.8), { k: 'names', sp: 10 });
       txt(c, fill(s.texts.date), 960, 928, UIF(22, 500), SA.sub, fade(t, 1.8, 0.8), { k: 'date', sp: 8 });
@@ -8453,7 +8454,7 @@ Object.assign(LAYOUTS, {
 });
 ['saletter'].forEach(k => { LAYOUTS[k].bgHidden = true; });
 LAYOUTS.samsg.optSelects = { frame: [['kids', '어린 시절 사진 두 장'], ['slide', '슬라이드 필름'], ['keyline', '키라인 액자'], ['cinema', '시네마 화면'], ['full', '풀사진']] };
-CATS.push(['순애보 시네마 (K타입)', ['saopen', 'saprofile', 'sachapter', 'saletter', 'sasplit', 'sadate', 'saslide', 'sanega', 'samsg', 'saend', 'sacast', 'sacredit']]);
+CATS.push(['순애보 시네마 (K타입)', ['saopen', 'saprofile', 'sachapter', 'saletter', 'sasplit', 'sadate', 'saslide', 'sanega', 'samsg', 'saend']]);
 /* ---- K: movie-style ending (customer sample) — wide letterbox with BRIDE / GROOM names, then a credit roll beside a small photo ---- */
 LAYOUTS.sacast = {
   name: '순애보 와이드 화면 + BRIDE · GROOM 이름 (영화 엔딩)', slots: 1, weight: 5, lockLen: true,
@@ -8497,6 +8498,9 @@ LAYOUTS.sacredit = {
   }
 };
 ['sacast', 'sacredit'].forEach(k => { LAYOUTS[k].bgHidden = true; });
+/* plain black screen (no film effect) — e.g. the song keeps playing for a live 2nd verse after the video ends */
+LAYOUTS.blackout = { name: '검은 화면 (음악만 흐르는 구간, 필름 효과 없음)', slots: 0, weight: 10, noFx: true, fields: [], opts: [], cap: () => [960, 1045, 'dark'], draw(c) { bg(c, '#000'); } };
+CATS.find(x => x[0] === '순애보 시네마 (K타입)')[1].push('sacast', 'sacredit', 'blackout');
 
 // customer tab: shown as 1, 2, 3 …; the old customer K becomes C1 so the base list can have its own K
 if (TEMPLATES.K && TEMPLATES.K.custom) { TEMPLATES.C1 = TEMPLATES.K; delete TEMPLATES.K; }
@@ -10828,7 +10832,7 @@ function render(r, T, preview) {
     }
   } else drawScene(c, i, t, preview);
   if (preview && project.outCrop === 956) { c.save(); c.setLineDash([14, 10]); c.strokeStyle = 'rgba(255,90,120,.85)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 62); c.lineTo(W, 62); c.moveTo(0, 1018); c.lineTo(W, 1018); c.stroke(); c.restore(); }
-  if (project.retroFx && typeof rmRetro === 'function') { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,190,130,.22)'; c.fillRect(0, 0, W, H); c.restore(); rmRetro(c, T); }
+  if (project.retroFx && typeof rmRetro === 'function' && !(project.scenes[i] && LAYOUTS[project.scenes[i].layout] && LAYOUTS[project.scenes[i].layout].noFx)) { c.save(); c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,190,130,.22)'; c.fillRect(0, 0, W, H); c.restore(); rmRetro(c, T); }
   if (activeLyric) {
     const s = project.scenes[i], st = LAYOUTS[s.layout].cap(s)[2], ly = activeLyric, x = 960, y = 1012;
     const a = activeLyricA;
