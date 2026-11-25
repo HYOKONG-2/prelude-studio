@@ -557,7 +557,9 @@ function slotRect(scene, si, x, y, w, h) {
   const k = sl.fsc || 1, cx = x + w / 2 + (sl.fdx || 0), cy = y + h / 2 + (sl.fdy || 0);
   return fitRect(scene, si, cx - w * k / 2, cy - h * k / 2, w * k, h * k);
 }
-function coverIn(...a) { const k = rectDone; rectDone = true; try { cover(...a); } finally { rectDone = k; } }
+function coverIn(...a) { // photo drawn into a fixed box; a slot that was moved / resized in the editor still follows its box
+  const sl = a[1] && a[1].media && a[1].media[a[2]], moved = !slotLock && sl && (sl.fdx || sl.fdy || (sl.fsc && sl.fsc !== 1));
+  const k = rectDone; rectDone = !moved; try { cover(...a); } finally { rectDone = k; } }
 // cover-crop a media slot into a rect, with per-slot zoom/offset
 function cover(c, scene, si, x, y, w, h, t, o = {}) {
   if (!rectDone) [x, y, w, h] = slotRect(scene, si, x, y, w, h);
@@ -593,7 +595,7 @@ function cover(c, scene, si, x, y, w, h, t, o = {}) {
   const ox = slot.ox || 0;
   addHit({ type: 'media', si, x, y, w, h, oy });
   if (z < 1 || ox || slot.oy != null) {
-    if (slot.bfill) { // the empty sides get a soft, darker copy of the same photo instead of a flat colour
+    if (slot.bfill === true || (slot.bfill !== false && (slot.z || 1) < 1)) { // shrunk photo: automatic (can be turned off per photo); the empty sides get a soft, darker copy of the same photo instead of a flat colour
       const k0 = Math.max(w / sw, h / sh) * 1.1; c.save(); c.filter = `blur(${Math.max(6, Math.round(Math.min(w, h) * 0.04))}px) brightness(0.62)`;
       c.drawImage(EL, x + w / 2 - sw * k0 / 2, y + h / 2 - sh * k0 / 2, sw * k0, sh * k0); c.restore();
     } else { c.fillStyle = scene.pbg || (o.dark ? '#000' : PAPER); c.fillRect(x, y, w, h); }
@@ -8558,7 +8560,7 @@ LAYOUTS.saslide = { name: '순애보 큰 사진 갤러리 (세 장이 천천히 
   draw(c, s, t, d) {
     saBg(c); const n = autoN(s, 3), seg = d / n, X0 = 260, Y0 = 110, W0 = 1400, H0 = 800;
     // a photo set to 'frame follows photo' gets a box of its own shape; the box eases from one shape to the next
-    const FR = i => fitRect(s, i, X0, Y0, W0, H0), ci = Math.min(n - 1, Math.floor(t / seg)), ca = ci === 0 ? 1 : clamp((t - ci * seg + 0.4) / 0.8);
+    const FR = i => slotRect(s, i, X0, Y0, W0, H0), ci = Math.min(n - 1, Math.floor(t / seg)), ca = ci === 0 ? 1 : clamp((t - ci * seg + 0.4) / 0.8);
     const r0 = FR(Math.max(0, ci - (ca < 1 ? 1 : 0))), r1 = FR(ci), e = ease(ca), [X, Y, Wd, Ht] = r0.map((v, k) => v + (r1[k] - v) * e);
     c.save(); c.shadowColor = SA.light ? 'rgba(90,70,40,.22)' : 'rgba(0,0,0,.6)'; c.shadowBlur = 40 * R.S; c.shadowOffsetY = 16 * R.S; c.fillStyle = SA.light ? '#FFFFFF' : '#111'; c.fillRect(X, Y, Wd, Ht); c.restore();
     for (let i = 0; i < n; i++) { const st = i * seg, a = i === 0 ? 1 : clamp((t - st + 0.4) / 0.8); if (t < st - 0.4 || a <= 0) continue; const [px, py, pw, ph] = FR(i); c.save(); c.beginPath(); c.rect(X, Y, Wd, Ht); c.clip(); c.globalAlpha *= a; const rd = rectDone; rectDone = true; try { cover(c, s, i, px, py, pw, ph, t, { bw: s.opts.bw, dark: !SA.light, zoom: 1.02 + 0.05 * clamp((t - st + 0.4) / (seg + 0.8)) }); } finally { rectDone = rd; } c.restore(); }
@@ -11343,7 +11345,7 @@ function buildSlots(s) {
         <label class="ctl"><span>크기</span><input type="range" min="30" max="300" value="${Math.round((slot.z || 1) * 100)}" data-k="z"></label>
         <label class="ctl"><span>가로</span><input type="range" min="-100" max="100" value="${Math.round((slot.ox || 0) * 100)}" data-k="ox"></label>
         <label class="ctl"><span>세로</span><input type="range" min="-100" max="100" value="${Math.round((slot.oy || 0) * 100)}" data-k="oy"></label>
-        <div class="checks" style="margin:2px 0 4px"><label><input type="checkbox" data-fit ${slot.fit ? 'checked' : ''}>프레임을 사진 모양에 맞추기 (세로 사진 → 세로 프레임)</label><label><input type="checkbox" data-bfill ${slot.bfill ? 'checked' : ''}>사진을 줄였을 때 빈 곳을 흐린 사진으로 채우기</label></div>
+        <div class="checks" style="margin:2px 0 4px"><label><input type="checkbox" data-fit ${slot.fit ? 'checked' : ''}>프레임을 사진 모양에 맞추기 (세로 사진 → 세로 프레임)</label><label><input type="checkbox" data-bfill ${slot.bfill !== false ? 'checked' : ''}>사진을 줄였을 때 빈 곳을 흐린 사진으로 채우기 (기본 켜짐)</label></div>
         <label class="ctl"><span>칸 가로</span><input type="range" min="-1800" max="1800" value="${Math.round(slot.fdx || 0)}" data-fk="fdx"></label>
         <label class="ctl"><span>칸 세로</span><input type="range" min="-1000" max="1000" value="${Math.round(slot.fdy || 0)}" data-fk="fdy"></label>
         <label class="ctl"><span>칸 크기</span><input type="range" min="40" max="200" value="${Math.round((slot.fsc || 1) * 100)}" data-fk="fsc"></label>
@@ -11365,7 +11367,7 @@ function buildSlots(s) {
       });
       d.querySelector('[data-r]').onclick = () => { delete slot.z; delete slot.ox; delete slot.oy; delete slot.fdx; delete slot.fdy; delete slot.fsc; delete slot.look; delete slot.lb; delete slot.bfill; delete slot.fit; sceneChanged(s); buildSlots(s); };
       d.querySelector('[data-fit]').onchange = e => { if (e.target.checked) { slot.fit = true; delete slot.z; delete slot.ox; delete slot.oy; } else delete slot.fit; sceneChanged(s); buildSlots(s); };
-      d.querySelector('[data-bfill]').onchange = e => { if (e.target.checked) slot.bfill = true; else delete slot.bfill; sceneChanged(s); };
+      d.querySelector('[data-bfill]').onchange = e => { if (e.target.checked) delete slot.bfill; else slot.bfill = false; sceneChanged(s); };
       d.querySelector('[data-mo]').onchange = e => { if (e.target.value === 'auto') delete slot.mo; else slot.mo = e.target.value; sceneChanged(s); };
       d.querySelector('[data-look]').onchange = e => { if (e.target.value) slot.look = e.target.value; else delete slot.look; sceneChanged(s); };
       d.querySelector('[data-lb]').oninput = e => { const v = +e.target.value; if (v) slot.lb = v; else delete slot.lb; sceneChanged(s); };
