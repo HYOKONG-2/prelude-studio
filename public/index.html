@@ -11644,6 +11644,18 @@ function snapLyricSlots(quiet) {
   toast(`미리 맞춘 시간 칸 ${S.length}개에 가사 ${n}줄을 맞췄어요${L.length > n ? ` · 칸 밖의 ${L.length - n}줄은 숨겨 뒀어요` : ''}`);
   return n;
 }
+function fillLyricSlots(text) {
+  const S = (project.lyricSlots || []).slice().sort((a, b) => a[0] - b[0]);
+  const lines = String(text || '').split('\n').map(x => x.trim()).filter(Boolean).map(l => { const m = l.split(/\s+\/\s+/); return { text: m[0], sub: m[1] || '' }; });
+  if (!lines.length) { toast('가사를 먼저 붙여 넣어주세요'); return; }
+  if (project.lyrics.length && !confirm(`지금 넣어 둔 가사를 붙여넣은 ${lines.length}줄로 바꿀까요? 시간은 칸 ${S.length}개에 맞춰요.`)) return;
+  const n = Math.min(lines.length, S.length);
+  touch('lyrics');
+  project.lyrics = lines.slice(0, n).map((x, i) => ({ id: uid(), start: +S[i][0].toFixed(1), end: +S[i][1].toFixed(1), text: x.text, sub: x.sub }));
+  project.lyricsOn = true; project.lyrics.forEach(x => { loadFontsFor(x.text); loadFontsFor(x.sub); });
+  lyricChanged();
+  toast(lines.length === S.length ? `가사 ${n}줄을 시간 칸에 채웠어요` : `줄 수(${lines.length})와 칸 수(${S.length})가 달라요 · 앞에서부터 ${n}줄만 채웠어요`);
+}
 /* tap-to-sync: paste lyrics, play the song, tap at the start of each line */
 let tapSync = null;
 function renderTap() {
@@ -11706,6 +11718,7 @@ function autoLyricsHtml() {
       <p class="hint" style="margin-top:0">가사를 못 찾는 곡(국내 곡 등)은 멜론·지니 등에서 가사를 복사해 붙여 넣으세요. 한 줄이 자막 한 줄이 돼요. 영어 노래는 <b>영어 / 한글</b>처럼 ‘ / ’로 나누면 두 줄 자막이 돼요. 재생 위치를 노래 시작 쪽에 두고 시작한 뒤, 각 줄을 부르기 시작할 때마다 <b>스페이스바</b>(또는 아래 버튼)를 누르면 시간이 자동으로 들어가요.</p>
       <textarea id="tapText" rows="5" style="width:100%" placeholder="가사를 한 줄씩 붙여 넣어주세요"></textarea>
       <button type="button" class="btn primary" id="tapGo" style="width:100%;margin-top:8px"${abuf ? '' : ' disabled'}>${abuf ? '재생하며 탭으로 맞추기' : '먼저 음원을 넣어주세요'}</button>
+      ${project.lyricSlots && project.lyricSlots.length ? `<button type="button" class="btn" id="slotFill" style="width:100%;margin-top:6px">붙여넣은 가사를 시간 칸 ${project.lyricSlots.length}개에 순서대로 채우기</button>` : ''}
       <div id="tapBox"></div>
     </div>
     ${project.lyrics.length ? `<div class="row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap"><span class="hint" style="margin:0">전체 가사 시간 맞추기</span><button type="button" class="x" data-sh="-1">-1초</button><button type="button" class="x" data-sh="-0.3">-0.3초</button><button type="button" class="x" data-sh="0.3">+0.3초</button><button type="button" class="x" data-sh="1">+1초</button></div>` : ''}
@@ -11715,6 +11728,7 @@ function wireAutoLyrics(p) {
   const ia = $('alArtist'), it = $('alTitle'); if (!ia) return;
   ia.oninput = () => alArtist = ia.value; it.oninput = () => alTitle = it.value;
   p.querySelectorAll('[data-sh]').forEach(b => b.onclick = () => { const d = +b.dataset.sh; touch('lyrics'); project.lyrics.forEach(l => { l.start = +clamp(l.start + d, 0, total).toFixed(1); l.end = +clamp(l.end + d, 0, total).toFixed(1); }); lyricChanged(); toast(`가사를 ${d > 0 ? '+' : ''}${d}초 옮겼어요`); });
+  const sf = $('slotFill'); if (sf) sf.onclick = () => fillLyricSlots($('tapText').value);
   const tg = $('tapGo'); if (tg) tg.onclick = () => { if (project.lyrics.length && !confirm('지금 넣어 둔 가사를 새로 맞춘 가사로 바꿀까요?')) return; tg.blur(); startTapSync($('tapText').value); };
   renderTap();
   const res = $('alRes');
