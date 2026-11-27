@@ -1839,12 +1839,12 @@ Object.assign(LAYOUTS, {
     }
   },
   tri3dark: {
-    name: '세로 세 장 (블랙)', slots: 3, weight: 6, fields: [],
+    name: '세로 세 장 (블랙, 네 장까지)', slots: 4, weight: 6, fields: [],
     opts: [['bw', '흑백', false]],
     cap: () => [960, 1032, 'dark'],
     draw(c, s, t, d) {
       bg(c, '#000');
-      const n = autoN(s, 3), fw = [0, 1000, 760, 540][n], fh = 880, g = 60, x0 = (W - (fw * n + g * (n - 1))) / 2;
+      const n = autoN(s, 4), fw = [0, 1000, 760, 540, 420][n], fh = 880, g = 60, x0 = (W - (fw * n + g * (n - 1))) / 2;
       for (let i = 0; i < n; i++) { c.save(); c.globalAlpha = fade(t, i * 0.35, 0.9); cover(c, s, i, x0 + i * (fw + g), 90, fw, fh, t, { bw: s.opts.bw, dark: true, zoom: kb(t, d, 0.04) }); c.restore(); }
     }
   },
